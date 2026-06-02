@@ -1,4 +1,4 @@
-# TaskFlow — Team Task Manager
+# TaskFlow — Real-Time Team Task Manager Web App
 
 A real-time team task manager with Kanban boards, built with Node.js, Express, Supabase, and Tailwind CSS.
 
