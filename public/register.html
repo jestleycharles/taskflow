@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Register</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['Space Mono', 'monospace'], sans: ['DM Sans', 'sans-serif'] },
+          colors: {
+            brand: { 500:'#4f6ef7', 600:'#3a57e8' },
+            ink: { DEFAULT:'#0f1117', 800:'#1a1d2e', 700:'#252840' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; background: #0f1117; }
+    .grid-bg {
+      background-image: linear-gradient(rgba(79,110,247,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,110,247,0.07) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .glow { box-shadow: 0 0 60px rgba(79,110,247,0.15), 0 0 120px rgba(79,110,247,0.05); }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease forwards; }
+    input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #252840 inset !important; -webkit-text-fill-color: #fff !important; }
+  </style>
+</head>
+<body class="grid-bg min-h-screen flex items-center justify-center px-4 py-10">
+  <div class="w-full max-w-md fade-up">
+    <div class="text-center mb-10">
+      <a href="/login" class="inline-flex items-center gap-2 mb-4">
+        <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </div>
+        <span class="font-mono text-xl text-white font-bold tracking-tight">TaskFlow</span>
+      </a>
+      <p class="text-gray-400 text-sm">Create your free account.</p>
+    </div>
+
+    <div class="bg-ink-800 border border-white/10 rounded-2xl p-8 glow">
+      <h1 class="text-white font-semibold text-xl mb-6">Create account</h1>
+      <div id="error" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-5"></div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Username</label>
+          <input id="username" type="text" placeholder="yourname"
+            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Email</label>
+          <input id="email" type="email" placeholder="you@example.com"
+            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Password</label>
+          <input id="password" type="password" placeholder="Min. 8 characters"
+            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+        </div>
+        <button id="regBtn" onclick="register()"
+          class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-3 rounded-xl transition text-sm mt-2">
+          Create Account
+        </button>
+      </div>
+
+      <p class="text-center text-gray-500 text-sm mt-6">
+        Already have an account?
+        <a href="/login" class="text-brand-500 hover:text-brand-400 font-medium ml-1">Sign in</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    async function register() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('regBtn');
+      if (password.length < 8) return showError('Password must be at least 8 characters');
+      btn.textContent = 'Creating...'; btn.disabled = true;
+      const r = await fetch('/api/auth/register', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ username, email, password })
+      });
+      const d = await r.json();
+      if (d.success) return window.location = '/dashboard';
+      showError(d.error);
+      btn.textContent = 'Create Account'; btn.disabled = false;
+    }
+    function showError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg; el.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
