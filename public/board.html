@@ -319,6 +319,29 @@
     </div>
   </div>
 
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeConfirmModal()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
+      <h2 id="confirmTitle" class="text-base font-semibold text-white mb-2"></h2>
+      <p id="confirmMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
+      <div class="flex gap-3">
+        <button type="button" onclick="closeConfirmModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
+        <button type="button" id="confirmActionBtn" onclick="runConfirmAction()" class="flex-1 text-white font-medium py-2.5 rounded-xl transition text-sm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Modal -->
+  <div id="alertModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeAlertModal()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
+      <h2 id="alertTitle" class="text-base font-semibold text-white mb-2">Something went wrong</h2>
+      <p id="alertMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
+      <button type="button" onclick="closeAlertModal()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+    </div>
+  </div>
+
   <!-- Add Task Modal -->
   <div id="addTaskModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeAddTask()"></div>
@@ -456,6 +479,40 @@
     let draggedTaskId = null;
     let addTaskStatus = 'todo';
     let pollInterval = null;
+    let confirmCallback = null;
+
+    function showConfirm({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm }) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      const btn = document.getElementById('confirmActionBtn');
+      btn.textContent = confirmLabel;
+      btn.className = danger
+        ? 'flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-xl transition text-sm'
+        : 'flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm';
+      confirmCallback = onConfirm;
+      document.getElementById('confirmModal').classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').classList.add('hidden');
+      confirmCallback = null;
+    }
+
+    function runConfirmAction() {
+      const cb = confirmCallback;
+      closeConfirmModal();
+      if (cb) cb();
+    }
+
+    function showAlert(message, title = 'Something went wrong') {
+      document.getElementById('alertTitle').textContent = title;
+      document.getElementById('alertMessage').textContent = message;
+      document.getElementById('alertModal').classList.remove('hidden');
+    }
+
+    function closeAlertModal() {
+      document.getElementById('alertModal').classList.add('hidden');
+    }
 
     const PRIORITY_CONFIG = {
       urgent: { label: '🔴 Urgent', color: 'text-red-400', bg: 'bg-red-500/10 text-red-400' },
@@ -755,32 +812,51 @@
             <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
           </div>
           <span class="text-xs px-2 py-0.5 rounded-full ${m.role === 'owner' ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-gray-400'}">${m.role}</span>
-          ${m.role !== 'owner' ? `<button onclick="removeMember('${m.id}')" class="text-gray-500 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10" title="Remove member">
+          ${m.role !== 'owner' ? `<button type="button" class="remove-member-btn text-gray-500 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10" data-user-id="${m.id}" data-username="${escHtml(m.username)}" title="Remove member">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>` : ''}
         </div>`).join('');
     }
 
-    async function removeMember(userId, username) {
-      if (!confirm(`Remove ${username} from this team?`)) return;
+    function removeMember(userId, username) {
+      const name = username || teamData?.members?.find(m => String(m.id) === String(userId))?.username;
+      if (!name) return;
+      showConfirm({
+        title: 'Remove member',
+        message: `Remove ${name} from this team? They will lose access to all tasks and activity.`,
+        confirmLabel: 'Remove',
+        danger: true,
+        onConfirm: () => executeRemoveMember(userId),
+      });
+    }
+
+    async function executeRemoveMember(userId) {
       const r = await apiFetch(`/api/teams/${teamId}/members/${userId}`, { method: 'DELETE' });
       const d = await r.json();
       if (!r.ok) {
-        alert(d.error || 'Failed to remove member');
+        showAlert(d.error || 'Failed to remove member');
         return;
       }
       await loadTeam();
       renderSettingsMemberList(teamData.members);
     }
 
-    async function deleteTeam() {
+    function deleteTeam() {
       const name = teamData?.name || 'this team';
-      if (!confirm(`Delete "${name}" permanently? All tasks and data will be lost.`)) return;
-      if (!confirm('This is your last chance. Delete the team?')) return;
+      showConfirm({
+        title: 'Delete team',
+        message: `Delete "${name}" permanently? All tasks, comments, and activity will be lost. This cannot be undone.`,
+        confirmLabel: 'Delete team',
+        danger: true,
+        onConfirm: () => executeDeleteTeam(),
+      });
+    }
+
+    async function executeDeleteTeam() {
       const r = await apiFetch(`/api/teams/${teamId}`, { method: 'DELETE' });
       const d = await r.json();
       if (!r.ok) {
-        alert(d.error || 'Failed to delete team');
+        showAlert(d.error || 'Failed to delete team');
         return;
       }
       window.location = '/dashboard';
@@ -854,6 +930,12 @@
 
     document.getElementById('commentInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') submitComment();
+    });
+
+    document.getElementById('settingsMemberList').addEventListener('click', (e) => {
+      const btn = e.target.closest('.remove-member-btn');
+      if (!btn) return;
+      removeMember(btn.dataset.userId, btn.dataset.username);
     });
 
     init();
