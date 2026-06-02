@@ -49,6 +49,7 @@
     select option { background: #1a1d2e; }
     .poll-dot { animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .online-dot { animation: pulse 2s infinite; }
 
     /* Shimmer skeleton */
     @keyframes shimmer {
@@ -89,7 +90,7 @@
         <div class="poll-dot w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Live updates active"></div>
       </div>
       <div class="flex items-center gap-2">
-        <div id="memberAvatars" class="flex items-center -space-x-2 mr-1"></div>
+        <div id="memberAvatars" class="flex items-center -space-x-2 mr-1 cursor-pointer" role="button" tabindex="0" title="View team members" onclick="openTeamPanel()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTeamPanel();}"></div>
         <button onclick="openTeamPanel()" class="text-gray-400 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition flex items-center gap-1.5">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -479,6 +480,8 @@
     let draggedTaskId = null;
     let addTaskStatus = 'todo';
     let pollInterval = null;
+    let presenceInterval = null;
+    let onlineUserIds = new Set();
     let confirmCallback = null;
 
     function showConfirm({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm }) {
@@ -530,6 +533,7 @@
       await loadTeam();
       await loadTasks();
       startPolling();
+      startPresence();
     }
 
     async function loadTeam() {
@@ -545,19 +549,32 @@
         document.getElementById('settingsNavBtn').classList.remove('hidden');
         renderSettingsMemberList(teamData.members);
       }
+      fetchOnlineMembers();
     }
 
     function renderMemberAvatars(members) {
       const container = document.getElementById('memberAvatars');
       container.innerHTML = members.slice(0, 4).map(m =>
-        `<div class="w-7 h-7 rounded-full border-2 border-ink-900 flex items-center justify-center text-white text-xs font-bold" style="background:${m.avatar_color}" title="${escHtml(m.username)}">${m.username[0].toUpperCase()}</div>`
+        `<div class="w-7 h-7 rounded-full border-2 border-ink-900 flex items-center justify-center text-white text-xs font-bold pointer-events-none" style="background:${m.avatar_color}" title="${escHtml(m.username)}">${m.username[0].toUpperCase()}</div>`
       ).join('');
+    }
+
+    function memberAvatarHtml(m, sizeClass) {
+      const online = isUserOnline(m.id);
+      return `<div class="relative shrink-0">
+          <div class="${sizeClass} rounded-full flex items-center justify-center text-white text-xs font-bold" style="background:${m.avatar_color}">${m.username[0].toUpperCase()}</div>
+          ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Online"></span>' : ''}
+        </div>`;
+    }
+
+    function isUserOnline(userId) {
+      return onlineUserIds.has(String(userId));
     }
 
     function renderMemberList(members) {
       document.getElementById('memberList').innerHTML = members.map(m => `
         <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:${m.avatar_color}">${m.username[0].toUpperCase()}</div>
+          ${memberAvatarHtml(m, 'w-8 h-8')}
           <div class="flex-1 min-w-0">
             <p class="text-sm text-white font-medium truncate">${escHtml(m.username)}</p>
             <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
@@ -791,6 +808,7 @@
     function openTeamPanel() {
       closeAllSidePanels();
       document.getElementById('teamPanel').classList.remove('hidden');
+      fetchOnlineMembers();
     }
     function closeTeamPanel() { document.getElementById('teamPanel').classList.add('hidden'); }
 
@@ -895,6 +913,34 @@
         msg.className = 'text-xs mt-2 text-red-400';
         msg.textContent = d.error;
       }
+    }
+
+    // Presence (online indicators)
+    async function pingPresence() {
+      await apiFetch('/api/presence/ping', { method: 'POST' });
+    }
+
+    async function fetchOnlineMembers() {
+      const r = await apiFetch(`/api/teams/${teamId}/online`);
+      if (!r.ok) return;
+      const ids = await r.json();
+      if (!Array.isArray(ids)) return;
+      const next = new Set(ids.map(String));
+      const changed = next.size !== onlineUserIds.size || [...next].some(id => !onlineUserIds.has(id));
+      onlineUserIds = next;
+      if (changed && teamData?.members) {
+        renderMemberList(teamData.members);
+        renderMemberAvatars(teamData.members);
+      }
+    }
+
+    function startPresence() {
+      pingPresence();
+      fetchOnlineMembers();
+      presenceInterval = setInterval(() => {
+        pingPresence();
+        fetchOnlineMembers();
+      }, 20000);
     }
 
     // Real-time polling

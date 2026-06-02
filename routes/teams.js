@@ -1,7 +1,38 @@
 const express = require('express');
 const { supabaseAdmin } = require('../lib/supabase');
 const { requireAuth } = require('../middleware/auth');
+const { ping, getOnlineUserIds } = require('../lib/presence');
 const router = express.Router();
+
+// POST /api/presence/ping — heartbeat while viewing a board (guests included)
+router.post('/api/presence/ping', requireAuth, (req, res) => {
+  ping(req.session.user.id);
+  res.json({ ok: true });
+});
+
+// GET /api/teams/:id/online — user ids of members currently on this board
+router.get('/api/teams/:id/online', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members')
+    .select('user_id')
+    .eq('team_id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!membership) return res.status(403).json({ error: 'Not a member' });
+
+  const { data: members } = await supabaseAdmin
+    .from('team_members')
+    .select('user_id')
+    .eq('team_id', id);
+
+  const memberIds = (members || []).map((m) => m.user_id);
+  ping(userId);
+  res.json(getOnlineUserIds(memberIds));
+});
 
 // GET /api/teams - list user's teams
 router.get('/api/teams', requireAuth, async (req, res) => {
