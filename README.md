@@ -53,11 +53,11 @@ taskflow/
 
 ## Tech Stack
 
-| Layer      | Tech                                    |
-|------------|-----------------------------------------|
-| Backend    | Node.js, Express                        |
-| Database   | Supabase (PostgreSQL)                   |
-| Auth       | express-session + bcryptjs              |
-| Frontend   | HTML, Tailwind CSS (CDN)                |
-| Real-time  | 5-second polling                        |
-| Deployment | Firebase (frontend), Render (backend)   |
+| Layer      | Tech                       |
+|------------|----------------------------|
+| Backend    | Node.js, Express           |
+| Database   | Supabase (PostgreSQL)      |
+| Auth       | express-session + bcryptjs |
+| Frontend   | HTML, Tailwind CSS (CDN)   |
+| Real-time  | 5-second polling           |
+| Deployment | Render                     |
