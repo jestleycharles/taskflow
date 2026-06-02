@@ -82,17 +82,61 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
   res.json({ success: true, user: invitee });
 });
 
-// DELETE /api/teams/:id/members/:uid
+// DELETE /api/teams/:id/members/:uid — owner only
 router.delete('/api/teams/:id/members/:uid', requireAuth, async (req, res) => {
   const { id, uid } = req.params;
   const userId = req.session.user.id;
 
   const { data: membership } = await supabaseAdmin
     .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
-  if (!membership || !['owner','admin'].includes(membership.role))
-    return res.status(403).json({ error: 'Insufficient permissions' });
+  if (!membership || membership.role !== 'owner')
+    return res.status(403).json({ error: 'Only the team owner can remove members' });
 
-  await supabaseAdmin.from('team_members').delete().eq('team_id', id).eq('user_id', uid);
+  if (uid === userId)
+    return res.status(400).json({ error: 'You cannot remove yourself. Delete the team instead.' });
+
+  const { data: target } = await supabaseAdmin
+    .from('team_members').select('role, users(username)')
+    .eq('team_id', id).eq('user_id', uid).single();
+  if (!target) return res.status(404).json({ error: 'Member not found' });
+  if (target.role === 'owner')
+    return res.status(400).json({ error: 'Cannot remove the team owner' });
+
+  const { error } = await supabaseAdmin
+    .from('team_members').delete().eq('team_id', id).eq('user_id', uid);
+  if (error) return res.status(500).json({ error: error.message });
+
+  const username = target.users?.username || 'A member';
+  await logActivity(id, userId, 'member_removed', `Removed ${username} from the team`);
+  res.json({ success: true });
+});
+
+// DELETE /api/teams/:id — owner only
+router.delete('/api/teams/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
+  if (!membership || membership.role !== 'owner')
+    return res.status(403).json({ error: 'Only the team owner can delete this team' });
+
+  const { data: team } = await supabaseAdmin.from('teams').select('name').eq('id', id).single();
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  const { data: teamTasks } = await supabaseAdmin.from('tasks').select('id').eq('team_id', id);
+  const taskIds = (teamTasks || []).map(t => t.id);
+  if (taskIds.length) {
+    await supabaseAdmin.from('comments').delete().in('task_id', taskIds);
+    await supabaseAdmin.from('tasks').delete().eq('team_id', id);
+  }
+
+  await supabaseAdmin.from('activity_log').delete().eq('team_id', id);
+  await supabaseAdmin.from('team_members').delete().eq('team_id', id);
+
+  const { error } = await supabaseAdmin.from('teams').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+
   res.json({ success: true });
 });
 
