@@ -2,6 +2,12 @@
 
 A real-time team task manager with Kanban boards, built with Node.js, Express, Supabase, and Tailwind CSS.
 
+## Try it here
+
+https://taskflow-byjest.onrender.com
+
+---
+
 ## Features
 - User registration & login (with guest account)
 - Create teams and invite members by email
@@ -61,3 +67,15 @@ taskflow/
 | Frontend   | HTML, Tailwind CSS (CDN)   |
 | Real-time  | 5-second polling           |
 | Deployment | Render                     |
+
+---
+
+## Render free tier: occasional "Not Found"
+
+On Render’s free plan, the app **spins down after ~15 minutes** of no traffic. The next request can return plain **`Not Found`** for 30–60 seconds while the server wakes ([Render docs](https://render.com/docs/free)).
+
+**Reduce spin-down (no code):** ping your app every 14 minutes, e.g. [UptimeRobot](https://uptimerobot.com) → monitor URL `https://your-app.onrender.com/health`.
+
+**In the app:** `public/api.js` retries those wake-up responses automatically.
+
+**Always-on:** upgrade the Render service to a paid instance type.

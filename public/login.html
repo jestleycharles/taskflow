@@ -90,27 +90,28 @@
     </div>
   </div>
 
+  <script src="/api.js"></script>
   <script>
     async function login() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const btn = document.getElementById('loginBtn');
       btn.textContent = 'Signing in...'; btn.disabled = true;
-      const r = await fetch('/api/auth/login', {
+      const r = await apiFetch('/api/auth/login', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ email, password })
       });
-      const d = await r.json();
+      const d = await parseJsonResponse(r);
       if (d.success) return window.location = '/dashboard';
-      showError(d.error);
+      showError(d.error || 'Sign in failed');
       btn.textContent = 'Sign In'; btn.disabled = false;
     }
 
     async function guestLogin() {
-      const r = await fetch('/api/auth/guest', { method: 'POST' });
-      const d = await r.json();
+      const r = await apiFetch('/api/auth/guest', { method: 'POST' });
+      const d = await parseJsonResponse(r);
       if (d.success) return window.location = '/dashboard';
-      showError(d.error);
+      showError(d.error || 'Could not continue as guest');
     }
 
     function showError(msg) {

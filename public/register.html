@@ -79,6 +79,7 @@
     </div>
   </div>
 
+  <script src="/api.js"></script>
   <script>
     async function register() {
       const username = document.getElementById('username').value;
@@ -87,13 +88,13 @@
       const btn = document.getElementById('regBtn');
       if (password.length < 8) return showError('Password must be at least 8 characters');
       btn.textContent = 'Creating...'; btn.disabled = true;
-      const r = await fetch('/api/auth/register', {
+      const r = await apiFetch('/api/auth/register', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ username, email, password })
       });
-      const d = await r.json();
+      const d = await parseJsonResponse(r);
       if (d.success) return window.location = '/dashboard';
-      showError(d.error);
+      showError(d.error || 'Registration failed');
       btn.textContent = 'Create Account'; btn.disabled = false;
     }
     function showError(msg) {

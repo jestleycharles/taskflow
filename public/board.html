@@ -418,6 +418,7 @@
     </div>
   </div>
 
+  <script src="/api.js"></script>
   <script>
     const teamId = window.location.pathname.split('/').pop();
     let currentUser = null;
@@ -436,16 +437,18 @@
     };
 
     async function init() {
-      const r = await fetch('/api/me');
-      if (!r.ok) return window.location = '/login';
-      currentUser = await r.json();
+      const r = await apiFetch('/api/me');
+      if (r.status === 401) return window.location = '/login';
+      if (!r.ok) return;
+      currentUser = await parseJsonResponse(r);
+      if (currentUser.error) return;
       await loadTeam();
       await loadTasks();
       startPolling();
     }
 
     async function loadTeam() {
-      const r = await fetch(`/api/teams/${teamId}`);
+      const r = await apiFetch(`/api/teams/${teamId}`);
       if (!r.ok) return window.location = '/dashboard';
       teamData = await r.json();
       document.title = `TaskFlow — ${teamData.name}`;
@@ -485,7 +488,7 @@
     }
 
     async function loadTasks() {
-      const r = await fetch(`/api/teams/${teamId}/tasks`);
+      const r = await apiFetch(`/api/teams/${teamId}/tasks`);
       tasks = await r.json();
       renderBoard();
     }
@@ -558,7 +561,7 @@
       if (!task || task.status === newStatus) return;
       task.status = newStatus;
       renderBoard();
-      await fetch(`/api/tasks/${draggedTaskId}`, {
+      await apiFetch(`/api/tasks/${draggedTaskId}`, {
         method: 'PATCH', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ status: newStatus })
       });
@@ -578,7 +581,7 @@
     async function submitTask() {
       const title = document.getElementById('taskTitle').value.trim();
       if (!title) return;
-      const r = await fetch(`/api/teams/${teamId}/tasks`, {
+      const r = await apiFetch(`/api/teams/${teamId}/tasks`, {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
           title,
@@ -632,7 +635,7 @@
 
     async function updateTaskField(field, value) {
       if (!activeTaskId) return;
-      const r = await fetch(`/api/tasks/${activeTaskId}`, {
+      const r = await apiFetch(`/api/tasks/${activeTaskId}`, {
         method: 'PATCH', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ [field]: value })
       });
@@ -646,14 +649,14 @@
 
     async function deleteTask() {
       if (!activeTaskId || !confirm('Delete this task?')) return;
-      await fetch(`/api/tasks/${activeTaskId}`, { method: 'DELETE' });
+      await apiFetch(`/api/tasks/${activeTaskId}`, { method: 'DELETE' });
       tasks = tasks.filter(t => t.id !== activeTaskId);
       closeTaskModal();
       renderBoard();
     }
 
     async function loadComments(taskId) {
-      const r = await fetch(`/api/tasks/${taskId}/comments`);
+      const r = await apiFetch(`/api/tasks/${taskId}/comments`);
       const comments = await r.json();
       document.getElementById('commentCount').textContent = comments.length;
       document.getElementById('commentsList').innerHTML = comments.map(c => `
@@ -673,7 +676,7 @@
       const input = document.getElementById('commentInput');
       const content = input.value.trim();
       if (!content || !activeTaskId) return;
-      const r = await fetch(`/api/tasks/${activeTaskId}/comments`, {
+      const r = await apiFetch(`/api/tasks/${activeTaskId}/comments`, {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ content })
       });
@@ -697,7 +700,7 @@
     function closeTeamPanel() { document.getElementById('teamPanel').classList.add('hidden'); }
 
     async function loadActivity() {
-      const r = await fetch(`/api/teams/${teamId}/activity`);
+      const r = await apiFetch(`/api/teams/${teamId}/activity`);
       const logs = await r.json();
       document.getElementById('activityList').innerHTML = logs.map(l => `
         <div class="flex gap-3">
@@ -713,7 +716,7 @@
     async function inviteMember() {
       const email = document.getElementById('inviteEmail').value.trim();
       if (!email) return;
-      const r = await fetch(`/api/teams/${teamId}/invite`, {
+      const r = await apiFetch(`/api/teams/${teamId}/invite`, {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ email })
       });
@@ -734,8 +737,10 @@
     // Real-time polling
     function startPolling() {
       pollInterval = setInterval(async () => {
-        const r = await fetch(`/api/teams/${teamId}/tasks`);
-        const newTasks = await r.json();
+        const r = await apiFetch(`/api/teams/${teamId}/tasks`);
+        if (!r.ok) return;
+        const newTasks = await parseJsonResponse(r);
+        if (!Array.isArray(newTasks)) return;
         if (JSON.stringify(newTasks) !== JSON.stringify(tasks)) {
           tasks = newTasks;
           renderBoard();

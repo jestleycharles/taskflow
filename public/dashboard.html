@@ -156,6 +156,7 @@
     </div>
   </div>
 
+  <script src="/api.js"></script>
   <script>
     let currentUser = null;
 
@@ -163,9 +164,11 @@
       'from-orange-600 to-amber-600','from-pink-600 to-rose-600','from-red-600 to-orange-600'];
 
     async function init() {
-      const r = await fetch('/api/me');
-      if (!r.ok) return window.location = '/login';
-      currentUser = await r.json();
+      const r = await apiFetch('/api/me');
+      if (r.status === 401) return window.location = '/login';
+      if (!r.ok) return;
+      currentUser = await parseJsonResponse(r);
+      if (currentUser.error) return;
       document.getElementById('avatarCircle').textContent = currentUser.username[0].toUpperCase();
       document.getElementById('avatarCircle').style.background = currentUser.avatar_color;
       document.getElementById('usernameDisplay').textContent = currentUser.username;
@@ -173,8 +176,10 @@
     }
 
     async function loadTeams() {
-      const r = await fetch('/api/teams');
-      const teams = await r.json();
+      const r = await apiFetch('/api/teams');
+      if (!r.ok) return;
+      const teams = await parseJsonResponse(r);
+      if (!Array.isArray(teams)) return;
       const grid = document.getElementById('teamsGrid');
       // Clear skeleton placeholders
       grid.innerHTML = '';
@@ -233,11 +238,11 @@
       const name = document.getElementById('teamName').value.trim();
       if (!name) return;
       const desc = document.getElementById('teamDesc').value.trim();
-      const r = await fetch('/api/teams', {
+      const r = await apiFetch('/api/teams', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ name, description: desc })
       });
-      const d = await r.json();
+      const d = await parseJsonResponse(r);
       if (d.error) {
         const el = document.getElementById('modalError');
         el.textContent = d.error; el.classList.remove('hidden');
@@ -248,7 +253,7 @@
     }
 
     async function logout() {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await apiFetch('/api/auth/logout', { method: 'POST' });
       window.location = '/login';
     }
 
