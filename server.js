@@ -45,6 +45,7 @@ app.get('/health', (req, res) => {
 app.use(authRoutes);
 app.use(teamRoutes);
 app.use(taskRoutes);
+app.use(profileRoutes);
 
 // Pages
 app.get('/', (req, res) => {
