@@ -173,6 +173,14 @@
       position: relative;
       z-index: 2;
     }
+    #chatFabWrap {
+      z-index: 25;
+    }
+    #activityPanel:not(.hidden),
+    #teamPanel:not(.hidden) {
+      position: relative;
+      z-index: 35;
+    }
     #activityPanel,
     #teamPanel,
     #settingsPanel {
@@ -494,7 +502,7 @@
   </div>
 
   <!-- Chat toggle (bottom-left; badge sits outside icon so they do not overlap) -->
-  <div id="chatFabWrap" class="fixed z-[65]" style="bottom: 1rem; left: 1rem;">
+  <div id="chatFabWrap" class="fixed" style="bottom: 1rem; left: 1rem;">
     <button type="button" id="chatFab" onclick="openChatPanel()"
       class="relative w-12 h-12 rounded-full bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25 flex items-center justify-center transition hover:scale-105"
       aria-label="Open team chat">
@@ -800,9 +808,13 @@
 
     async function init() {
       const r = await apiFetch('/api/me');
-      if (r.status === 401) return window.location = '/login';
-      if (!r.ok) return;
-      currentUser = await parseJsonResponse(r);
+      const meData = await parseJsonResponse(r);
+      if (!r.ok) {
+        if (isApiUnauthorizedUpdate(r, meData)) return;
+        if (r.status === 401) return (window.location = '/login');
+        return;
+      }
+      currentUser = meData;
       if (currentUser.error) return;
       await loadTeam();
       await loadTasks();
@@ -1513,7 +1525,13 @@
       syncReactionFloatUi();
     }
 
+    function resolveReactionAnchor(storedAnchor, selector) {
+      if (storedAnchor?.isConnected) return storedAnchor;
+      return document.querySelector(selector);
+    }
+
     function positionReactionFloat(floatEl, anchorEl) {
+      if (!anchorEl) return;
       const layer = document.getElementById('reactionFloatLayer');
       floatEl.style.position = 'fixed';
       floatEl.style.visibility = 'hidden';
@@ -1538,11 +1556,12 @@
       layer.innerHTML = '';
 
       if (openReactorsPopover) {
-        const anchor = openReactorsPopover.anchor
-          || document.querySelector(`[data-reaction-pill][data-msg-type="${openReactorsPopover.messageType}"][data-msg-id="${openReactorsPopover.messageId}"][data-emoji="${openReactorsPopover.emoji}"]`);
+        const popSelector = `[data-reaction-pill][data-msg-type="${openReactorsPopover.messageType}"][data-msg-id="${openReactorsPopover.messageId}"][data-emoji="${openReactorsPopover.emoji}"]`;
+        const anchor = resolveReactionAnchor(openReactorsPopover.anchor, popSelector);
         if (!anchor) {
           openReactorsPopover = null;
         } else {
+        openReactorsPopover.anchor = anchor;
         const users = openReactorsPopover.users || [];
         const sym = reactionSymbol(openReactorsPopover.emoji);
         const pop = document.createElement('div');
@@ -1561,11 +1580,12 @@
       }
 
       if (openReactionPicker) {
-        const anchor = openReactionPicker.anchor
-          || document.querySelector(`[data-reaction-add][data-msg-type="${openReactionPicker.type}"][data-msg-id="${openReactionPicker.id}"]`);
+        const pickerSelector = `[data-reaction-add][data-msg-type="${openReactionPicker.type}"][data-msg-id="${openReactionPicker.id}"]`;
+        const anchor = resolveReactionAnchor(openReactionPicker.anchor, pickerSelector);
         if (!anchor) {
           openReactionPicker = null;
         } else {
+        openReactionPicker.anchor = anchor;
         const { type: messageType, id: messageId } = openReactionPicker;
         const picker = document.createElement('div');
         picker.className = 'reaction-picker flex flex-wrap gap-0.5 p-2 rounded-xl bg-ink-700 border border-white/15 max-w-[240px]';
@@ -2327,6 +2347,10 @@
         submitChatMessage();
       }
     });
+
+    document.getElementById('chatMessagesList')?.addEventListener('scroll', () => {
+      if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
+    }, { passive: true });
 
     document.getElementById('settingsMemberList').addEventListener('click', (e) => {
       const btn = e.target.closest('.remove-member-btn');

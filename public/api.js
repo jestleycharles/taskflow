@@ -9,6 +9,52 @@ function isServiceWaking(status, bodyText) {
   return status === 404 && bodyText.trim() === 'Not Found';
 }
 
+function parseJsonBody(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function isUnauthorizedUpdateError(status, bodyText) {
+  if (status !== 401) return false;
+  const data = parseJsonBody(bodyText);
+  return String(data?.error || '').toLowerCase() === 'unauthorized';
+}
+
+let updateRequiredShown = false;
+
+function showUpdateRequiredModal() {
+  if (updateRequiredShown) return;
+  updateRequiredShown = true;
+
+  let modal = document.getElementById('updateRequiredModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'updateRequiredModal';
+    modal.className = 'fixed inset-0 z-[80] flex items-center justify-center px-4';
+    modal.setAttribute('role', 'alertdialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'updateRequiredTitle');
+    modal.innerHTML = `
+      <div class="absolute inset-0 bg-black/60" style="backdrop-filter: blur(6px);"></div>
+      <div class="relative bg-[#1a1d2e] border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl" style="font-family: 'DM Sans', sans-serif;">
+        <h2 id="updateRequiredTitle" class="text-base font-semibold text-white mb-2">Update available</h2>
+        <p class="text-sm text-gray-400 leading-relaxed mb-6">A new version of TaskFlow is available. Refresh the page to load the latest update and continue.</p>
+        <button type="button" id="updateRequiredRefreshBtn"
+          class="w-full bg-[#4f6ef7] hover:bg-[#3a57e8] text-white font-medium py-2.5 rounded-xl transition text-sm">
+          Refresh page
+        </button>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#updateRequiredRefreshBtn').addEventListener('click', () => {
+      window.location.reload();
+    });
+  }
+  modal.classList.remove('hidden');
+}
+
 async function apiFetch(url, options = {}) {
   const opts = { credentials: 'same-origin', ...options };
   let lastResponse = null;
@@ -39,6 +85,10 @@ async function apiFetch(url, options = {}) {
     await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAYS_MS[attempt]));
   }
 
+  if (isUnauthorizedUpdateError(lastResponse.status, lastBody)) {
+    showUpdateRequiredModal();
+  }
+
   return new Response(lastBody, {
     status: lastResponse.status,
     statusText: lastResponse.statusText,
@@ -56,4 +106,9 @@ async function parseJsonResponse(response) {
       : 'Unexpected server response. Please try again.';
     return { error: msg };
   }
+}
+
+function isApiUnauthorizedUpdate(response, data) {
+  return response.status === 401
+    && String(data?.error || '').toLowerCase() === 'unauthorized';
 }

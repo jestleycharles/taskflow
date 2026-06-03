@@ -415,9 +415,13 @@
 
     async function init() {
       const r = await apiFetch('/api/me');
-      if (r.status === 401) return window.location = '/login';
-      if (!r.ok) return;
-      currentUser = await parseJsonResponse(r);
+      const meData = await parseJsonResponse(r);
+      if (!r.ok) {
+        if (isApiUnauthorizedUpdate(r, meData)) return;
+        if (r.status === 401) return (window.location = '/login');
+        return;
+      }
+      currentUser = meData;
       if (currentUser.error) return;
       renderNavUser();
       if (!currentUser.is_guest) {
