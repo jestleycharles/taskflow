@@ -47,6 +47,8 @@
     .avatar-preset-btn { transition: box-shadow 0.15s, transform 0.15s; }
     .avatar-preset-btn:hover { transform: scale(1.05); }
     .avatar-preset-btn.selected { box-shadow: 0 0 0 2px #4f6ef7; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .online-dot { animation: pulse 2s infinite; }
   </style>
 </head>
 <body class="grid-bg min-h-screen text-white">
@@ -249,6 +251,10 @@
     let profileSaving = false;
     let createTeamDraft = { presetId: null, avatar_url: null, pendingFile: null };
     let createTeamSaving = false;
+    let teamsList = [];
+    let onlineTeamIds = new Set();
+    let teamOnlinePollInterval = null;
+    const TEAM_ONLINE_POLL_MS = 4000;
 
     function renderNavUser() {
       const isGuest = currentUser.is_guest;
@@ -420,16 +426,24 @@
       loadTeams();
     }
 
-    async function loadTeams() {
-      const r = await apiFetch('/api/teams');
-      if (!r.ok) return;
-      const teams = await parseJsonResponse(r);
-      if (!Array.isArray(teams)) return;
+    function isTeamOnline(teamId) {
+      return onlineTeamIds.has(String(teamId));
+    }
+
+    function teamAvatarWithPresenceHtml(team) {
+      const online = isTeamOnline(team.id);
+      return `<div class="relative shrink-0" title="${online ? 'Someone is online on this board' : escHtml(team.name)}">
+          ${teamAvatarHtml(team, 'w-11 h-11 text-sm')}
+          ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Someone is online"></span>' : ''}
+        </div>`;
+    }
+
+    function renderTeamsGrid() {
       const grid = document.getElementById('teamsGrid');
-      // Clear skeleton placeholders
       grid.innerHTML = '';
 
-      if (!teams.length) {
+      if (!teamsList.length) {
+        stopTeamOnlinePoll();
         grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
           <div class="w-16 h-16 bg-ink-800 border border-white/10 rounded-2xl flex items-center justify-center mb-4">
             <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -443,15 +457,15 @@
         return;
       }
 
-      grid.innerHTML = '';
-      teams.forEach((team, i) => {
+      teamsList.forEach((team, i) => {
         const card = document.createElement('div');
         card.className = 'team-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-2xl p-5 cursor-pointer transition-all hover:bg-ink-700 fade-up';
         card.style.animationDelay = `${i * 0.07}s`;
+        card.dataset.teamId = team.id;
         card.onclick = () => window.location = `/board/${team.id}`;
         card.innerHTML = `
           <div class="flex items-start justify-between mb-4">
-            ${teamAvatarHtml(team, 'w-11 h-11 text-sm')}
+            ${teamAvatarWithPresenceHtml(team)}
             <span class="text-xs px-2.5 py-1 rounded-full border ${team.role === 'owner' ? 'border-brand-500/40 text-brand-500 bg-brand-500/10' : 'border-white/10 text-gray-400 bg-white/5'}">${team.role}</span>
           </div>
           <h3 class="text-white font-semibold mb-1">${escHtml(team.name)}</h3>
@@ -464,6 +478,53 @@
           </div>`;
         grid.appendChild(card);
       });
+    }
+
+    function updateTeamOnlineIndicators() {
+      document.querySelectorAll('.team-card[data-team-id]').forEach((card) => {
+        const teamId = card.dataset.teamId;
+        const team = teamsList.find((t) => String(t.id) === String(teamId));
+        if (!team) return;
+        const avatarWrap = card.querySelector('.relative.shrink-0');
+        if (!avatarWrap) return;
+        avatarWrap.outerHTML = teamAvatarWithPresenceHtml(team);
+      });
+    }
+
+    async function fetchTeamOnlineStatus() {
+      const r = await apiFetch('/api/teams/online');
+      if (!r.ok) return;
+      const ids = await parseJsonResponse(r);
+      if (!Array.isArray(ids)) return;
+      const next = new Set(ids.map(String));
+      const changed = next.size !== onlineTeamIds.size
+        || [...next].some((id) => !onlineTeamIds.has(id))
+        || [...onlineTeamIds].some((id) => !next.has(id));
+      onlineTeamIds = next;
+      if (changed && teamsList.length) updateTeamOnlineIndicators();
+    }
+
+    function stopTeamOnlinePoll() {
+      clearInterval(teamOnlinePollInterval);
+      teamOnlinePollInterval = null;
+    }
+
+    function startTeamOnlinePoll() {
+      stopTeamOnlinePoll();
+      if (!teamsList.length) return;
+      fetchTeamOnlineStatus();
+      teamOnlinePollInterval = setInterval(fetchTeamOnlineStatus, TEAM_ONLINE_POLL_MS);
+    }
+
+    async function loadTeams() {
+      const r = await apiFetch('/api/teams');
+      if (!r.ok) return;
+      const teams = await parseJsonResponse(r);
+      if (!Array.isArray(teams)) return;
+      teamsList = teams;
+      await fetchTeamOnlineStatus();
+      renderTeamsGrid();
+      startTeamOnlinePoll();
     }
 
     function resetCreateTeamDraft() {
@@ -621,6 +682,8 @@
     function escHtml(str) {
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+
+    window.addEventListener('pagehide', stopTeamOnlinePoll);
 
     init();
   </script>

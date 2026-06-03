@@ -133,6 +133,40 @@ router.get('/api/teams', requireAuth, async (req, res) => {
   res.json(teams);
 });
 
+// GET /api/teams/online — team ids where at least one member is on the board
+router.get('/api/teams/online', requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+
+  const { data: memberships, error: memErr } = await supabaseAdmin
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', userId);
+
+  if (memErr) return res.status(500).json({ error: memErr.message });
+
+  const teamIds = (memberships || []).map((m) => m.team_id);
+  if (!teamIds.length) return res.json([]);
+
+  const { data: allMembers, error: membersErr } = await supabaseAdmin
+    .from('team_members')
+    .select('team_id, user_id')
+    .in('team_id', teamIds);
+
+  if (membersErr) return res.status(500).json({ error: membersErr.message });
+
+  const membersByTeam = new Map();
+  for (const m of allMembers || []) {
+    if (!membersByTeam.has(m.team_id)) membersByTeam.set(m.team_id, []);
+    membersByTeam.get(m.team_id).push(m.user_id);
+  }
+
+  const onlineTeamIds = teamIds.filter((tid) =>
+    getOnlineUserIds(membersByTeam.get(tid) || [], tid).length > 0
+  );
+
+  res.json(onlineTeamIds);
+});
+
 // POST /api/teams - create team
 router.post('/api/teams', requireAuth, async (req, res) => {
   const { name, description, avatar_url } = req.body;
