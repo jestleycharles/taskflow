@@ -918,7 +918,7 @@
     }
 
     function memberRoleLabelHtml(member) {
-      if (!member) return '';
+      if (!member || teamData?.separate_role_members) return '';
       if (member.role === 'owner') {
         return '<p class="text-[10px] uppercase tracking-wider text-brand-500 font-semibold mb-0.5">owner</p>';
       }
@@ -1003,8 +1003,68 @@
       return teamData?.userRole === 'owner' && (teamData?.roles?.length || 0) > 0;
     }
 
-    function syncSeparateRoleToggleUi() {
-      const on = !!teamData?.separate_role_members;
+    function teamRoleStateSignature(data) {
+      if (!data) return '';
+      const roles = (data.roles || [])
+        .map((r) => `${r.id}:${r.name}:${r.color_hex}:${r.sort_order}`)
+        .join('|');
+      const members = (data.members || [])
+        .map((m) => `${m.id}:${m.role}:${m.custom_role_id || ''}`)
+        .join('|');
+      return `${data.separate_role_members ? 1 : 0}#${roles}#${members}`;
+    }
+
+    let teamRoleStateSig = '';
+
+    function captureTeamRoleStateSig() {
+      teamRoleStateSig = teamRoleStateSignature(teamData);
+    }
+
+    function refreshTeamRoleVisuals() {
+      if (!teamData) return;
+      renderMemberAvatars(teamData.members);
+      renderMemberList(teamData.members);
+      populateAssigneeDropdowns(teamData.members);
+      if (teamData.userRole === 'owner') renderSettingsMemberList(teamData.members);
+      if (!document.getElementById('teamRolesModal').classList.contains('hidden')) {
+        syncSeparateRoleToggleUi();
+        renderTeamRolesList();
+      }
+      if (tasks.length) renderBoard();
+      if (chatMessages.length && chatPanelOpen) renderChatMessages();
+      if (activeTaskId && !document.getElementById('taskModal').classList.contains('hidden')) {
+        const task = tasks.find((t) => t.id === activeTaskId);
+        if (task?.creator) {
+          document.getElementById('detailCreator').innerHTML = memberNameHtml(
+            task.creator, task.creator.id, 'text-sm text-gray-300'
+          );
+        }
+        const commentsEl = document.getElementById('commentsList');
+        if (commentsEl && taskComments.length) {
+          commentsEl.innerHTML = taskComments.map(renderCommentItem).join('');
+        }
+      }
+    }
+
+    async function pollTeamRoleState() {
+      const r = await apiFetch(`/api/teams/${teamId}`);
+      if (!r.ok) return;
+      const data = await parseJsonResponse(r);
+      if (!data?.members) return;
+      data.roles = data.roles || [];
+      data.separate_role_members = !!data.separate_role_members;
+      const sig = teamRoleStateSignature(data);
+      if (sig === teamRoleStateSig) return;
+      teamRoleStateSig = sig;
+      teamData.members = data.members;
+      teamData.roles = data.roles;
+      teamData.separate_role_members = data.separate_role_members;
+      if (data.member_count != null) teamData.member_count = data.member_count;
+      refreshTeamRoleVisuals();
+    }
+
+    function syncSeparateRoleToggleUi(checkedOverride) {
+      const on = checkedOverride !== undefined ? !!checkedOverride : !!teamData?.separate_role_members;
       const input = document.getElementById('separateRoleMembersToggle');
       const track = document.getElementById('separateRoleMembersTrack');
       const knob = document.getElementById('separateRoleMembersKnob');
@@ -1121,9 +1181,8 @@
           }
           teamData.roles = d;
           renderTeamRolesList();
-          renderMemberList(teamData.members);
-          renderSettingsMemberList(teamData.members);
-          if (tasks.length) renderBoard();
+          captureTeamRoleStateSig();
+          refreshTeamRoleVisuals();
         });
       });
     }
@@ -1191,9 +1250,8 @@
       }
       resetTeamRoleForm();
       renderTeamRolesList();
-      renderMemberList(teamData.members);
-      renderSettingsMemberList(teamData.members);
-      if (tasks.length) renderBoard();
+      captureTeamRoleStateSig();
+      refreshTeamRoleVisuals();
     }
 
     function deleteTeamRole(roleId) {
@@ -1221,13 +1279,12 @@
       );
       if (editingTeamRoleId === roleId) resetTeamRoleForm();
       renderTeamRolesList();
-      renderMemberList(teamData.members);
-      renderSettingsMemberList(teamData.members);
-      if (tasks.length) renderBoard();
+      captureTeamRoleStateSig();
+      refreshTeamRoleVisuals();
     }
 
     async function onSeparateRoleMembersToggle(checked) {
-      syncSeparateRoleToggleUi();
+      syncSeparateRoleToggleUi(checked);
       const r = await apiFetch(`/api/teams/${teamId}/role-display`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1236,13 +1293,12 @@
       const d = await r.json();
       if (!r.ok) {
         showTeamRolesError(d.error || 'Failed to update display setting');
-        document.getElementById('separateRoleMembersToggle').checked = !!teamData.separate_role_members;
         syncSeparateRoleToggleUi();
         return;
       }
       teamData.separate_role_members = d.separate_role_members;
-      renderMemberList(teamData.members);
-      renderSettingsMemberList(teamData.members);
+      captureTeamRoleStateSig();
+      refreshTeamRoleVisuals();
     }
 
     async function assignMemberCustomRole(userId, roleId) {
@@ -1307,6 +1363,7 @@
       }
       fetchOnlineMembers();
       updateMemberStatsDisplay();
+      captureTeamRoleStateSig();
     }
 
     function updateMemberStatsDisplay() {
@@ -2943,6 +3000,7 @@
     // Real-time polling (5s); only re-builds the board when task fields change, not on every unread tick
     function startPolling() {
       pollInterval = setInterval(async () => {
+        await pollTeamRoleState();
         const r = await apiFetch(`/api/teams/${teamId}/tasks`);
         if (!r.ok) return;
         const newTasks = await parseJsonResponse(r);
