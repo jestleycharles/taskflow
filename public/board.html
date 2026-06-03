@@ -105,6 +105,9 @@
       display: inline-flex;
       vertical-align: middle;
     }
+    #commentUnreadBadge.hidden {
+      display: none !important;
+    }
     .task-comment-unread-badge {
       min-width: 1.125rem;
       height: 1.125rem;
@@ -958,7 +961,7 @@
         const prev = prevMap.get(nt.id);
         let unread = nt.unread_comment_count || 0;
         const lastRead = taskCommentsLastReadAt[nt.id];
-        if (lastRead && (prev?.unread_comment_count || 0) === 0 && unread > 0) unread = 0;
+        if (lastRead != null && (prev?.unread_comment_count || 0) === 0) unread = 0;
         if (nt.id === activeTaskId && taskCommentsTabActive) unread = 0;
         const mergedTask = { ...nt, unread_comment_count: unread };
         if (!boardDirty && (!prev || boardTaskFieldsChanged(prev, mergedTask))) boardDirty = true;
@@ -1081,10 +1084,27 @@
       closeAddTask();
     }
 
+    function resetTaskModalToDetailsTab() {
+      taskCommentsTabActive = false;
+      document.getElementById('tab-details')?.classList.remove('hidden');
+      document.getElementById('tab-comments')?.classList.add('hidden');
+      document.querySelectorAll('[onclick^="switchTab"]').forEach((btn) => {
+        const t = btn.getAttribute('onclick').match(/'(\w+)'/)[1];
+        btn.className = t === 'details'
+          ? 'tab-active text-sm py-3 mr-6 transition-colors'
+          : 'tab-inactive text-sm py-3 mr-6 transition-colors' + (t === 'comments' ? ' relative' : '');
+      });
+      const badge = document.getElementById('commentUnreadBadge');
+      if (badge) {
+        badge.textContent = '';
+        badge.classList.add('hidden');
+      }
+    }
+
     // Task Detail Modal
     async function openTaskModal(taskId) {
       activeTaskId = taskId;
-      taskCommentsTabActive = false;
+      resetTaskModalToDetailsTab();
       taskComments = [];
       lastLoadedCommentsSig = '';
       editingTaskField = null;
@@ -1111,11 +1131,17 @@
       await loadComments(taskId);
       await switchTab('details');
     }
-    function closeTaskModal() {
+    async function closeTaskModal() {
       closeReactionFloats();
+      const closingTaskId = activeTaskId;
+      if (closingTaskId) {
+        await persistTaskCommentReadState(closingTaskId, true);
+        const unread = tasks.find((t) => t.id === closingTaskId)?.unread_comment_count || 0;
+        updateTaskCardUnreadBadge(closingTaskId, unread);
+      }
       document.getElementById('taskModal').classList.add('hidden');
       activeTaskId = null;
-      taskCommentsTabActive = false;
+      resetTaskModalToDetailsTab();
       taskComments = [];
       lastLoadedCommentsSig = '';
       editingTaskField = null;
@@ -1275,7 +1301,11 @@
           : 'tab-inactive text-sm py-3 mr-6 transition-colors' + (t === 'comments' ? ' relative' : '');
       });
       if (tab === 'comments' && activeTaskId) {
-        document.getElementById('commentUnreadBadge')?.classList.add('hidden');
+        const tabBadge = document.getElementById('commentUnreadBadge');
+        if (tabBadge) {
+          tabBadge.textContent = '';
+          tabBadge.classList.add('hidden');
+        }
         if (!taskComments.length) {
           document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
           await loadComments(activeTaskId);
@@ -1420,15 +1450,18 @@
       const badge = document.getElementById('commentUnreadBadge');
       if (!badge || !activeTaskId) return;
       if (taskCommentsTabActive) {
+        badge.textContent = '';
         badge.classList.add('hidden');
         return;
       }
       const unread = countUnreadTaskComments(taskComments, activeTaskId);
       syncTaskUnreadCount(activeTaskId, unread);
+      updateTaskCardUnreadBadge(activeTaskId, unread);
       if (unread > 0) {
         badge.textContent = unread > 99 ? '99+' : String(unread);
         badge.classList.remove('hidden');
       } else {
+        badge.textContent = '';
         badge.classList.add('hidden');
       }
     }
