@@ -6,7 +6,7 @@ const { isGuestUser } = require('../lib/user');
 const router = express.Router();
 
 const MESSAGE_SELECT =
-  'id, team_id, user_id, content, edited_at, deleted_at, created_at, user:user_id(id, username, avatar_color, avatar_url)';
+  'id, team_id, user_id, content, content_before_edit, edited_at, deleted_at, created_at, user:user_id(id, username, avatar_color, avatar_url)';
 
 async function assertTeamMember(teamId, userId) {
   const { data } = await supabaseAdmin
@@ -76,7 +76,7 @@ router.patch('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res)
 
   const { data: existing, error: fetchErr } = await supabaseAdmin
     .from('team_chat_messages')
-    .select('id, user_id, team_id, deleted_at')
+    .select('id, user_id, team_id, deleted_at, content, content_before_edit, edited_at')
     .eq('id', messageId)
     .eq('team_id', teamId)
     .single();
@@ -90,9 +90,14 @@ router.patch('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res)
   if (!content) return res.status(400).json({ error: 'Message cannot be empty' });
   if (content.length > 4000) return res.status(400).json({ error: 'Message is too long' });
 
+  const updates = { content, edited_at: new Date().toISOString() };
+  if (!existing.edited_at && existing.content !== content) {
+    updates.content_before_edit = existing.content;
+  }
+
   const { data, error } = await supabaseAdmin
     .from('team_chat_messages')
-    .update({ content, edited_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', messageId)
     .select(MESSAGE_SELECT)
     .single();

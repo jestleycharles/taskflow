@@ -105,9 +105,21 @@
       border-left: 2px solid rgba(79, 110, 247, 0.45);
       padding-left: 0.625rem;
     }
+    #boardMainRow {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+    #chatPanel {
+      height: calc(100vh - 3.5rem);
+      max-height: calc(100vh - 3.5rem);
+    }
+    #chatMessagesList {
+      flex: 1 1 0;
+      min-height: 0;
+    }
   </style>
 </head>
-<body class="grid-bg min-h-screen text-white flex flex-col">
+<body class="grid-bg h-screen text-white flex flex-col overflow-hidden">
 
   <!-- Navbar -->
   <nav class="border-b border-white/10 bg-ink-900/90 backdrop-blur-sm sticky top-0 z-40">
@@ -149,9 +161,9 @@
   </nav>
 
   <!-- Board -->
-  <div class="flex-1 flex overflow-hidden">
+  <div id="boardMainRow" class="flex overflow-hidden">
     <!-- Team Chat Panel (left, full height) -->
-    <div id="chatPanel" class="sidebar-slide hidden border-r border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 h-full">
+    <div id="chatPanel" class="sidebar-slide hidden border-r border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
       <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
         <h2 class="font-semibold text-sm text-white">Team Chat</h2>
         <button type="button" onclick="closeChatPanel()" class="text-gray-500 hover:text-white transition" aria-label="Close chat">
@@ -616,6 +628,8 @@
     let chatLastReadAt = 0;
     let chatPollInterval = null;
     let editingChatId = null;
+    let chatEditDraft = '';
+    const chatShowOriginal = new Set();
     const CHAT_POLL_MS = 4000;
 
     function showConfirm({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm }) {
@@ -961,7 +975,14 @@
       document.getElementById('chatPanel').classList.add('hidden');
       document.getElementById('chatFabWrap').classList.remove('hidden');
       editingChatId = null;
+      chatEditDraft = '';
       updateChatUnreadBadge();
+    }
+
+    function toggleChatMessageVersion(messageId) {
+      if (chatShowOriginal.has(messageId)) chatShowOriginal.delete(messageId);
+      else chatShowOriginal.add(messageId);
+      renderChatMessages();
     }
 
     function markChatRead() {
@@ -1035,7 +1056,8 @@
 
       if (editingChatId === msg.id) {
         return `<div class="bg-ink-700/80 border border-brand-500/30 rounded-xl p-3 space-y-2" data-chat-edit-wrap="${msg.id}">
-            <textarea id="chatEditInput-${msg.id}" rows="3" class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition resize-none"></textarea>
+            <textarea id="chatEditInput-${msg.id}" rows="3" oninput="chatEditDraft=this.value"
+              class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition resize-none"></textarea>
             <div class="flex gap-2 justify-end">
               <button type="button" onclick="cancelEditChatMessage()" class="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Cancel</button>
               <button type="button" onclick="saveEditChatMessage('${msg.id}')" class="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded-lg transition font-medium">Save</button>
@@ -1047,14 +1069,28 @@
         ? `<span class="text-gray-600"> · edited ${escHtml(formatChatDateTime(msg.edited_at))}</span>`
         : '';
 
-      const editedCard = msg.edited_at
-        ? `<div class="chat-msg-edited-card rounded-lg bg-ink-700/40 border border-white/5 px-3 py-2 mt-2">
-            <p class="text-xs text-gray-500 italic mb-1">This message was edited</p>
-            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(msg.content)}</p>
-          </div>`
-        : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(msg.content)}</p>`;
+      const hasOriginal = msg.edited_at && msg.content_before_edit;
+      const showingOriginal = hasOriginal && chatShowOriginal.has(msg.id);
+      const displayContent = showingOriginal ? msg.content_before_edit : msg.content;
+      const versionToggle = hasOriginal
+        ? `<button type="button" onclick="toggleChatMessageVersion('${msg.id}')"
+            class="text-xs text-brand-500 hover:text-brand-400 transition mt-1.5">
+            ${showingOriginal ? 'Show new message' : 'Show original message'}
+          </button>`
+        : '';
+      const editedLabel = msg.edited_at
+        ? `<p class="text-xs text-gray-500 italic mb-1">${showingOriginal ? 'Original message' : 'Edited message'}</p>`
+        : '';
 
-      return `<div class="group flex gap-3">
+      const bodyHtml = msg.edited_at
+        ? `<div class="chat-msg-edited-card rounded-lg bg-ink-700/40 border border-white/5 px-3 py-2">
+            ${editedLabel}
+            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(displayContent)}</p>
+            ${versionToggle}
+          </div>`
+        : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(displayContent)}</p>`;
+
+      return `<div class="group flex gap-3" data-chat-msg-id="${msg.id}">
           ${userAvatarHtml(user, 'w-8 h-8 shrink-0')}
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-2 mb-1">
@@ -1064,18 +1100,40 @@
               </div>
               ${renderChatMessageActions(msg)}
             </div>
-            ${editedCard}
+            ${bodyHtml}
           </div>
         </div>`;
     }
 
+    function captureChatEditDraft() {
+      if (!editingChatId) return;
+      const ta = document.getElementById(`chatEditInput-${editingChatId}`);
+      if (ta) chatEditDraft = ta.value;
+    }
+
     function renderChatMessages() {
       const list = document.getElementById('chatMessagesList');
+      const scrollTop = list.scrollTop;
+      const scrollHeight = list.scrollHeight;
+      const atBottom = scrollHeight - list.clientHeight - scrollTop < 48;
+
       if (!chatMessages.length) {
         list.innerHTML = '<p class="text-sm text-gray-600 text-center py-8">No messages yet. Say hello to your team.</p>';
         return;
       }
       list.innerHTML = chatMessages.map(m => renderChatMessageBody(m)).join('');
+
+      if (editingChatId) {
+        const ta = document.getElementById(`chatEditInput-${editingChatId}`);
+        if (ta) {
+          ta.value = chatEditDraft;
+          ta.focus();
+          const len = ta.value.length;
+          ta.setSelectionRange(len, len);
+        }
+      } else if (!atBottom) {
+        list.scrollTop = scrollTop;
+      }
     }
 
     async function loadChat() {
@@ -1087,8 +1145,17 @@
       const prevLastId = chatMessages[chatMessages.length - 1]?.id;
       chatMessages = data;
       if (chatPanelOpen) {
-        renderChatMessages();
-        if (data.length > prevLen || data[data.length - 1]?.id !== prevLastId) scrollChatToBottom();
+        if (editingChatId) {
+          captureChatEditDraft();
+          const editingMsg = data.find(m => m.id === editingChatId);
+          if (editingMsg && !editingMsg.deleted_at) {
+            const idx = chatMessages.findIndex(m => m.id === editingChatId);
+            if (idx !== -1) chatMessages[idx] = { ...editingMsg, content: chatEditDraft || editingMsg.content };
+          }
+        } else {
+          renderChatMessages();
+          if (data.length > prevLen || data[data.length - 1]?.id !== prevLastId) scrollChatToBottom();
+        }
         markChatRead();
       } else {
         updateChatUnreadBadge();
@@ -1126,18 +1193,13 @@
       const msg = chatMessages.find(m => m.id === messageId);
       if (!msg || msg.deleted_at) return;
       editingChatId = messageId;
+      chatEditDraft = msg.content;
       renderChatMessages();
-      setTimeout(() => {
-        const ta = document.getElementById(`chatEditInput-${messageId}`);
-        if (ta) {
-          ta.value = msg.content;
-          ta.focus();
-        }
-      }, 30);
     }
 
     function cancelEditChatMessage() {
       editingChatId = null;
+      chatEditDraft = '';
       renderChatMessages();
     }
 
@@ -1158,6 +1220,8 @@
       const idx = chatMessages.findIndex(m => m.id === messageId);
       if (idx !== -1) chatMessages[idx] = updated;
       editingChatId = null;
+      chatEditDraft = '';
+      chatShowOriginal.delete(messageId);
       renderChatMessages();
     }
 
@@ -1171,7 +1235,11 @@
       }
       const idx = chatMessages.findIndex(m => m.id === messageId);
       if (idx !== -1) chatMessages[idx] = updated;
-      if (editingChatId === messageId) editingChatId = null;
+      if (editingChatId === messageId) {
+        editingChatId = null;
+        chatEditDraft = '';
+      }
+      chatShowOriginal.delete(messageId);
       renderChatMessages();
     }
 

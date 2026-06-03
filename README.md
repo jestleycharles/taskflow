@@ -69,7 +69,7 @@ taskflow/
 8. Click **Activity** to see recent team activity
 9. Use the **chat button** (bottom-left) for team-wide messages
 
-Run `migrations/team_chat_messages.sql` in the Supabase SQL Editor before using team chat.
+Run `migrations/team_chat_messages.sql` in the Supabase SQL Editor before using team chat. If the table already exists, also run `migrations/team_chat_content_before_edit.sql`.
 
 ---
 
