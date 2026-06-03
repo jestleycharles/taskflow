@@ -20,14 +20,13 @@ function userAvatarHtml(user, sizeClass, extraClass = '') {
 function applyAvatarToElement(el, user) {
   if (!el) return;
   el.innerHTML = '';
+  el.style.background = '';
   if (user?.avatar_url) {
     const img = document.createElement('img');
     img.src = user.avatar_url;
     img.alt = '';
     img.className = 'w-full h-full rounded-full object-cover';
     el.appendChild(img);
-    el.style.background = '';
-    el.textContent = '';
     return;
   }
   el.textContent = (user?.username || '?')[0].toUpperCase();
