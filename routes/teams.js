@@ -121,6 +121,22 @@ router.get('/api/teams/:id/online', requireAuth, async (req, res) => {
   res.json(getOnlineUserIds(memberIds, id));
 });
 
+function buildTeamMemberCounts(allMembers) {
+  const membersByTeam = new Map();
+  for (const m of allMembers || []) {
+    if (!membersByTeam.has(m.team_id)) membersByTeam.set(m.team_id, []);
+    membersByTeam.get(m.team_id).push(m.user_id);
+  }
+  const counts = new Map();
+  for (const [teamId, memberIds] of membersByTeam) {
+    counts.set(teamId, {
+      member_count: memberIds.length,
+      online_count: getOnlineUserIds(memberIds, teamId).length,
+    });
+  }
+  return counts;
+}
+
 // GET /api/teams - list user's teams
 router.get('/api/teams', requireAuth, async (req, res) => {
   const userId = req.session.user.id;
@@ -130,7 +146,22 @@ router.get('/api/teams', requireAuth, async (req, res) => {
     .eq('user_id', userId);
 
   if (error) return sendError(res, 500, error, 'load');
-  const teams = data.map(d => ({ ...d.teams, role: d.role }));
+
+  const teamIds = data.map((d) => d.teams.id);
+  let statsByTeam = new Map();
+  if (teamIds.length) {
+    const { data: allMembers, error: membersErr } = await supabaseAdmin
+      .from('team_members')
+      .select('team_id, user_id')
+      .in('team_id', teamIds);
+    if (membersErr) return sendError(res, 500, membersErr, 'load');
+    statsByTeam = buildTeamMemberCounts(allMembers);
+  }
+
+  const teams = data.map((d) => {
+    const stats = statsByTeam.get(d.teams.id) || { member_count: 0, online_count: 0 };
+    return { ...d.teams, role: d.role, ...stats };
+  });
   res.json(teams);
 });
 
@@ -347,7 +378,17 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
     .select('role, users(id, username, email, avatar_color, avatar_url)')
     .eq('team_id', id);
 
-  res.json({ ...team, members: members.map(m => ({ ...m.users, role: m.role })), userRole: membership.role });
+  const memberList = members.map(m => ({ ...m.users, role: m.role }));
+  const memberIds = memberList.map((m) => m.id);
+  ping(userId, id);
+
+  res.json({
+    ...team,
+    members: memberList,
+    userRole: membership.role,
+    member_count: memberList.length,
+    online_count: getOnlineUserIds(memberIds, id).length,
+  });
 });
 
 // POST /api/teams/:id/invite - invite by email

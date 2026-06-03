@@ -3,6 +3,7 @@ const { supabaseAdmin } = require('../lib/supabase');
 const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { isGuestUser } = require('../lib/user');
+const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
 
 const router = express.Router();
 
@@ -40,7 +41,9 @@ router.get('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     .order('created_at', { ascending: true });
 
   if (error) return sendError(res, 500, error, 'load');
-  res.json(data || []);
+  const messages = data || [];
+  const reactionsMap = await fetchReactionsForMessages('chat', messages.map((m) => m.id));
+  res.json(attachReactionsToItems(messages, reactionsMap));
 });
 
 // GET /api/teams/:teamId/chat/read — last time this user read the team chat
@@ -114,7 +117,8 @@ router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  res.json(data);
+  const reactionsMap = await fetchReactionsForMessages('chat', [data.id]);
+  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
 });
 
 // PATCH /api/teams/:teamId/chat/:messageId — edit own message
@@ -155,7 +159,8 @@ router.patch('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res)
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  res.json(data);
+  const reactionsMap = await fetchReactionsForMessages('chat', [data.id]);
+  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
 });
 
 // DELETE /api/teams/:teamId/chat/:messageId — soft delete own message
@@ -187,7 +192,8 @@ router.delete('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  res.json(data);
+  const reactionsMap = await fetchReactionsForMessages('chat', [data.id]);
+  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
 });
 
 module.exports = router;
