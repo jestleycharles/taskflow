@@ -72,6 +72,26 @@
     return dmSettings.ignored_user_ids.some((id) => String(id) === String(userId));
   }
 
+  const DM_IGNORED_INDICATOR = ' 🔕';
+
+  function conversationTitleWithIndicator(conv) {
+    const title = conversationTitle(conv);
+    if (!conv || conv.is_self) return title;
+    if (isUserIgnoredLocal(conv.other_user?.id)) return title + DM_IGNORED_INDICATOR;
+    return title;
+  }
+
+  function syncHeaderIgnoreMenuBtn() {
+    const btn = $('dmChatHeaderIgnoreBtn');
+    if (!btn) return;
+    const other = activeConversation?.other_user;
+    const ignored = !!(other?.id && isUserIgnoredLocal(other.id));
+    btn.textContent = ignored ? 'Unignore' : 'Ignore';
+    btn.className = ignored
+      ? 'w-full text-left px-3 py-2 text-sm text-brand-400 hover:bg-white/10 transition'
+      : 'w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-white/10 transition';
+  }
+
   function visibleConversations() {
     return conversations.filter((conv) => {
       if (conv.is_self) return true;
@@ -217,6 +237,7 @@
       btn.disabled = false;
       btn.setAttribute('aria-label', `Options for ${other.username || 'user'}`);
     }
+    syncHeaderIgnoreMenuBtn();
   }
 
   function syncView() {
@@ -225,7 +246,7 @@
     $('dmChatThreadView')?.classList.toggle('hidden', !inThread);
     $('dmChatBackBtn')?.classList.toggle('hidden', !inThread);
     $('dmBlockedEmailsBtn')?.classList.toggle('hidden', inThread);
-    $('dmChatHeaderTitle').textContent = inThread ? conversationTitle(activeConversation) : 'Messages';
+    $('dmChatHeaderTitle').textContent = inThread ? conversationTitleWithIndicator(activeConversation) : 'Messages';
     $('dmChatHeaderSubtitle')?.classList.toggle('hidden', !inThread);
     if (inThread) {
       $('dmChatHeaderSubtitle').textContent = conversationSubtitle(activeConversation);
@@ -256,6 +277,10 @@
     renderConversationList();
     updateUnreadBadge();
     renderBlockedEmailsList();
+    syncHeaderIgnoreMenuBtn();
+    if (view === 'thread' && activeConversation) {
+      $('dmChatHeaderTitle').textContent = conversationTitleWithIndicator(activeConversation);
+    }
   }
 
   function openBlockedEmailsModal() {
@@ -395,6 +420,7 @@
   function toggleHeaderAvatarMenu() {
     if (!activeConversation || activeConversation.is_self) return;
     headerAvatarMenuOpen = !headerAvatarMenuOpen;
+    if (headerAvatarMenuOpen) syncHeaderIgnoreMenuBtn();
     $('dmChatHeaderAvatarMenu')?.classList.toggle('hidden', !headerAvatarMenuOpen);
     const btn = $('dmChatHeaderAvatarBtn');
     if (btn) btn.setAttribute('aria-expanded', headerAvatarMenuOpen ? 'true' : 'false');
@@ -414,18 +440,24 @@
     await goToList();
   }
 
-  async function ignoreActiveUser() {
+  async function toggleIgnoreActiveUser() {
     const other = activeConversation?.other_user;
     if (!other?.id) return;
     closeHeaderAvatarMenu();
-    const r = await apiFetch(`/api/dm/users/${other.id}/ignore`, { method: 'POST' });
+    const ignored = isUserIgnoredLocal(other.id);
+    const r = await apiFetch(`/api/dm/users/${other.id}/ignore`, { method: ignored ? 'DELETE' : 'POST' });
     const data = await parseJsonResponse(r);
     if (!r.ok) {
-      showAlert(data.error || 'Could not ignore user');
+      showAlert(data.error || (ignored ? 'Could not unignore user' : 'Could not ignore user'));
       return;
     }
     applyDmSettings(data);
-    showAlert(`${other.username || 'User'} is now ignored. New messages will not increase your unread count.`, 'Ignored');
+    if (ignored) {
+      showAlert(`${other.username || 'User'} is no longer ignored. New messages will count toward unread again.`, 'Unignored');
+      await loadConversations();
+    } else {
+      showAlert(`${other.username || 'User'} is now ignored. New messages will not increase your unread count.`, 'Ignored');
+    }
   }
 
   async function openConversation(conv) {
@@ -473,7 +505,7 @@
       html = '<p class="text-sm text-gray-600 text-center py-6 px-4">No conversations yet. Start a new message below.</p>';
     } else {
       const renderRow = (conv) => {
-        const title = conversationTitle(conv);
+        const title = conversationTitleWithIndicator(conv);
         const preview = previewText(conv);
         const time = conv.last_message_at
           ? new Date(conv.last_message_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -675,11 +707,13 @@
   function renderDmMessageBody(msg) {
     const user = msg.user || { username: '?', avatar_color: '#4f6ef7' };
     const sentAt = formatDateTime(msg.created_at);
+    const fromOther = String(msg.user_id) !== String(currentUser?.id);
+    const nameLabel = escHtml(user.username) + (fromOther && isUserIgnoredLocal(msg.user_id) ? DM_IGNORED_INDICATOR : '');
 
     if (msg.deleted_at) {
       return `<div class="chat-msg-tombstone rounded-xl p-3" data-dm-msg-id="${msg.id}">
           <p class="text-xs text-gray-500 italic">Message deleted</p>
-          <p class="text-xs text-gray-600 mt-1.5">${escHtml(user.username)} · ${escHtml(sentAt)}</p>
+          <p class="text-xs text-gray-600 mt-1.5">${nameLabel} · ${escHtml(sentAt)}</p>
         </div>`;
     }
 
@@ -725,7 +759,7 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-2 mb-1">
             <div class="min-w-0">
-              <span class="text-xs font-medium text-white">${escHtml(user.username)}</span>
+              <span class="text-xs font-medium text-white">${nameLabel}</span>
               <p class="text-xs text-gray-600 mt-0.5">${escHtml(sentAt)}${editedNote}</p>
             </div>
             ${renderDmMessageActions(msg)}
@@ -1040,8 +1074,7 @@
     });
     $('dmChatHeaderAvatarMenu')?.querySelector('[data-dm-header-action="block"]')
       ?.addEventListener('click', () => blockActiveUser());
-    $('dmChatHeaderAvatarMenu')?.querySelector('[data-dm-header-action="ignore"]')
-      ?.addEventListener('click', () => ignoreActiveUser());
+    $('dmChatHeaderIgnoreBtn')?.addEventListener('click', () => toggleIgnoreActiveUser());
     $('dmChatSendBtn')?.addEventListener('click', submitDmMessage);
     $('dmChatInput')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {

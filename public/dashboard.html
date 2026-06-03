@@ -287,7 +287,7 @@
         </button>
         <div id="dmChatHeaderAvatarMenu" class="hidden absolute left-0 top-full mt-1 z-[50] min-w-[9rem] py-1 rounded-xl bg-ink-700 border border-white/15 shadow-xl">
           <button type="button" data-dm-header-action="block" class="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/10 transition">Block</button>
-          <button type="button" data-dm-header-action="ignore" class="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-white/10 transition">Ignore</button>
+          <button type="button" id="dmChatHeaderIgnoreBtn" data-dm-header-action="ignore" class="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-white/10 transition">Ignore</button>
         </div>
       </div>
       <div class="flex-1 min-w-0">
@@ -390,7 +390,7 @@
     <div class="modal-overlay absolute inset-0 bg-black/60" data-dm-close-blocked-modal></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up max-h-[calc(100vh-3rem)] flex flex-col">
       <h2 class="text-base font-semibold text-white mb-1">Blocked emails</h2>
-      <p class="text-sm text-gray-500 mb-4">Conversations with these addresses are hidden from your list. Removing an email shows the conversation again.</p>
+      <p class="text-sm text-gray-500 mb-4">Conversations with these emails are hidden from your list. Removing an email shows the conversation again.</p>
       <div class="flex gap-2 mb-4 shrink-0">
         <input id="dmBlockedEmailAddInput" type="email" placeholder="email@example.com"
           class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
