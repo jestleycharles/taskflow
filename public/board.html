@@ -149,13 +149,29 @@
     }
     .reaction-pill {
       transition: background 0.15s, border-color 0.15s;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
     }
     .reaction-pill.reaction-pill-active {
       background: rgba(79, 110, 247, 0.2);
       border-color: rgba(79, 110, 247, 0.45);
     }
-    .reaction-picker {
+    .reaction-picker,
+    .reactors-popover {
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+    }
+    #reactionFloatLayer {
+      z-index: 200;
+    }
+    #taskModalTabs {
+      position: relative;
+      z-index: 1;
+    }
+    #taskModalTabContent {
+      position: relative;
+      z-index: 2;
     }
     #activityPanel,
     #teamPanel,
@@ -625,13 +641,13 @@
       </div>
 
       <!-- Tabs -->
-      <div class="flex border-b border-white/10 px-6">
+      <div id="taskModalTabs" class="flex border-b border-white/10 px-6 shrink-0 bg-ink-800">
         <button class="tab-active text-sm py-3 mr-6 transition-colors" onclick="switchTab('details')">Details</button>
         <button class="tab-inactive text-sm py-3 mr-6 transition-colors" onclick="switchTab('comments')">Comments <span id="commentCount" class="text-xs bg-white/10 rounded-full px-1.5 py-0.5 ml-1">0</span></button>
       </div>
 
       <!-- Tab content -->
-      <div class="flex-1 overflow-y-auto">
+      <div id="taskModalTabContent" class="flex-1 overflow-y-auto min-h-0">
         <!-- Details tab -->
         <div id="tab-details" class="p-6 space-y-4">
           <div class="flex items-start justify-between gap-2">
@@ -694,6 +710,8 @@
     </div>
   </div>
 
+  <div id="reactionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
+
   <script src="/avatar-utils.js"></script>
   <script src="/api.js"></script>
   <script>
@@ -731,6 +749,9 @@
     let taskViewingOriginalField = null;
     let taskComments = [];
     let openReactionPicker = null;
+    let openReactorsPopover = null;
+    let reactionPress = null;
+    const REACTION_LONG_PRESS_MS = 450;
 
     const REACTION_EMOJIS = {
       love: '❤️', money: '🤑', ok: '👍', haha: '😂', sad: '😢', angry: '😠',
@@ -1024,6 +1045,7 @@
       switchTab('details');
     }
     function closeTaskModal() {
+      closeReactionFloats();
       document.getElementById('taskModal').classList.add('hidden');
       activeTaskId = null;
       editingTaskField = null;
@@ -1171,6 +1193,7 @@
     }
 
     function switchTab(tab) {
+      closeReactionFloats();
       ['details','comments'].forEach(t => {
         document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
         const btns = document.querySelectorAll('.tab-active, .tab-inactive');
@@ -1239,6 +1262,7 @@
       document.getElementById('commentCount').textContent = comments.length;
       document.getElementById('commentsList').innerHTML = comments.map(renderCommentItem).join('')
         || '<p class="text-sm text-gray-600 text-center py-4">No comments yet.</p>';
+      if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
     }
 
     async function submitComment() {
@@ -1291,6 +1315,7 @@
     }
 
     function closeChatPanel() {
+      closeReactionFloats();
       chatPanelOpen = false;
       document.getElementById('chatPanel').classList.add('hidden');
       document.getElementById('chatFabWrap').classList.remove('hidden');
@@ -1472,46 +1497,185 @@
       return `${reactionSymbol(reaction.emoji)} ${names || 'No one yet'}`;
     }
 
+    function findReactionUsers(messageType, messageId, emoji) {
+      let reactions = [];
+      if (messageType === 'chat') {
+        reactions = chatMessages.find((m) => m.id === messageId)?.reactions || [];
+      } else {
+        reactions = taskComments.find((c) => c.id === messageId)?.reactions || [];
+      }
+      return reactions.find((r) => r.emoji === emoji)?.users || [];
+    }
+
+    function closeReactionFloats() {
+      openReactionPicker = null;
+      openReactorsPopover = null;
+      syncReactionFloatUi();
+    }
+
+    function positionReactionFloat(floatEl, anchorEl) {
+      const layer = document.getElementById('reactionFloatLayer');
+      floatEl.style.position = 'fixed';
+      floatEl.style.visibility = 'hidden';
+      floatEl.style.left = '0';
+      floatEl.style.top = '0';
+      layer.appendChild(floatEl);
+      const anchor = anchorEl.getBoundingClientRect();
+      const fh = floatEl.offsetHeight;
+      const fw = floatEl.offsetWidth;
+      let top = anchor.bottom + 6;
+      let left = anchor.left;
+      if (top + fh > window.innerHeight - 8) top = Math.max(8, anchor.top - fh - 6);
+      if (left + fw > window.innerWidth - 8) left = window.innerWidth - fw - 8;
+      if (left < 8) left = 8;
+      floatEl.style.top = `${top}px`;
+      floatEl.style.left = `${left}px`;
+      floatEl.style.visibility = 'visible';
+    }
+
+    function syncReactionFloatUi() {
+      const layer = document.getElementById('reactionFloatLayer');
+      layer.innerHTML = '';
+
+      if (openReactorsPopover) {
+        const anchor = openReactorsPopover.anchor
+          || document.querySelector(`[data-reaction-pill][data-msg-type="${openReactorsPopover.messageType}"][data-msg-id="${openReactorsPopover.messageId}"][data-emoji="${openReactorsPopover.emoji}"]`);
+        if (!anchor) {
+          openReactorsPopover = null;
+        } else {
+        const users = openReactorsPopover.users || [];
+        const sym = reactionSymbol(openReactorsPopover.emoji);
+        const pop = document.createElement('div');
+        pop.className = 'reactors-popover rounded-xl bg-ink-700 border border-white/15 p-3 min-w-[10rem] max-w-[16rem] max-h-48 overflow-y-auto';
+        pop.onclick = (e) => e.stopPropagation();
+        pop.innerHTML = users.length
+          ? `<p class="text-xs font-medium text-white mb-2">${sym} · ${users.length}</p>
+             <ul class="space-y-2">${users.map((u) => `
+               <li class="flex items-center gap-2">
+                 ${userAvatarHtml(u, 'w-6 h-6')}
+                 <span class="text-sm text-gray-200 truncate">${escHtml(u.username)}</span>
+               </li>`).join('')}</ul>`
+          : `<p class="text-xs text-gray-400">${sym} — no reactions yet</p>`;
+        positionReactionFloat(pop, anchor);
+        }
+      }
+
+      if (openReactionPicker) {
+        const anchor = openReactionPicker.anchor
+          || document.querySelector(`[data-reaction-add][data-msg-type="${openReactionPicker.type}"][data-msg-id="${openReactionPicker.id}"]`);
+        if (!anchor) {
+          openReactionPicker = null;
+        } else {
+        const { type: messageType, id: messageId } = openReactionPicker;
+        const picker = document.createElement('div');
+        picker.className = 'reaction-picker flex flex-wrap gap-0.5 p-2 rounded-xl bg-ink-700 border border-white/15 max-w-[240px]';
+        picker.onclick = (e) => e.stopPropagation();
+        picker.innerHTML = Object.entries(REACTION_EMOJIS).map(([key, sym]) =>
+          `<button type="button" data-reaction-emoji="${key}"
+            class="text-lg hover:scale-110 transition p-1 rounded-lg hover:bg-white/10" title="${key}">${sym}</button>`
+        ).join('');
+        picker.querySelectorAll('[data-reaction-emoji]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleReaction(messageType, messageId, btn.dataset.reactionEmoji);
+          });
+        });
+        positionReactionFloat(picker, anchor);
+        }
+      }
+    }
+
     function renderReactionsBar(messageType, messageId, reactions) {
       const pills = (reactions || []).map((r) => {
         const mine = (r.users || []).some((u) => String(u.id) === String(currentUser?.id));
-        return `<button type="button" title="${escHtml(reactionUsersTitle(r))}"
-            onclick="event.stopPropagation(); toggleReaction('${messageType}','${messageId}','${r.emoji}')"
+        return `<button type="button" data-reaction-pill data-msg-type="${messageType}" data-msg-id="${messageId}" data-emoji="${r.emoji}"
+            title="Hold to see who reacted"
             class="reaction-pill inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 ${mine ? 'reaction-pill-active' : ''}">
             <span>${reactionSymbol(r.emoji)}</span>
             <span class="text-gray-400">${r.count}</span>
           </button>`;
       }).join('');
-      const pickerOpen = openReactionPicker?.type === messageType && openReactionPicker?.id === messageId;
-      const picker = pickerOpen ? renderReactionPicker(messageType, messageId) : '';
-      const addBtn = isGuest() ? '' : `<button type="button" onclick="event.stopPropagation(); openReactionPickerFor('${messageType}','${messageId}')"
+      const addBtn = isGuest() ? '' : `<button type="button" data-reaction-add data-msg-type="${messageType}" data-msg-id="${messageId}"
+          onclick="event.stopPropagation(); openReactionPickerFor('${messageType}','${messageId}', this)"
           class="text-xs text-gray-500 hover:text-white px-1.5 py-0.5 rounded-full hover:bg-white/10 transition" title="Add reaction">+</button>`;
-      return `<div class="flex flex-wrap items-center gap-1.5 mt-2 relative">${pills}${addBtn}${picker}</div>`;
+      return `<div class="flex flex-wrap items-center gap-1.5 mt-2">${pills}${addBtn}</div>`;
     }
 
-    function renderReactionPicker(messageType, messageId) {
-      const buttons = Object.entries(REACTION_EMOJIS).map(([key, sym]) =>
-        `<button type="button" onclick="toggleReaction('${messageType}','${messageId}','${key}'); event.stopPropagation();"
-          class="text-lg hover:scale-110 transition p-1 rounded-lg hover:bg-white/10" title="${key}">${sym}</button>`
-      ).join('');
-      return `<div class="reaction-picker absolute left-0 bottom-full mb-1 z-20 flex flex-wrap gap-0.5 p-2 rounded-xl bg-ink-700 border border-white/15 max-w-[240px]"
-        onclick="event.stopPropagation()">${buttons}</div>`;
-    }
-
-    function openReactionPickerFor(messageType, messageId) {
+    function openReactionPickerFor(messageType, messageId, anchorEl) {
       if (isGuest()) return;
+      openReactorsPopover = null;
       if (openReactionPicker?.type === messageType && openReactionPicker?.id === messageId) {
         openReactionPicker = null;
       } else {
-        openReactionPicker = { type: messageType, id: messageId };
+        openReactionPicker = { type: messageType, id: messageId, anchor: anchorEl };
       }
-      if (messageType === 'chat') renderChatMessages();
-      else if (activeTaskId) loadComments(activeTaskId);
+      syncReactionFloatUi();
+    }
+
+    function showReactorsPopover(pill) {
+      const messageType = pill.dataset.msgType;
+      const messageId = pill.dataset.msgId;
+      const emoji = pill.dataset.emoji;
+      openReactionPicker = null;
+      openReactorsPopover = {
+        messageType,
+        messageId,
+        emoji,
+        users: findReactionUsers(messageType, messageId, emoji),
+        anchor: pill,
+      };
+      syncReactionFloatUi();
+    }
+
+    function clearReactionPress() {
+      if (reactionPress?.timer) clearTimeout(reactionPress.timer);
+      reactionPress = null;
+    }
+
+    function onReactionPillPointerDown(e) {
+      const pill = e.target.closest('[data-reaction-pill]');
+      if (!pill || e.button !== 0) return;
+      clearReactionPress();
+      reactionPress = {
+        pill,
+        startX: e.clientX,
+        startY: e.clientY,
+        longFired: false,
+        timer: setTimeout(() => {
+          if (!reactionPress || reactionPress.pill !== pill) return;
+          reactionPress.longFired = true;
+          showReactorsPopover(pill);
+        }, REACTION_LONG_PRESS_MS),
+      };
+    }
+
+    function onReactionPillPointerMove(e) {
+      if (!reactionPress) return;
+      const moved = Math.hypot(e.clientX - reactionPress.startX, e.clientY - reactionPress.startY);
+      if (moved > 12) clearReactionPress();
+    }
+
+    function onReactionPillPointerUp(e) {
+      const pill = e.target.closest('[data-reaction-pill]');
+      if (!reactionPress || !pill || reactionPress.pill !== pill) {
+        clearReactionPress();
+        return;
+      }
+      clearTimeout(reactionPress.timer);
+      const moved = Math.hypot(e.clientX - reactionPress.startX, e.clientY - reactionPress.startY);
+      const wasLong = reactionPress.longFired;
+      clearReactionPress();
+      if (wasLong) {
+        e.preventDefault();
+        return;
+      }
+      if (moved > 12) return;
+      toggleReaction(pill.dataset.msgType, pill.dataset.msgId, pill.dataset.emoji);
     }
 
     async function toggleReaction(messageType, messageId, emoji) {
       if (isGuest()) return;
-      openReactionPicker = null;
+      closeReactionFloats();
       const r = await apiFetch('/api/reactions/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1552,6 +1716,7 @@
       }
       list.innerHTML = chatMessages.map(m => renderChatMessageBody(m)).join('');
       syncChatVersionFocusUi();
+      if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
 
       if (editingChatId) {
         const ta = document.getElementById(`chatEditInput-${editingChatId}`);
@@ -2143,13 +2308,17 @@
       if (e.key === 'Enter') submitComment();
     });
 
-    document.addEventListener('click', () => {
-      if (!openReactionPicker) return;
-      openReactionPicker = null;
-      if (chatPanelOpen && chatMessages.length) renderChatMessages();
-      if (activeTaskId && taskComments.length) {
-        document.getElementById('commentsList').innerHTML = taskComments.map(renderCommentItem).join('');
-      }
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#reactionFloatLayer') || e.target.closest('[data-reaction-add]') || e.target.closest('[data-reaction-pill]')) return;
+      if (openReactionPicker || openReactorsPopover) closeReactionFloats();
+    });
+
+    document.addEventListener('pointerdown', onReactionPillPointerDown);
+    document.addEventListener('pointermove', onReactionPillPointerMove);
+    document.addEventListener('pointerup', onReactionPillPointerUp);
+    document.addEventListener('pointercancel', clearReactionPress);
+    document.addEventListener('contextmenu', (e) => {
+      if (e.target.closest('[data-reaction-pill]')) e.preventDefault();
     });
 
     document.getElementById('chatInput')?.addEventListener('keydown', e => {
