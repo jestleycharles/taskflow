@@ -121,17 +121,42 @@
       pointer-events: none;
       transition: filter 0.2s ease, opacity 0.2s ease;
     }
+    :root { --nav-h: 3.5rem; }
     #boardMainRow {
       flex: 1 1 0;
       min-height: 0;
     }
     #chatPanel {
-      height: calc(100vh - 3.5rem);
-      max-height: calc(100vh - 3.5rem);
+      height: 100%;
+      max-height: 100%;
     }
     #chatMessagesList {
       flex: 1 1 0;
       min-height: 0;
+    }
+    #chatComposer {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    }
+    #chatGuestNotice {
+      padding-top: 0.75rem;
+      padding-bottom: 0.25rem;
+    }
+    @media (max-width: 767px) {
+      #chatPanel:not(.hidden) {
+        position: fixed;
+        top: var(--nav-h);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100% !important;
+        max-width: none;
+        height: auto;
+        z-index: 45;
+        border-right: none;
+      }
+      body.chat-panel-mobile-open {
+        overflow: hidden;
+      }
     }
   </style>
 </head>
@@ -176,24 +201,31 @@
     </div>
   </nav>
 
+  <!-- Mobile chat backdrop (tap to close) -->
+  <div id="chatMobileBackdrop" class="hidden fixed inset-0 bg-black/50 z-[44] md:hidden" style="top: var(--nav-h);" onclick="closeChatPanel()" aria-hidden="true"></div>
+
   <!-- Board -->
   <div id="boardMainRow" class="flex overflow-hidden">
     <!-- Team Chat Panel (left, full height) -->
     <div id="chatPanel" class="sidebar-slide hidden border-r border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
-      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
         <h2 class="font-semibold text-sm text-white">Team Chat</h2>
-        <button type="button" onclick="closeChatPanel()" class="text-gray-500 hover:text-white transition" aria-label="Close chat">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        <button type="button" onclick="closeChatPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close chat">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
       <div id="chatMessagesList" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"></div>
-      <div id="chatComposer" class="p-4 border-t border-white/10 shrink-0">
+      <div id="chatComposer" class="px-4 pt-4 border-t border-white/10 shrink-0 bg-ink-800">
         <div id="chatComposerActive" class="flex gap-2">
           <input id="chatInput" type="text" placeholder="Message the team..."
             class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
           <button type="button" onclick="submitChatMessage()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
         </div>
-        <p id="chatGuestNotice" class="hidden text-xs text-gray-500 text-center leading-relaxed py-1">Guest accounts can read messages. Sign in to send, edit, or delete.</p>
+        <p id="chatGuestNotice" class="hidden text-sm text-gray-400 text-center leading-relaxed">
+          Guest accounts can read messages only.
+          <a href="/login" class="text-brand-500 hover:text-brand-400 font-medium whitespace-nowrap">Sign in</a>
+          to send, edit, or delete.
+        </p>
       </div>
     </div>
 
@@ -985,11 +1017,19 @@
     }
 
     // Team Chat
+    function setChatPanelOpenUi(open) {
+      const mobile = window.matchMedia('(max-width: 767px)').matches;
+      document.body.classList.toggle('chat-panel-mobile-open', open && mobile);
+      document.getElementById('chatMobileBackdrop')?.classList.toggle('hidden', !open);
+    }
+
     function openChatPanel() {
       closeAllSidePanels();
       chatPanelOpen = true;
+      applyChatComposerState();
       document.getElementById('chatPanel').classList.remove('hidden');
       document.getElementById('chatFabWrap').classList.add('hidden');
+      setChatPanelOpenUi(true);
       markChatRead();
       renderChatMessages();
       scrollChatToBottom();
@@ -1000,6 +1040,7 @@
       chatPanelOpen = false;
       document.getElementById('chatPanel').classList.add('hidden');
       document.getElementById('chatFabWrap').classList.remove('hidden');
+      setChatPanelOpenUi(false);
       editingChatId = null;
       chatEditDraft = '';
       chatViewingOriginalId = null;
