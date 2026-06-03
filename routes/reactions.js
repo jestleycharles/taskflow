@@ -21,6 +21,17 @@ async function assertTeamMember(teamId, userId) {
   return !!data;
 }
 
+async function assertDmParticipant(conversationId, userId) {
+  const { data } = await supabaseAdmin
+    .from('dm_conversations')
+    .select('user_a_id, user_b_id')
+    .eq('id', conversationId)
+    .single();
+  if (!data) return false;
+  const uid = String(userId);
+  return String(data.user_a_id) === uid || String(data.user_b_id) === uid;
+}
+
 async function resolveMessageTeam(messageType, messageId) {
   if (messageType === 'chat') {
     const { data } = await supabaseAdmin
@@ -39,6 +50,14 @@ async function resolveMessageTeam(messageType, messageId) {
       .single();
     return data?.task?.team_id || null;
   }
+  if (messageType === 'dm') {
+    const { data } = await supabaseAdmin
+      .from('dm_messages')
+      .select('conversation_id, deleted_at')
+      .eq('id', messageId)
+      .single();
+    if (!data || data.deleted_at) return { dm: true, conversationId: data.conversation_id };
+  }
   return null;
 }
 
@@ -53,16 +72,23 @@ router.post('/api/reactions/toggle', requireAuth, async (req, res) => {
   const messageId = req.body?.messageId;
   const emoji = req.body?.emoji;
 
-  if (!['chat', 'comment'].includes(messageType)) {
+  if (!['chat', 'comment', 'dm'].includes(messageType)) {
     return res.status(400).json({ error: 'Invalid message type' });
   }
   if (!messageId) return res.status(400).json({ error: 'messageId required' });
   if (!isValidReactionEmoji(emoji)) return res.status(400).json({ error: 'Invalid reaction' });
 
-  const teamId = await resolveMessageTeam(messageType, messageId);
-  if (!teamId) return res.status(404).json({ error: 'Message not found' });
-  if (!await assertTeamMember(teamId, userId)) {
-    return res.status(403).json({ error: 'Not a member' });
+  const resolved = await resolveMessageTeam(messageType, messageId);
+  if (!resolved) return res.status(404).json({ error: 'Message not found' });
+
+  if (resolved.dm) {
+    if (!await assertDmParticipant(resolved.conversationId, userId)) {
+      return res.status(403).json({ error: 'Not a participant' });
+    }
+  } else {
+    if (!await assertTeamMember(resolved, userId)) {
+      return res.status(403).json({ error: 'Not a member' });
+    }
   }
 
   const { data: existing } = await supabaseAdmin

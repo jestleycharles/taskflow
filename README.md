@@ -69,19 +69,6 @@ taskflow/
 8. Click **Activity** to see recent team activity
 9. Use the **chat button** (bottom-left) for team-wide messages
 
-Run `migrations/team_chat_messages.sql` in the Supabase SQL Editor before using team chat. If the table already exists, also run `migrations/team_chat_content_before_edit.sql`. Run `migrations/team_chat_read_state.sql` so unread chat badges persist after refresh or sign-out. Run `migrations/task_comment_read_state.sql` for unread comment badges on tasks.
-
-Run `migrations/auth_oauth.sql` before using Google or GitHub sign-in.
-
-### OAuth setup (Google & GitHub)
-
-1. In [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication** → **Providers**, enable **Google** and **GitHub** and add each provider’s client ID/secret.
-2. Under **Authentication** → **URL Configuration**, set **Site URL** to your app origin (e.g. `http://localhost:3000` or your Render URL).
-3. Add this **Redirect URL**: `https://your-domain/auth/callback` (and `http://localhost:3000/auth/callback` for local dev).
-4. Ensure `.env` includes `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
-
-**Same email, different sign-in methods:** If someone registers with a Gmail address and a password, they can sign in with email/password. If they later use **Continue with Google** with the same Gmail address, Supabase links the Google identity to the same auth user when automatic linking is enabled; the app matches by email and keeps one TaskFlow profile. OAuth-only accounts have no password until they set one in **Profile**. Legacy accounts created before Supabase Auth still sign in with email/password until they use OAuth or change password (which migrates auth to Supabase).
-
 ---
 
 ## Tech Stack
