@@ -758,6 +758,7 @@
     let editTeamDraft = { presetId: null, avatar_url: null, pendingFile: null };
     let teamFormSaving = false;
     let chatMessages = [];
+    let chatReady = false;
     let chatPanelOpen = false;
     let chatLastReadAt = 0;
     let chatReadPersistTimer = null;
@@ -1085,9 +1086,11 @@
       activeTaskId = taskId;
       taskCommentsTabActive = false;
       taskComments = [];
+      lastLoadedCommentsSig = '';
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
+      document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
       const pc = PRIORITY_CONFIG[task.priority];
@@ -1273,7 +1276,10 @@
       });
       if (tab === 'comments' && activeTaskId) {
         document.getElementById('commentUnreadBadge')?.classList.add('hidden');
-        if (!taskComments.length) await loadComments(activeTaskId);
+        if (!taskComments.length) {
+          document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
+          await loadComments(activeTaskId);
+        }
         await markTaskCommentsRead(activeTaskId, true);
       } else if (activeTaskId) {
         updateTaskCommentUnreadBadge();
@@ -1428,6 +1434,10 @@
     }
 
     async function loadComments(taskId, { forceRender = false } = {}) {
+      const list = document.getElementById('commentsList');
+      if (!taskComments.length) {
+        list.innerHTML = messageListSkeletonHtml();
+      }
       const r = await apiFetch(`/api/tasks/${taskId}/comments`);
       const comments = await r.json();
       if (!Array.isArray(comments)) return;
@@ -1486,6 +1496,10 @@
       document.body.classList.toggle('side-panel-mobile-open', open && isMobileBoardLayout());
     }
 
+    function showChatMessagesLoading() {
+      document.getElementById('chatMessagesList').innerHTML = messageListSkeletonHtml();
+    }
+
     function openChatPanel() {
       closeAllSidePanels();
       chatPanelOpen = true;
@@ -1494,7 +1508,8 @@
       document.getElementById('chatFabWrap').classList.add('hidden');
       setChatPanelOpenUi(true);
       markChatRead();
-      renderChatMessages();
+      if (!chatReady) showChatMessagesLoading();
+      else renderChatMessages();
       scrollChatToBottom();
       if (!isGuest()) setTimeout(() => document.getElementById('chatInput')?.focus(), 50);
     }
@@ -1925,6 +1940,7 @@
     }
 
     async function loadChat() {
+      if (chatPanelOpen && !chatReady) showChatMessagesLoading();
       const r = await apiFetch(`/api/teams/${teamId}/chat`);
       if (!r.ok) return;
       const data = await parseJsonResponse(r);
@@ -1932,6 +1948,7 @@
       const prevLen = chatMessages.length;
       const prevLastId = chatMessages[chatMessages.length - 1]?.id;
       chatMessages = data;
+      chatReady = true;
       if (chatPanelOpen) {
         if (editingChatId) {
           captureChatEditDraft();

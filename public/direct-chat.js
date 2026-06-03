@@ -30,6 +30,7 @@
   let openReactorsPopover = null;
   let reactionPress = null;
   let newConvError = '';
+  let conversationsLoaded = false;
   let eventsBound = false;
   let showConfirm = (opts) => { if (window.confirm(opts.message)) opts.onConfirm?.(); };
   let showAlert = (msg) => { window.alert(msg); };
@@ -109,6 +110,16 @@
     $('dmChatFabWrap')?.classList.add('hidden');
   }
 
+  function showConversationListLoading() {
+    const list = $('dmConversationList');
+    if (list) list.innerHTML = conversationListSkeletonHtml();
+  }
+
+  function showDmMessagesLoading() {
+    const list = $('dmMessagesList');
+    if (list) list.innerHTML = messageListSkeletonHtml();
+  }
+
   function openPanel() {
     if (!enabled) return;
     panelOpen = true;
@@ -117,6 +128,7 @@
     setPanelOpenUi(true);
     syncView();
     if (view === 'thread' && activeConversationId) {
+      showDmMessagesLoading();
       loadDmMessages().then(() => markDmRead());
     } else {
       loadConversations();
@@ -146,6 +158,7 @@
     dmLastReadAt = 0;
     editingDmId = null;
     syncView();
+    if (!conversationsLoaded) showConversationListLoading();
     await loadConversations();
     updateUnreadBadge();
   }
@@ -172,6 +185,8 @@
     view = 'thread';
     syncView();
     dmLastReadAt = dmReadByConv.get(conv.id) || 0;
+    dmMessages = [];
+    showDmMessagesLoading();
     await loadDmReadState();
     await loadDmMessages();
     await markDmRead();
@@ -180,11 +195,15 @@
   }
 
   async function loadConversations() {
+    if (!conversationsLoaded && panelOpen && view === 'list') {
+      showConversationListLoading();
+    }
     const r = await apiFetch('/api/dm/conversations');
     if (!r.ok) return;
     const data = await parseJsonResponse(r);
     if (!Array.isArray(data)) return;
     conversations = data;
+    conversationsLoaded = true;
     renderConversationList();
     updateUnreadBadge();
   }
@@ -493,6 +512,9 @@
 
   async function loadDmMessages() {
     if (!activeConversationId) return;
+    if (view === 'thread' && panelOpen && !dmMessages.length && !editingDmId) {
+      showDmMessagesLoading();
+    }
     const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages`);
     if (!r.ok) return;
     const data = await parseJsonResponse(r);

@@ -66,6 +66,7 @@
       line-height: 1.125rem;
       font-size: 0.625rem;
     }
+    :root { --nav-h: 4rem; }
     #dmChatPanel {
       z-index: 45;
     }
@@ -74,6 +75,18 @@
     }
     body.dm-panel-open {
       overflow: hidden;
+    }
+    @media (min-width: 768px) {
+      #dmChatPanel:not(.hidden) {
+        top: var(--nav-h);
+        left: 0;
+        right: auto;
+        bottom: 0;
+        width: 20rem;
+        max-width: 20rem;
+        height: auto;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+      }
     }
     #dmMessagesList.chat-viewing-original > [data-dm-msg-id]:not(.chat-msg-version-active) {
       filter: blur(4px);

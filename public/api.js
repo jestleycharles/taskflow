@@ -112,3 +112,27 @@ function isApiUnauthorizedUpdate(response, data) {
   return response.status === 401
     && String(data?.error || '').toLowerCase() === 'unauthorized';
 }
+
+/** Shimmer rows for conversation lists (direct messages). */
+function conversationListSkeletonHtml(count = 5) {
+  const row = `<div class="flex items-center gap-3 p-3 rounded-xl border border-transparent">
+    <div class="skeleton w-10 h-10 rounded-full shrink-0"></div>
+    <div class="flex-1 min-w-0 space-y-2">
+      <div class="skeleton h-3 w-2/5 rounded"></div>
+      <div class="skeleton h-2.5 w-full rounded"></div>
+    </div>
+  </div>`;
+  return `<div class="space-y-2">${Array(count).fill(row).join('')}</div>`;
+}
+
+/** Shimmer rows for chat threads and comment lists. */
+function messageListSkeletonHtml(count = 4) {
+  const variants = [
+    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-24 rounded"></div><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-4/5 rounded"></div></div></div>`,
+    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-16 rounded"></div><div class="skeleton h-3 w-3/4 rounded"></div></div></div>`,
+    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-20 rounded"></div><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-1/2 rounded"></div></div></div>`,
+    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-28 rounded"></div><div class="skeleton h-3 w-5/6 rounded"></div></div></div>`,
+  ];
+  const n = Math.min(count, variants.length);
+  return `<div class="space-y-4">${variants.slice(0, n).join('')}</div>`;
+}
