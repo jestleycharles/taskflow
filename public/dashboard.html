@@ -186,7 +186,7 @@
           <div class="space-y-3">
             <input id="profileCurrentPassword" type="password" placeholder="Current password"
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-            <input id="profileNewPassword" type="password" placeholder="New password (min 6 characters)"
+            <input id="profileNewPassword" type="password" placeholder="New password (min 8 characters)"
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
           </div>
         </div>
@@ -391,6 +391,7 @@
       btn.textContent = 'Saving…';
       const body = { username, email };
       if (new_password) {
+        if (new_password.length < 8) return showProfileError('New password must be at least 8 characters');
         body.current_password = current_password;
         body.new_password = new_password;
       }

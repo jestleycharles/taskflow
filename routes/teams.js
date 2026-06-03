@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { supabaseAdmin } = require('../lib/supabase');
+const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { ping, leave, getOnlineUserIds } = require('../lib/presence');
 const {
@@ -60,7 +61,7 @@ function avatarUpload(req, res, next) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'Image must be 2 MB or smaller' });
       }
-      return res.status(400).json({ error: err.message });
+      return sendError(res, 400, err, 'save');
     }
     next();
   });
@@ -128,7 +129,7 @@ router.get('/api/teams', requireAuth, async (req, res) => {
     .select('role, teams(id, name, description, avatar_color, avatar_url, created_by, created_at)')
     .eq('user_id', userId);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
   const teams = data.map(d => ({ ...d.teams, role: d.role }));
   res.json(teams);
 });
@@ -142,7 +143,7 @@ router.get('/api/teams/online', requireAuth, async (req, res) => {
     .select('team_id')
     .eq('user_id', userId);
 
-  if (memErr) return res.status(500).json({ error: memErr.message });
+  if (memErr) return sendError(res, 500, memErr, 'load');
 
   const teamIds = (memberships || []).map((m) => m.team_id);
   if (!teamIds.length) return res.json([]);
@@ -152,7 +153,7 @@ router.get('/api/teams/online', requireAuth, async (req, res) => {
     .select('team_id, user_id')
     .in('team_id', teamIds);
 
-  if (membersErr) return res.status(500).json({ error: membersErr.message });
+  if (membersErr) return sendError(res, 500, membersErr, 'load');
 
   const membersByTeam = new Map();
   for (const m of allMembers || []) {
@@ -193,7 +194,7 @@ router.post('/api/teams', requireAuth, async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendError(res, 400, error, 'save');
 
   await supabaseAdmin.from('team_members').insert({ team_id: team.id, user_id: userId, role: 'owner' });
 
@@ -237,7 +238,7 @@ router.patch('/api/teams/:id', requireAuth, async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendError(res, 400, error, 'save');
 
   const label = updates.name || team.name;
   await logActivity(id, userId, 'team_updated', `Updated team "${label}"`);
@@ -271,7 +272,7 @@ router.put('/api/teams/:id/avatar/preset', requireAuth, async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendError(res, 400, error, 'save');
   res.json({ team: updated });
 });
 
@@ -309,11 +310,7 @@ router.post(
         upsert: true,
       });
 
-    if (uploadErr) {
-      return res.status(500).json({
-        error: uploadErr.message || 'Upload failed. Ensure the avatars storage bucket exists.',
-      });
-    }
+    if (uploadErr) return sendError(res, 500, uploadErr, 'upload');
 
     const { data: urlData } = supabaseAdmin.storage.from(AVATAR_BUCKET).getPublicUrl(storagePath);
     const avatarUrl = urlData.publicUrl;
@@ -325,7 +322,7 @@ router.post(
       .select()
       .single();
 
-    if (dbErr) return res.status(400).json({ error: dbErr.message });
+    if (dbErr) return sendError(res, 400, dbErr, 'save');
     res.json({ team: updated });
   }
 );
@@ -399,7 +396,7 @@ router.delete('/api/teams/:id/members/:uid', requireAuth, async (req, res) => {
 
   const { error } = await supabaseAdmin
     .from('team_members').delete().eq('team_id', id).eq('user_id', uid);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
 
   const username = target.users?.username || 'A member';
   await logActivity(id, userId, 'member_removed', `Removed ${username} from the team`);
@@ -435,7 +432,7 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
   }
 
   const { error } = await supabaseAdmin.from('teams').delete().eq('id', id);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
 
   res.json({ success: true });
 });

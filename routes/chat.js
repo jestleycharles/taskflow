@@ -1,5 +1,6 @@
 const express = require('express');
 const { supabaseAdmin } = require('../lib/supabase');
+const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { isGuestUser } = require('../lib/user');
 
@@ -38,7 +39,7 @@ router.get('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     .eq('team_id', teamId)
     .order('created_at', { ascending: true });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
   res.json(data || []);
 });
 
@@ -61,7 +62,7 @@ router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     .select(MESSAGE_SELECT)
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
   res.json(data);
 });
 
@@ -102,7 +103,7 @@ router.patch('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res)
     .select(MESSAGE_SELECT)
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
   res.json(data);
 });
 
@@ -134,7 +135,7 @@ router.delete('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res
     .select(MESSAGE_SELECT)
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
   res.json(data);
 });
 

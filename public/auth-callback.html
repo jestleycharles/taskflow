@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Signing in</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #9ca3af; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4">
+  <div class="text-center max-w-sm">
+    <p id="status" class="text-sm">Completing sign-in…</p>
+    <p id="error" class="hidden mt-4 text-red-400 text-sm"></p>
+    <a id="back" href="/login" class="hidden mt-6 inline-block text-indigo-400 text-sm hover:text-indigo-300">Back to sign in</a>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/api.js"></script>
+  <script>
+    async function finish() {
+      const status = document.getElementById('status');
+      const errEl = document.getElementById('error');
+      const back = document.getElementById('back');
+
+      try {
+        const cfgRes = await fetch('/api/auth/config');
+        const cfg = await cfgRes.json();
+        if (!cfgRes.ok) throw new Error(cfg.error || 'Authentication is not configured');
+
+        const client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+        const hash = window.location.hash?.startsWith('#') ? window.location.hash.slice(1) : '';
+        const query = window.location.search?.startsWith('?') ? window.location.search.slice(1) : '';
+        const params = new URLSearchParams(hash || query);
+
+        let access_token = params.get('access_token');
+        let refresh_token = params.get('refresh_token');
+
+        if (!access_token) {
+          const code = params.get('code');
+          if (code) {
+            const { data, error } = await client.auth.exchangeCodeForSession(code);
+            if (error) throw error;
+            access_token = data.session?.access_token;
+            refresh_token = data.session?.refresh_token;
+          }
+        }
+
+        if (!access_token) {
+          const { data, error } = await client.auth.getSession();
+          if (error) throw error;
+          access_token = data.session?.access_token;
+          refresh_token = data.session?.refresh_token;
+        }
+
+        if (!access_token) throw new Error('Sign-in was cancelled or expired. Please try again.');
+
+        const r = await apiFetch('/api/auth/oauth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token, refresh_token }),
+        });
+        const d = await parseJsonResponse(r);
+        if (d.success) {
+          window.location.replace('/dashboard');
+          return;
+        }
+        throw new Error(d.error || 'Sign-in failed');
+      } catch (e) {
+        status.textContent = 'Sign-in could not be completed';
+        errEl.textContent = e.message || 'Something went wrong';
+        errEl.classList.remove('hidden');
+        back.classList.remove('hidden');
+      }
+    }
+    finish();
+  </script>
+</body>
+</html>

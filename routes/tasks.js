@@ -1,5 +1,6 @@
 const express = require('express');
 const { supabaseAdmin } = require('../lib/supabase');
+const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.get('/api/teams/:teamId/tasks', requireAuth, async (req, res) => {
     .eq('team_id', teamId)
     .order('position', { ascending: true });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return sendError(res, 500, error, 'load');
   res.json(data);
 });
 
@@ -56,7 +57,7 @@ router.post('/api/teams/:teamId/tasks', requireAuth, async (req, res) => {
     .select('*, assignee:assigned_to(id, username, avatar_color, avatar_url), creator:created_by(id, username)')
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendError(res, 400, error, 'save');
 
   await logActivity(teamId, userId, 'task_created', `Created task "${title}"`, task.id);
   res.json(task);
@@ -82,7 +83,7 @@ router.patch('/api/tasks/:id', requireAuth, async (req, res) => {
     .select('*, assignee:assigned_to(id, username, avatar_color, avatar_url), creator:created_by(id, username)')
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendError(res, 400, error, 'save');
 
   if (updates.status && updates.status !== existing.status) {
     const labels = { todo: 'To Do', doing: 'Doing', done: 'Done' };
@@ -137,7 +138,7 @@ router.post('/api/tasks/:id/comments', requireAuth, async (req, res) => {
     .select('*, user:user_id(id, username, avatar_color, avatar_url)')
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendError(res, 400, error, 'save');
 
   await logActivity(task.team_id, userId, 'comment_added', `Commented on "${task.title}"`, id);
   res.json(comment);

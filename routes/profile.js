@@ -2,7 +2,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
-const { supabaseAdmin } = require('../lib/supabase');
+const { supabase, supabaseAdmin } = require('../lib/supabase');
+const { MIN_PASSWORD_LENGTH } = require('../lib/constants');
+const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const {
   AVATAR_PRESETS,
@@ -101,15 +103,47 @@ router.patch('/api/profile', requireAuth, requireRegistered, async (req, res) =>
   }
 
   if (new_password) {
-    if (!current_password) {
-      return res.status(400).json({ error: 'Current password required to set a new password' });
+    if (String(new_password).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      });
     }
-    const valid = await bcrypt.compare(current_password, user.password_hash);
-    if (!valid) return res.status(400).json({ error: 'Current password is incorrect' });
-    if (String(new_password).length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+
+    const hasLegacyPassword = !!user.password_hash;
+    const targetAuthId = user.auth_id || user.id;
+
+    if (user.auth_id || !hasLegacyPassword) {
+      let needsCurrent = hasLegacyPassword;
+      if (user.auth_id && !needsCurrent) {
+        const { data: authRow } = await supabaseAdmin.auth.admin.getUserById(user.auth_id);
+        const providers = (authRow?.user?.identities || []).map((i) => i.provider);
+        needsCurrent = providers.includes('email');
+      }
+
+      if (needsCurrent) {
+        if (!current_password) {
+          return res.status(400).json({ error: 'Current password required to set a new password' });
+        }
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: current_password,
+        });
+        if (signInErr) return res.status(400).json({ error: 'Current password is incorrect' });
+      }
+
+      const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(targetAuthId, {
+        password: new_password,
+      });
+      if (pwErr) return sendError(res, 400, pwErr, 'auth');
+      if (hasLegacyPassword) updates.password_hash = null;
+    } else {
+      if (!current_password) {
+        return res.status(400).json({ error: 'Current password required to set a new password' });
+      }
+      const valid = await bcrypt.compare(current_password, user.password_hash);
+      if (!valid) return res.status(400).json({ error: 'Current password is incorrect' });
+      updates.password_hash = await bcrypt.hash(new_password, 10);
     }
-    updates.password_hash = await bcrypt.hash(new_password, 10);
   }
 
   if (!Object.keys(updates).length) {
@@ -118,7 +152,7 @@ router.patch('/api/profile', requireAuth, requireRegistered, async (req, res) =>
   }
 
   const { error: updateErr } = await supabaseAdmin.from('users').update(updates).eq('id', userId);
-  if (updateErr) return res.status(400).json({ error: updateErr.message });
+  if (updateErr) return sendError(res, 400, updateErr, 'save');
 
   const sessionUser = await refreshSessionUser(req);
   res.json({ user: sessionUser });
@@ -142,7 +176,7 @@ router.put('/api/profile/avatar/preset', requireAuth, requireRegistered, async (
     .update({ avatar_url: match.url })
     .eq('id', userId);
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return sendError(res, 400, error, 'save');
 
   const sessionUser = await refreshSessionUser(req);
   res.json({ user: sessionUser });
@@ -154,7 +188,7 @@ function avatarUpload(req, res, next) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'Image must be 2 MB or smaller' });
       }
-      return res.status(400).json({ error: err.message });
+      return sendError(res, 400, err, 'save');
     }
     next();
   });
@@ -200,7 +234,7 @@ router.post(
       .update({ avatar_url: avatarUrl })
       .eq('id', userId);
 
-    if (dbErr) return res.status(400).json({ error: dbErr.message });
+    if (dbErr) return sendError(res, 400, dbErr, 'save');
 
     const sessionUser = await refreshSessionUser(req);
     res.json({ user: sessionUser });

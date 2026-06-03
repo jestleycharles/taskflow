@@ -21,7 +21,7 @@ https://taskflow-byjest.onrender.com
 ---
 
 ## Features
-- User registration & login (with guest account)
+- User registration & login (email/password, Google, GitHub via Supabase Auth, plus guest account)
 - Create teams and invite members by email
 - Kanban board (To Do / Doing / Done) with drag-and-drop
 - Real-time task updates via polling (5s interval)
@@ -71,6 +71,17 @@ taskflow/
 
 Run `migrations/team_chat_messages.sql` in the Supabase SQL Editor before using team chat. If the table already exists, also run `migrations/team_chat_content_before_edit.sql`.
 
+Run `migrations/auth_oauth.sql` before using Google or GitHub sign-in.
+
+### OAuth setup (Google & GitHub)
+
+1. In [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication** → **Providers**, enable **Google** and **GitHub** and add each provider’s client ID/secret.
+2. Under **Authentication** → **URL Configuration**, set **Site URL** to your app origin (e.g. `http://localhost:3000` or your Render URL).
+3. Add this **Redirect URL**: `https://your-domain/auth/callback` (and `http://localhost:3000/auth/callback` for local dev).
+4. Ensure `.env` includes `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Same email, different sign-in methods:** If someone registers with a Gmail address and a password, they can sign in with email/password. If they later use **Continue with Google** with the same Gmail address, Supabase links the Google identity to the same auth user when automatic linking is enabled; the app matches by email and keeps one TaskFlow profile. OAuth-only accounts have no password until they set one in **Profile**. Legacy accounts created before Supabase Auth still sign in with email/password until they use OAuth or change password (which migrates auth to Supabase).
+
 ---
 
 ## Tech Stack
@@ -79,7 +90,7 @@ Run `migrations/team_chat_messages.sql` in the Supabase SQL Editor before using 
 |------------|----------------------------|
 | Backend    | Node.js, Express           |
 | Database   | Supabase (PostgreSQL)      |
-| Auth       | express-session + bcryptjs |
+| Auth       | Supabase Auth + express-session |
 | Frontend   | HTML, Tailwind CSS (CDN)   |
 | Real-time  | 5-second polling           |
 | Deployment | Render                     |
