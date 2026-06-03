@@ -32,33 +32,36 @@ async function assertDmParticipant(conversationId, userId) {
   return String(data.user_a_id) === uid || String(data.user_b_id) === uid;
 }
 
-async function resolveMessageTeam(messageType, messageId) {
+async function resolveTeamMessage(messageType, messageId) {
   if (messageType === 'chat') {
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('team_chat_messages')
       .select('team_id, deleted_at')
       .eq('id', messageId)
-      .single();
-    if (!data || data.deleted_at) return null;
+      .maybeSingle();
+    if (error || !data || data.deleted_at) return null;
     return data.team_id;
   }
   if (messageType === 'comment') {
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('comments')
       .select('task_id, task:tasks(team_id)')
       .eq('id', messageId)
-      .single();
+      .maybeSingle();
+    if (error || !data) return null;
     return data?.task?.team_id || null;
   }
-  if (messageType === 'dm') {
-    const { data } = await supabaseAdmin
-      .from('dm_messages')
-      .select('conversation_id, deleted_at')
-      .eq('id', messageId)
-      .single();
-    if (!data || data.deleted_at) return { dm: true, conversationId: data.conversation_id };
-  }
   return null;
+}
+
+async function resolveDmMessage(messageId) {
+  const { data, error } = await supabaseAdmin
+    .from('dm_messages')
+    .select('conversation_id, deleted_at')
+    .eq('id', messageId)
+    .maybeSingle();
+  if (error || !data || data.deleted_at) return null;
+  return data.conversation_id;
 }
 
 // POST /api/reactions/toggle — add or remove a reaction (non-guest)
@@ -78,15 +81,16 @@ router.post('/api/reactions/toggle', requireAuth, async (req, res) => {
   if (!messageId) return res.status(400).json({ error: 'messageId required' });
   if (!isValidReactionEmoji(emoji)) return res.status(400).json({ error: 'Invalid reaction' });
 
-  const resolved = await resolveMessageTeam(messageType, messageId);
-  if (!resolved) return res.status(404).json({ error: 'Message not found' });
-
-  if (resolved.dm) {
-    if (!await assertDmParticipant(resolved.conversationId, userId)) {
+  if (messageType === 'dm') {
+    const conversationId = await resolveDmMessage(messageId);
+    if (!conversationId) return res.status(404).json({ error: 'Message not found' });
+    if (!await assertDmParticipant(conversationId, userId)) {
       return res.status(403).json({ error: 'Not a participant' });
     }
   } else {
-    if (!await assertTeamMember(resolved, userId)) {
+    const teamId = await resolveTeamMessage(messageType, messageId);
+    if (!teamId) return res.status(404).json({ error: 'Message not found' });
+    if (!await assertTeamMember(teamId, userId)) {
       return res.status(403).json({ error: 'Not a member' });
     }
   }

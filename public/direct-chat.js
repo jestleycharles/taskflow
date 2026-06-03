@@ -31,6 +31,9 @@
   let reactionPress = null;
   let newConvError = '';
   let eventsBound = false;
+  let showConfirm = (opts) => { if (window.confirm(opts.message)) opts.onConfirm?.(); };
+  let showAlert = (msg) => { window.alert(msg); };
+  const dmReadByConv = new Map();
 
   function $(id) {
     return document.getElementById(id);
@@ -72,8 +75,14 @@
     $('dmChatFabWrap')?.classList.toggle('hidden', open);
   }
 
+  function convUnreadCount(conv) {
+    if (!conv) return 0;
+    if (panelOpen && view === 'thread' && conv.id === activeConversationId) return 0;
+    return conv.unread_count || 0;
+  }
+
   function totalUnread() {
-    return conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+    return conversations.reduce((sum, c) => sum + convUnreadCount(c), 0);
   }
 
   function updateUnreadBadge() {
@@ -108,15 +117,15 @@
     setPanelOpenUi(true);
     syncView();
     if (view === 'thread' && activeConversationId) {
-      markDmRead();
-      loadDmMessages();
+      loadDmMessages().then(() => markDmRead());
     } else {
       loadConversations();
     }
     updateUnreadBadge();
   }
 
-  function closePanel() {
+  async function closePanel() {
+    await flushDmReadState();
     closeReactionFloats();
     panelOpen = false;
     $('dmChatPanel')?.classList.add('hidden');
@@ -124,17 +133,21 @@
     editingDmId = null;
     dmEditDraft = '';
     dmViewingOriginalId = null;
+    await loadConversations();
     updateUnreadBadge();
   }
 
-  function goToList() {
+  async function goToList() {
+    await flushDmReadState();
     view = 'list';
     activeConversationId = null;
     activeConversation = null;
     dmMessages = [];
+    dmLastReadAt = 0;
     editingDmId = null;
     syncView();
-    loadConversations();
+    await loadConversations();
+    updateUnreadBadge();
   }
 
   function syncView() {
@@ -151,13 +164,17 @@
   }
 
   async function openConversation(conv) {
+    if (activeConversationId && activeConversationId !== conv.id) {
+      await flushDmReadState();
+    }
     activeConversationId = conv.id;
     activeConversation = conv;
     view = 'thread';
     syncView();
+    dmLastReadAt = dmReadByConv.get(conv.id) || 0;
     await loadDmReadState();
     await loadDmMessages();
-    markDmRead();
+    await markDmRead();
     scrollDmToBottom();
     setTimeout(() => $('dmChatInput')?.focus(), 50);
   }
@@ -169,8 +186,7 @@
     if (!Array.isArray(data)) return;
     conversations = data;
     renderConversationList();
-    if (!panelOpen) updateUnreadBadge();
-    else if (view === 'list') updateUnreadBadge();
+    updateUnreadBadge();
   }
 
   function renderConversationList() {
@@ -190,8 +206,9 @@
         const time = conv.last_message_at
           ? new Date(conv.last_message_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
           : '';
-        const unread = conv.unread_count > 0
-          ? `<span class="shrink-0 min-w-[1.125rem] h-[1.125rem] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">${conv.unread_count > 99 ? '99+' : conv.unread_count}</span>`
+        const unreadN = convUnreadCount(conv);
+        const unread = unreadN > 0
+          ? `<span class="shrink-0 min-w-[1.125rem] h-[1.125rem] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">${unreadN > 99 ? '99+' : unreadN}</span>`
           : '';
         const active = conv.id === activeConversationId ? ' bg-white/10 border-brand-500/30' : ' border-white/5 hover:bg-white/5';
         return `<button type="button" data-conv-id="${conv.id}"
@@ -268,37 +285,57 @@
 
   async function loadDmReadState() {
     if (!activeConversationId) return;
+    const cached = dmReadByConv.get(activeConversationId);
+    if (cached) {
+      dmLastReadAt = cached;
+      return;
+    }
     const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/read`);
     if (!r.ok) return;
     const data = await parseJsonResponse(r);
     if (data?.last_read_at) {
       const t = new Date(data.last_read_at).getTime();
-      if (!Number.isNaN(t)) dmLastReadAt = t;
+      if (!Number.isNaN(t)) {
+        dmLastReadAt = t;
+        dmReadByConv.set(activeConversationId, t);
+      }
     }
   }
 
-  function persistDmReadState() {
-    if (!activeConversationId) return;
+  async function flushDmReadState() {
+    if (!activeConversationId || dmLastReadAt <= 0) return;
     clearTimeout(dmReadPersistTimer);
-    dmReadPersistTimer = setTimeout(async () => {
-      await apiFetch(`/api/dm/conversations/${activeConversationId}/read`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ last_read_at: new Date(dmLastReadAt).toISOString() }),
-      });
-    }, 300);
+    dmReadPersistTimer = null;
+    const lastReadAt = new Date(dmLastReadAt).toISOString();
+    dmReadByConv.set(activeConversationId, dmLastReadAt);
+    await apiFetch(`/api/dm/conversations/${activeConversationId}/read`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ last_read_at: lastReadAt }),
+    });
+    const conv = conversations.find((c) => c.id === activeConversationId);
+    if (conv) conv.unread_count = 0;
   }
 
-  function markDmRead() {
+  function scheduleDmReadPersist() {
+    if (!activeConversationId) return;
+    clearTimeout(dmReadPersistTimer);
+    dmReadPersistTimer = setTimeout(() => flushDmReadState(), 300);
+  }
+
+  async function markDmRead() {
     const latest = dmMessages.reduce((max, m) => {
+      if (m.deleted_at) return max;
       const t = new Date(m.created_at).getTime();
       return t > max ? t : max;
     }, 0);
     dmLastReadAt = Math.max(dmLastReadAt, latest, Date.now());
+    dmReadByConv.set(activeConversationId, dmLastReadAt);
     const conv = conversations.find((c) => c.id === activeConversationId);
     if (conv) conv.unread_count = 0;
+    renderConversationList();
     updateUnreadBadge();
-    persistDmReadState();
+    scheduleDmReadPersist();
   }
 
   function scrollDmToBottom() {
@@ -475,7 +512,7 @@
         renderDmMessages();
         if (data.length > prevLen || data[data.length - 1]?.id !== prevLastId) scrollDmToBottom();
       }
-      markDmRead();
+      await markDmRead();
     }
   }
 
@@ -490,7 +527,7 @@
     });
     const msg = await parseJsonResponse(r);
     if (!r.ok) {
-      alert(msg.error || 'Failed to send message');
+      showAlert(msg.error || 'Failed to send message');
       return;
     }
     input.value = '';
@@ -526,7 +563,7 @@
     });
     const updated = await parseJsonResponse(r);
     if (!r.ok) {
-      alert(updated.error || 'Failed to edit message');
+      showAlert(updated.error || 'Failed to edit message');
       return;
     }
     const idx = dmMessages.findIndex((m) => m.id === messageId);
@@ -537,12 +574,21 @@
     renderDmMessages();
   }
 
-  async function deleteDmMessage(messageId) {
-    if (!confirm('Delete this message? This cannot be undone.')) return;
+  function deleteDmMessage(messageId) {
+    showConfirm({
+      title: 'Delete message',
+      message: 'Delete this message? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => executeDeleteDmMessage(messageId),
+    });
+  }
+
+  async function executeDeleteDmMessage(messageId) {
     const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages/${messageId}`, { method: 'DELETE' });
     const updated = await parseJsonResponse(r);
     if (!r.ok) {
-      alert(updated.error || 'Failed to delete message');
+      showAlert(updated.error || 'Failed to delete message');
       return;
     }
     const idx = dmMessages.findIndex((m) => m.id === messageId);
@@ -679,7 +725,7 @@
     });
     const data = await parseJsonResponse(r);
     if (!r.ok) {
-      alert(data.error || 'Failed to react');
+      showAlert(data.error || 'Failed to react');
       return;
     }
     const idx = dmMessages.findIndex((m) => m.id === messageId);
@@ -793,8 +839,10 @@
     convPollInterval = null;
   }
 
-  function init(user) {
+  function init(user, options = {}) {
     currentUser = user;
+    if (options.showConfirm) showConfirm = options.showConfirm;
+    if (options.showAlert) showAlert = options.showAlert;
     enabled = !!user && !user.is_guest;
     if (!enabled) {
       hideFab();

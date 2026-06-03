@@ -941,21 +941,50 @@
       renderBoard();
     }
 
-    function renderBoard() {
+    function boardTaskFieldsChanged(a, b) {
+      if (!a || !b) return true;
+      const keys = ['id', 'title', 'description', 'status', 'priority', 'due_date', 'assigned_to', 'position'];
+      if (keys.some((k) => a[k] !== b[k])) return true;
+      return JSON.stringify(a.assignee) !== JSON.stringify(b.assignee);
+    }
+
+    function mergePolledTasks(newTasks) {
+      const prevMap = new Map(tasks.map((t) => [t.id, t]));
+      const prevIds = new Set(tasks.map((t) => t.id));
+      const nextIds = new Set(newTasks.map((t) => t.id));
+      let boardDirty = prevIds.size !== nextIds.size;
+      const merged = newTasks.map((nt) => {
+        const prev = prevMap.get(nt.id);
+        let unread = nt.unread_comment_count || 0;
+        const lastRead = taskCommentsLastReadAt[nt.id];
+        if (lastRead && (prev?.unread_comment_count || 0) === 0 && unread > 0) unread = 0;
+        if (nt.id === activeTaskId && taskCommentsTabActive) unread = 0;
+        const mergedTask = { ...nt, unread_comment_count: unread };
+        if (!boardDirty && (!prev || boardTaskFieldsChanged(prev, mergedTask))) boardDirty = true;
+        return mergedTask;
+      });
+      return { merged, boardDirty };
+    }
+
+    function renderBoard({ animateNew = false } = {}) {
+      const existingIds = new Set(
+        [...document.querySelectorAll('.task-card[data-id]')].map((el) => el.dataset.id)
+      );
       ['todo','doing','done'].forEach(status => {
         const col = document.getElementById(`col-${status}`);
         const colTasks = tasks.filter(t => t.status === status);
         document.getElementById(`count-${status}`).textContent = colTasks.length;
         col.innerHTML = '';
         colTasks.forEach(task => {
-          col.appendChild(createTaskCard(task));
+          const isNew = animateNew && !existingIds.has(String(task.id));
+          col.appendChild(createTaskCard(task, isNew));
         });
       });
     }
 
-    function createTaskCard(task) {
+    function createTaskCard(task, animate = false) {
       const el = document.createElement('div');
-      el.className = `task-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-xl p-3.5 priority-${task.priority} fade-up`;
+      el.className = `task-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-xl p-3.5 priority-${task.priority}${animate ? ' fade-up' : ''}`;
       el.dataset.id = task.id;
       el.draggable = true;
       el.addEventListener('dragstart', (e) => { draggedTaskId = task.id; el.classList.add('dragging'); });
@@ -976,7 +1005,7 @@
             ${userAvatarHtml(task.assignee, 'w-5 h-5')}
             <span class="text-xs text-gray-500">${escHtml(task.assignee.username)}</span>
           </div>` : '<div></div>'}
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="task-card-badges flex items-center gap-2 shrink-0">
             ${(task.unread_comment_count || 0) > 0 ? `<span class="task-comment-unread-badge flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1" title="Unread comments">${task.unread_comment_count > 99 ? '99+' : task.unread_comment_count}</span>` : ''}
             ${due ? `<span class="text-xs font-medium ${due.class}">${due.label}</span>` : ''}
           </div>
@@ -1047,7 +1076,7 @@
       const task = await r.json();
       if (task.error) return;
       tasks.push(task);
-      renderBoard();
+      renderBoard({ animateNew: true });
       closeAddTask();
     }
 
@@ -1075,23 +1104,17 @@
       document.getElementById('detailAssignee').value = task.assigned_to || '';
       document.getElementById('detailCreator').textContent = task.creator?.username || 'Unknown';
       document.getElementById('taskModal').classList.remove('hidden');
-      switchTab('details');
       await loadTaskCommentReadState(taskId);
-      const badge = document.getElementById('commentUnreadBadge');
-      const initialUnread = task.unread_comment_count || 0;
-      if (initialUnread > 0) {
-        badge.textContent = initialUnread > 99 ? '99+' : String(initialUnread);
-        badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
-      }
-      loadComments(taskId);
+      await loadComments(taskId);
+      await switchTab('details');
     }
     function closeTaskModal() {
       closeReactionFloats();
       document.getElementById('taskModal').classList.add('hidden');
       activeTaskId = null;
       taskCommentsTabActive = false;
+      taskComments = [];
+      lastLoadedCommentsSig = '';
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
@@ -1236,7 +1259,7 @@
       loadComments(activeTaskId);
     }
 
-    function switchTab(tab) {
+    async function switchTab(tab) {
       closeReactionFloats();
       taskCommentsTabActive = tab === 'comments';
       ['details','comments'].forEach(t => {
@@ -1249,8 +1272,10 @@
           : 'tab-inactive text-sm py-3 mr-6 transition-colors' + (t === 'comments' ? ' relative' : '');
       });
       if (tab === 'comments' && activeTaskId) {
-        markTaskCommentsRead(activeTaskId);
-      } else {
+        document.getElementById('commentUnreadBadge')?.classList.add('hidden');
+        if (!taskComments.length) await loadComments(activeTaskId);
+        await markTaskCommentsRead(activeTaskId, true);
+      } else if (activeTaskId) {
         updateTaskCommentUnreadBadge();
       }
     }
@@ -1318,6 +1343,31 @@
       if (idx !== -1) tasks[idx].unread_comment_count = count;
     }
 
+    function updateTaskCardUnreadBadge(taskId, count) {
+      const card = document.querySelector(`.task-card[data-id="${taskId}"]`);
+      if (!card) return;
+      const wrap = card.querySelector('.task-card-badges');
+      if (!wrap) return;
+      let badge = wrap.querySelector('.task-comment-unread-badge');
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'task-comment-unread-badge flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1';
+          badge.title = 'Unread comments';
+          wrap.insertBefore(badge, wrap.firstChild);
+        }
+        badge.textContent = count > 99 ? '99+' : String(count);
+      } else if (badge) {
+        badge.remove();
+      }
+    }
+
+    function commentsSignature(comments) {
+      return (comments || []).map((c) => `${c.id}:${c.created_at}`).join('|');
+    }
+
+    let lastLoadedCommentsSig = '';
+
     async function loadTaskCommentReadState(taskId) {
       const r = await apiFetch(`/api/tasks/${taskId}/comments/read`);
       if (!r.ok) return;
@@ -1330,29 +1380,34 @@
       }
     }
 
-    function persistTaskCommentReadState(taskId) {
+    function persistTaskCommentReadState(taskId, immediate = false) {
       const lastRead = taskCommentsLastReadAt[taskId];
-      if (lastRead == null) return;
+      if (lastRead == null) return Promise.resolve();
       clearTimeout(taskCommentReadPersistTimer);
-      taskCommentReadPersistTimer = setTimeout(async () => {
-        await apiFetch(`/api/tasks/${taskId}/comments/read`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ last_read_at: new Date(lastRead).toISOString() }),
-        });
-      }, 300);
+      const save = () => apiFetch(`/api/tasks/${taskId}/comments/read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ last_read_at: new Date(lastRead).toISOString() }),
+      });
+      if (immediate) return save();
+      return new Promise((resolve) => {
+        taskCommentReadPersistTimer = setTimeout(async () => {
+          await save();
+          resolve();
+        }, 300);
+      });
     }
 
-    function markTaskCommentsRead(taskId) {
+    async function markTaskCommentsRead(taskId, flushPersist = false) {
       const latest = taskComments.reduce((max, c) => {
         const t = new Date(c.created_at).getTime();
         return t > max ? t : max;
       }, 0);
       taskCommentsLastReadAt[taskId] = Math.max(taskCommentsLastReadAt[taskId] || 0, latest, Date.now());
       syncTaskUnreadCount(taskId, 0);
+      updateTaskCardUnreadBadge(taskId, 0);
       updateTaskCommentUnreadBadge();
-      renderBoard();
-      persistTaskCommentReadState(taskId);
+      await persistTaskCommentReadState(taskId, flushPersist);
     }
 
     function updateTaskCommentUnreadBadge() {
@@ -1372,22 +1427,27 @@
       }
     }
 
-    async function loadComments(taskId) {
+    async function loadComments(taskId, { forceRender = false } = {}) {
       const r = await apiFetch(`/api/tasks/${taskId}/comments`);
       const comments = await r.json();
       if (!Array.isArray(comments)) return;
+      const sig = commentsSignature(comments);
+      const commentsChanged = sig !== lastLoadedCommentsSig || forceRender;
       taskComments = comments;
-      document.getElementById('commentsList').innerHTML = comments.map(renderCommentItem).join('')
-        || '<p class="text-sm text-gray-600 text-center py-4">No comments yet.</p>';
+      if (commentsChanged) {
+        lastLoadedCommentsSig = sig;
+        document.getElementById('commentsList').innerHTML = comments.map(renderCommentItem).join('')
+          || '<p class="text-sm text-gray-600 text-center py-4">No comments yet.</p>';
+      }
       if (taskCommentsTabActive) {
-        markTaskCommentsRead(taskId);
+        await markTaskCommentsRead(taskId, true);
       } else {
         const unread = countUnreadTaskComments(comments, taskId);
         syncTaskUnreadCount(taskId, unread);
+        updateTaskCardUnreadBadge(taskId, unread);
         updateTaskCommentUnreadBadge();
-        renderBoard();
       }
-      if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
+      if (commentsChanged && (openReactionPicker || openReactorsPopover)) syncReactionFloatUi();
     }
 
     async function submitComment() {
@@ -1401,7 +1461,6 @@
       if (r.ok) {
         input.value = '';
         await loadComments(activeTaskId);
-        if (taskCommentsTabActive) markTaskCommentsRead(activeTaskId);
       }
     }
 
@@ -2400,22 +2459,31 @@
     window.addEventListener('pagehide', leavePresence);
     document.querySelector('a[href="/dashboard"]')?.addEventListener('click', leavePresence);
 
-    // Real-time polling
+    // Real-time polling (5s); only re-builds the board when task fields change, not on every unread tick
     function startPolling() {
       pollInterval = setInterval(async () => {
         const r = await apiFetch(`/api/teams/${teamId}/tasks`);
         if (!r.ok) return;
         const newTasks = await parseJsonResponse(r);
         if (!Array.isArray(newTasks)) return;
-        if (JSON.stringify(newTasks) !== JSON.stringify(tasks)) {
-          tasks = newTasks;
-          renderBoard();
-          if (activeTaskId && !editingTaskField) {
-            const task = tasks.find(t => t.id === activeTaskId);
-            if (task) {
-              renderTaskTitleArea(task);
-              renderTaskDescArea(task);
+        const { merged, boardDirty } = mergePolledTasks(newTasks);
+        const unreadOnlyChange = !boardDirty && merged.some((t, i) => {
+          const prev = tasks.find((p) => p.id === t.id);
+          return prev && (prev.unread_comment_count || 0) !== (t.unread_comment_count || 0);
+        });
+        if (boardDirty || unreadOnlyChange) {
+          tasks = merged;
+          if (boardDirty) {
+            renderBoard();
+            if (activeTaskId && !editingTaskField) {
+              const task = tasks.find(t => t.id === activeTaskId);
+              if (task) {
+                renderTaskTitleArea(task);
+                renderTaskDescArea(task);
+              }
             }
+          } else {
+            merged.forEach((t) => updateTaskCardUnreadBadge(t.id, t.unread_comment_count || 0));
           }
           if (document.getElementById('activityPanel').offsetParent !== null) loadActivity();
         }
