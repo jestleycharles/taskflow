@@ -101,10 +101,42 @@ function applyTaskEditHistory(existing, updates) {
   return editMeta;
 }
 
+async function attachUnreadCommentCounts(tasks, userId) {
+  if (!tasks?.length) return tasks || [];
+
+  const taskIds = tasks.map((t) => t.id);
+  const { data: readStates } = await supabaseAdmin
+    .from('task_comment_read_state')
+    .select('task_id, last_read_at')
+    .eq('user_id', userId)
+    .in('task_id', taskIds);
+
+  const readMap = new Map(
+    (readStates || []).map((r) => [r.task_id, new Date(r.last_read_at).getTime()])
+  );
+
+  const { data: comments } = await supabaseAdmin
+    .from('comments')
+    .select('task_id, user_id, created_at')
+    .in('task_id', taskIds);
+
+  const counts = new Map(taskIds.map((id) => [id, 0]));
+  for (const c of comments || []) {
+    if (String(c.user_id) === String(userId)) continue;
+    const lastRead = readMap.get(c.task_id) || 0;
+    if (new Date(c.created_at).getTime() > lastRead) {
+      counts.set(c.task_id, (counts.get(c.task_id) || 0) + 1);
+    }
+  }
+
+  return tasks.map((t) => ({ ...t, unread_comment_count: counts.get(t.id) || 0 }));
+}
+
 // GET /api/teams/:teamId/tasks
 router.get('/api/teams/:teamId/tasks', requireAuth, async (req, res) => {
   const { teamId } = req.params;
-  if (!await isMember(teamId, req.session.user.id)) return res.status(403).json({ error: 'Not a member' });
+  const userId = req.session.user.id;
+  if (!await isMember(teamId, userId)) return res.status(403).json({ error: 'Not a member' });
 
   const { data, error } = await supabaseAdmin
     .from('tasks')
@@ -113,7 +145,8 @@ router.get('/api/teams/:teamId/tasks', requireAuth, async (req, res) => {
     .order('position', { ascending: true });
 
   if (error) return sendError(res, 500, error, 'load');
-  res.json(data);
+  const withUnread = await attachUnreadCommentCounts(data || [], userId);
+  res.json(withUnread);
 });
 
 // POST /api/teams/:teamId/tasks
@@ -198,6 +231,57 @@ router.delete('/api/tasks/:id', requireAuth, async (req, res) => {
   await supabaseAdmin.from('tasks').delete().eq('id', id);
   await logActivity(existing.team_id, userId, 'task_deleted', `Deleted task "${existing.title}"`);
   res.json({ success: true });
+});
+
+// GET /api/tasks/:id/comments/read — last time this user read this task's comments
+router.get('/api/tasks/:id/comments/read', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { data: task } = await supabaseAdmin.from('tasks').select('team_id').eq('id', id).single();
+  if (!task || !await isMember(task.team_id, userId)) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data, error } = await supabaseAdmin
+    .from('task_comment_read_state')
+    .select('last_read_at')
+    .eq('task_id', id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) return sendError(res, 500, error, 'load');
+  res.json({ last_read_at: data?.last_read_at || null });
+});
+
+// PUT /api/tasks/:id/comments/read — mark comments as read up to a timestamp
+router.put('/api/tasks/:id/comments/read', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { data: task } = await supabaseAdmin.from('tasks').select('team_id').eq('id', id).single();
+  if (!task || !await isMember(task.team_id, userId)) return res.status(403).json({ error: 'Forbidden' });
+
+  let incoming = new Date();
+  if (req.body?.last_read_at) {
+    const parsed = new Date(req.body.last_read_at);
+    if (!Number.isNaN(parsed.getTime())) incoming = parsed;
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from('task_comment_read_state')
+    .select('last_read_at')
+    .eq('task_id', id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const existingMs = existing?.last_read_at ? new Date(existing.last_read_at).getTime() : 0;
+  const lastReadAt = new Date(Math.max(existingMs, incoming.getTime())).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from('task_comment_read_state')
+    .upsert({ task_id: id, user_id: userId, last_read_at: lastReadAt }, { onConflict: 'task_id,user_id' })
+    .select('last_read_at')
+    .single();
+
+  if (error) return sendError(res, 500, error, 'save');
+  res.json({ last_read_at: data.last_read_at });
 });
 
 // GET /api/tasks/:id/comments

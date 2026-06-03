@@ -89,9 +89,23 @@
       bottom: 1rem;
       left: 1rem;
     }
-    #chatUnreadBadge {
+    #chatUnreadBadge,
+    #commentUnreadBadge {
       top: -0.15rem;
       right: -0.15rem;
+      min-width: 1.125rem;
+      height: 1.125rem;
+      line-height: 1.125rem;
+      font-size: 0.625rem;
+    }
+    #commentUnreadBadge {
+      position: relative;
+      top: auto;
+      right: auto;
+      display: inline-flex;
+      vertical-align: middle;
+    }
+    .task-comment-unread-badge {
       min-width: 1.125rem;
       height: 1.125rem;
       line-height: 1.125rem;
@@ -651,7 +665,7 @@
       <!-- Tabs -->
       <div id="taskModalTabs" class="flex border-b border-white/10 px-6 shrink-0 bg-ink-800">
         <button class="tab-active text-sm py-3 mr-6 transition-colors" onclick="switchTab('details')">Details</button>
-        <button class="tab-inactive text-sm py-3 mr-6 transition-colors" onclick="switchTab('comments')">Comments <span id="commentCount" class="text-xs bg-white/10 rounded-full px-1.5 py-0.5 ml-1">0</span></button>
+        <button class="tab-inactive text-sm py-3 mr-6 transition-colors relative" onclick="switchTab('comments')">Comments <span id="commentUnreadBadge" class="hidden text-xs bg-red-500 text-white font-bold rounded-full px-1.5 ml-1 pointer-events-none" aria-hidden="true"></span></button>
       </div>
 
       <!-- Tab content -->
@@ -756,6 +770,9 @@
     let taskEditDraft = '';
     let taskViewingOriginalField = null;
     let taskComments = [];
+    let taskCommentsTabActive = false;
+    let taskCommentsLastReadAt = {};
+    let taskCommentReadPersistTimer = null;
     let openReactionPicker = null;
     let openReactorsPopover = null;
     let reactionPress = null;
@@ -959,7 +976,10 @@
             ${userAvatarHtml(task.assignee, 'w-5 h-5')}
             <span class="text-xs text-gray-500">${escHtml(task.assignee.username)}</span>
           </div>` : '<div></div>'}
-          ${due ? `<span class="text-xs font-medium ${due.class}">${due.label}</span>` : ''}
+          <div class="flex items-center gap-2 shrink-0">
+            ${(task.unread_comment_count || 0) > 0 ? `<span class="task-comment-unread-badge flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1" title="Unread comments">${task.unread_comment_count > 99 ? '99+' : task.unread_comment_count}</span>` : ''}
+            ${due ? `<span class="text-xs font-medium ${due.class}">${due.label}</span>` : ''}
+          </div>
         </div>`;
       return el;
     }
@@ -1032,8 +1052,10 @@
     }
 
     // Task Detail Modal
-    function openTaskModal(taskId) {
+    async function openTaskModal(taskId) {
       activeTaskId = taskId;
+      taskCommentsTabActive = false;
+      taskComments = [];
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
@@ -1053,13 +1075,23 @@
       document.getElementById('detailAssignee').value = task.assigned_to || '';
       document.getElementById('detailCreator').textContent = task.creator?.username || 'Unknown';
       document.getElementById('taskModal').classList.remove('hidden');
-      loadComments(taskId);
       switchTab('details');
+      await loadTaskCommentReadState(taskId);
+      const badge = document.getElementById('commentUnreadBadge');
+      const initialUnread = task.unread_comment_count || 0;
+      if (initialUnread > 0) {
+        badge.textContent = initialUnread > 99 ? '99+' : String(initialUnread);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+      loadComments(taskId);
     }
     function closeTaskModal() {
       closeReactionFloats();
       document.getElementById('taskModal').classList.add('hidden');
       activeTaskId = null;
+      taskCommentsTabActive = false;
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
@@ -1206,14 +1238,21 @@
 
     function switchTab(tab) {
       closeReactionFloats();
+      taskCommentsTabActive = tab === 'comments';
       ['details','comments'].forEach(t => {
         document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
-        const btns = document.querySelectorAll('.tab-active, .tab-inactive');
       });
       document.querySelectorAll('[onclick^="switchTab"]').forEach(btn => {
         const t = btn.getAttribute('onclick').match(/'(\w+)'/)[1];
-        btn.className = t === tab ? 'tab-active text-sm py-3 mr-6 transition-colors' : 'tab-inactive text-sm py-3 mr-6 transition-colors';
+        btn.className = t === tab
+          ? 'tab-active text-sm py-3 mr-6 transition-colors' + (t === 'comments' ? ' relative' : '')
+          : 'tab-inactive text-sm py-3 mr-6 transition-colors' + (t === 'comments' ? ' relative' : '');
       });
+      if (tab === 'comments' && activeTaskId) {
+        markTaskCommentsRead(activeTaskId);
+      } else {
+        updateTaskCommentUnreadBadge();
+      }
     }
 
     async function updateTaskField(field, value) {
@@ -1266,14 +1305,88 @@
         </div>`;
     }
 
+    function countUnreadTaskComments(comments, taskId) {
+      const lastRead = taskCommentsLastReadAt[taskId] || 0;
+      return (comments || []).filter((c) => {
+        if (String(c.user_id) === String(currentUser?.id)) return false;
+        return new Date(c.created_at).getTime() > lastRead;
+      }).length;
+    }
+
+    function syncTaskUnreadCount(taskId, count) {
+      const idx = tasks.findIndex((t) => t.id === taskId);
+      if (idx !== -1) tasks[idx].unread_comment_count = count;
+    }
+
+    async function loadTaskCommentReadState(taskId) {
+      const r = await apiFetch(`/api/tasks/${taskId}/comments/read`);
+      if (!r.ok) return;
+      const data = await parseJsonResponse(r);
+      if (data?.last_read_at) {
+        const t = new Date(data.last_read_at).getTime();
+        if (!Number.isNaN(t)) taskCommentsLastReadAt[taskId] = t;
+      } else if (taskCommentsLastReadAt[taskId] === undefined) {
+        taskCommentsLastReadAt[taskId] = 0;
+      }
+    }
+
+    function persistTaskCommentReadState(taskId) {
+      const lastRead = taskCommentsLastReadAt[taskId];
+      if (lastRead == null) return;
+      clearTimeout(taskCommentReadPersistTimer);
+      taskCommentReadPersistTimer = setTimeout(async () => {
+        await apiFetch(`/api/tasks/${taskId}/comments/read`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ last_read_at: new Date(lastRead).toISOString() }),
+        });
+      }, 300);
+    }
+
+    function markTaskCommentsRead(taskId) {
+      const latest = taskComments.reduce((max, c) => {
+        const t = new Date(c.created_at).getTime();
+        return t > max ? t : max;
+      }, 0);
+      taskCommentsLastReadAt[taskId] = Math.max(taskCommentsLastReadAt[taskId] || 0, latest, Date.now());
+      syncTaskUnreadCount(taskId, 0);
+      updateTaskCommentUnreadBadge();
+      renderBoard();
+      persistTaskCommentReadState(taskId);
+    }
+
+    function updateTaskCommentUnreadBadge() {
+      const badge = document.getElementById('commentUnreadBadge');
+      if (!badge || !activeTaskId) return;
+      if (taskCommentsTabActive) {
+        badge.classList.add('hidden');
+        return;
+      }
+      const unread = countUnreadTaskComments(taskComments, activeTaskId);
+      syncTaskUnreadCount(activeTaskId, unread);
+      if (unread > 0) {
+        badge.textContent = unread > 99 ? '99+' : String(unread);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
     async function loadComments(taskId) {
       const r = await apiFetch(`/api/tasks/${taskId}/comments`);
       const comments = await r.json();
       if (!Array.isArray(comments)) return;
       taskComments = comments;
-      document.getElementById('commentCount').textContent = comments.length;
       document.getElementById('commentsList').innerHTML = comments.map(renderCommentItem).join('')
         || '<p class="text-sm text-gray-600 text-center py-4">No comments yet.</p>';
+      if (taskCommentsTabActive) {
+        markTaskCommentsRead(taskId);
+      } else {
+        const unread = countUnreadTaskComments(comments, taskId);
+        syncTaskUnreadCount(taskId, unread);
+        updateTaskCommentUnreadBadge();
+        renderBoard();
+      }
       if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
     }
 
@@ -1287,7 +1400,8 @@
       });
       if (r.ok) {
         input.value = '';
-        loadComments(activeTaskId);
+        await loadComments(activeTaskId);
+        if (taskCommentsTabActive) markTaskCommentsRead(activeTaskId);
       }
     }
 
@@ -2304,6 +2418,9 @@
             }
           }
           if (document.getElementById('activityPanel').offsetParent !== null) loadActivity();
+        }
+        if (activeTaskId && !document.getElementById('taskModal').classList.contains('hidden')) {
+          loadComments(activeTaskId);
         }
       }, 5000);
     }
