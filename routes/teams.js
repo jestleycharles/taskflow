@@ -1,12 +1,36 @@
 const express = require('express');
 const { supabaseAdmin } = require('../lib/supabase');
 const { requireAuth } = require('../middleware/auth');
-const { ping, getOnlineUserIds } = require('../lib/presence');
+const { ping, leave, getOnlineUserIds } = require('../lib/presence');
 const router = express.Router();
 
+async function assertTeamMember(teamId, userId) {
+  const { data } = await supabaseAdmin
+    .from('team_members')
+    .select('user_id')
+    .eq('team_id', teamId)
+    .eq('user_id', userId)
+    .single();
+  return !!data;
+}
+
 // POST /api/presence/ping — heartbeat while viewing a board (guests included)
-router.post('/api/presence/ping', requireAuth, (req, res) => {
-  ping(req.session.user.id);
+router.post('/api/presence/ping', requireAuth, async (req, res) => {
+  const { teamId } = req.body || {};
+  if (!teamId) return res.status(400).json({ error: 'teamId required' });
+  if (!await assertTeamMember(teamId, req.session.user.id))
+    return res.status(403).json({ error: 'Not a member' });
+  ping(req.session.user.id, teamId);
+  res.json({ ok: true });
+});
+
+// POST /api/presence/leave — user left board, closed tab, or logged out
+router.post('/api/presence/leave', requireAuth, async (req, res) => {
+  const { teamId } = req.body || {};
+  if (!teamId) return res.status(400).json({ error: 'teamId required' });
+  if (!await assertTeamMember(teamId, req.session.user.id))
+    return res.status(403).json({ error: 'Not a member' });
+  leave(req.session.user.id, teamId);
   res.json({ ok: true });
 });
 
@@ -30,8 +54,8 @@ router.get('/api/teams/:id/online', requireAuth, async (req, res) => {
     .eq('team_id', id);
 
   const memberIds = (members || []).map((m) => m.user_id);
-  ping(userId);
-  res.json(getOnlineUserIds(memberIds));
+  ping(userId, id);
+  res.json(getOnlineUserIds(memberIds, id));
 });
 
 // GET /api/teams - list user's teams

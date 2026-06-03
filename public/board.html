@@ -501,6 +501,7 @@
     let onlineUserIds = new Set();
     let knownOnlineUserIds = new Set();
     let presenceInitialized = false;
+    let presenceLeft = false;
     const TOAST_AUTO_DISMISS_MS = 6000;
     const ONLINE_POLL_MS = 4000;
     let confirmCallback = null;
@@ -936,9 +937,36 @@
       }
     }
 
-    // Presence (online indicators + came-online toasts)
+    // Presence: heartbeat while on board; leave on tab close / navigate away;
+    // others detect offline via polling (or immediately after leave ping).
     async function pingPresence() {
-      await apiFetch('/api/presence/ping', { method: 'POST' });
+      if (presenceLeft) return;
+      await apiFetch('/api/presence/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      });
+    }
+
+    function stopPresenceTimers() {
+      clearInterval(presenceInterval);
+      clearInterval(onlinePollInterval);
+      presenceInterval = null;
+      onlinePollInterval = null;
+    }
+
+    function leavePresence() {
+      if (presenceLeft) return;
+      presenceLeft = true;
+      stopPresenceTimers();
+      const body = JSON.stringify({ teamId });
+      fetch('/api/presence/leave', {
+        method: 'POST',
+        credentials: 'same-origin',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
     }
 
     function dismissToast(el) {
@@ -948,19 +976,24 @@
       el.addEventListener('animationend', () => el.remove(), { once: true });
     }
 
-    function showOnlineToast(member) {
+    function showPresenceToast(member, kind) {
+      const online = kind === 'online';
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
       toast.className = 'toast-enter pointer-events-auto flex items-center gap-3 p-3 rounded-xl bg-ink-800/95 border border-white/15 shadow-2xl backdrop-blur-md';
       toast.setAttribute('role', 'status');
+      const dotClass = online
+        ? 'online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800'
+        : 'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-gray-500 border-2 border-ink-800';
+      const message = online ? 'is now online on this board' : 'left the board';
       toast.innerHTML = `
         <div class="relative shrink-0">
           <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style="background:${member.avatar_color}">${member.username[0].toUpperCase()}</div>
-          <span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800"></span>
+          <span class="${dotClass}"></span>
         </div>
         <div class="flex-1 min-w-0 pr-1">
           <p class="text-sm text-white font-medium truncate">${escHtml(member.username)}</p>
-          <p class="text-xs text-gray-400">is now online on this board</p>
+          <p class="text-xs text-gray-400">${message}</p>
         </div>
         <button type="button" class="toast-close shrink-0 text-gray-500 hover:text-white transition p-1 rounded-lg hover:bg-white/10" aria-label="Dismiss">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -970,30 +1003,38 @@
       setTimeout(() => dismissToast(toast), TOAST_AUTO_DISMISS_MS);
     }
 
-    function notifyMembersCameOnline(newlyOnlineIds) {
+    function notifyPresenceChanges(newlyOnlineIds, newlyOfflineIds) {
       for (const id of newlyOnlineIds) {
         if (String(id) === String(currentUser?.id)) continue;
         const member = teamData?.members?.find(m => String(m.id) === String(id));
-        if (member) showOnlineToast(member);
+        if (member) showPresenceToast(member, 'online');
+      }
+      for (const id of newlyOfflineIds) {
+        if (String(id) === String(currentUser?.id)) continue;
+        const member = teamData?.members?.find(m => String(m.id) === String(id));
+        if (member) showPresenceToast(member, 'offline');
       }
     }
 
     async function fetchOnlineMembers() {
+      if (presenceLeft) return;
       const r = await apiFetch(`/api/teams/${teamId}/online`);
       if (!r.ok) return;
       const ids = await r.json();
       if (!Array.isArray(ids)) return;
       const next = new Set(ids.map(String));
       const newlyOnline = [...next].filter(id => !knownOnlineUserIds.has(id));
+      const newlyOffline = [...knownOnlineUserIds].filter(id => !next.has(id));
 
       if (presenceInitialized) {
-        notifyMembersCameOnline(newlyOnline);
+        notifyPresenceChanges(newlyOnline, newlyOffline);
       } else {
         presenceInitialized = true;
       }
 
       knownOnlineUserIds = next;
-      const changed = next.size !== onlineUserIds.size || [...next].some(id => !onlineUserIds.has(id));
+      const changed = next.size !== onlineUserIds.size || [...next].some(id => !onlineUserIds.has(id))
+        || [...onlineUserIds].some(id => !next.has(id));
       onlineUserIds = next;
       if (changed && teamData?.members) {
         renderMemberList(teamData.members);
@@ -1004,9 +1045,12 @@
     function startPresence() {
       pingPresence();
       fetchOnlineMembers();
-      presenceInterval = setInterval(pingPresence, 20000);
+      presenceInterval = setInterval(pingPresence, 15000);
       onlinePollInterval = setInterval(fetchOnlineMembers, ONLINE_POLL_MS);
     }
+
+    window.addEventListener('pagehide', leavePresence);
+    document.querySelector('a[href="/dashboard"]')?.addEventListener('click', leavePresence);
 
     // Real-time polling
     function startPolling() {
