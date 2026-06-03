@@ -8,6 +8,7 @@ const {
   fetchReactionsForMessages,
   groupReactions,
 } = require('../lib/reactions');
+const { isSenderBlockedInConversation } = require('../lib/dm-blocks');
 
 const router = express.Router();
 
@@ -84,8 +85,20 @@ router.post('/api/reactions/toggle', requireAuth, async (req, res) => {
   if (messageType === 'dm') {
     const conversationId = await resolveDmMessage(messageId);
     if (!conversationId) return res.status(404).json({ error: 'Message not found' });
-    if (!await assertDmParticipant(conversationId, userId)) {
+    const { data: conv } = await supabaseAdmin
+      .from('dm_conversations')
+      .select('user_a_id, user_b_id')
+      .eq('id', conversationId)
+      .single();
+    if (!conv || !await assertDmParticipant(conversationId, userId)) {
       return res.status(403).json({ error: 'Not a participant' });
+    }
+    const uid = String(userId);
+    const otherId = String(conv.user_a_id) === String(conv.user_b_id)
+      ? null
+      : (String(conv.user_a_id) === uid ? conv.user_b_id : conv.user_a_id);
+    if (otherId && await isSenderBlockedInConversation(otherId, userId)) {
+      return res.status(403).json({ error: 'You cannot react in this conversation' });
     }
   } else {
     const teamId = await resolveTeamMessage(messageType, messageId);

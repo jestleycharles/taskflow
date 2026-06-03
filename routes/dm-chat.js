@@ -4,6 +4,12 @@ const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { isGuestUser, GUEST_EMAIL } = require('../lib/user');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
+const {
+  normalizeEmail,
+  isEmailBlocked,
+  isSenderBlockedInConversation,
+  isUserIgnored,
+} = require('../lib/dm-blocks');
 
 const router = express.Router();
 
@@ -89,6 +95,22 @@ async function getLastReadAt(conversationId, userId) {
   return data?.last_read_at ? new Date(data.last_read_at).getTime() : 0;
 }
 
+async function getOtherParticipantId(conv, userId) {
+  const uid = String(userId);
+  if (String(conv.user_a_id) === String(conv.user_b_id)) return null;
+  return String(conv.user_a_id) === uid ? conv.user_b_id : conv.user_a_id;
+}
+
+async function assertSenderNotBlocked(conv, senderId) {
+  const otherId = await getOtherParticipantId(conv, senderId);
+  if (!otherId) return null;
+  const blocked = await isSenderBlockedInConversation(otherId, senderId);
+  if (blocked) {
+    return { status: 403, error: 'You cannot send messages in this conversation' };
+  }
+  return null;
+}
+
 async function countUnread(conversationId, userId, lastReadMs) {
   const { count, error } = await supabaseAdmin
     .from('dm_messages')
@@ -145,7 +167,11 @@ router.get('/api/dm/conversations', requireAuth, async (req, res) => {
       .maybeSingle();
 
     const lastReadMs = await getLastReadAt(conv.id, userId);
-    const unread_count = await countUnread(conv.id, userId, lastReadMs);
+    let unread_count = await countUnread(conv.id, userId, lastReadMs);
+    const otherId = await getOtherParticipantId(conv, userId);
+    if (otherId && await isUserIgnored(userId, otherId)) {
+      unread_count = 0;
+    }
 
     results.push({
       id: conv.id,
@@ -180,6 +206,13 @@ router.post('/api/dm/conversations', requireAuth, async (req, res) => {
     if (!target) {
       return res.status(404).json({
         error: 'No registered user found with that email. They must sign up first (guest accounts cannot receive messages).',
+      });
+    }
+    if (await isEmailBlocked(userId, target.email)) {
+      return res.status(409).json({
+        code: 'blocked_email',
+        email: normalizeEmail(target.email),
+        error: 'This email is in your block list.',
       });
     }
     targetUserId = target.id;
@@ -290,9 +323,13 @@ router.post('/api/dm/conversations/:conversationId/messages', requireAuth, async
 
   const { conversationId } = req.params;
   const userId = req.session.user.id;
-  if (!await getConversationForUser(conversationId, userId)) {
+  const conv = await getConversationForUser(conversationId, userId);
+  if (!conv) {
     return res.status(403).json({ error: 'Conversation not found' });
   }
+
+  const blockErr = await assertSenderNotBlocked(conv, userId);
+  if (blockErr) return res.status(blockErr.status).json({ error: blockErr.error });
 
   const content = (req.body?.content || '').trim();
   if (!content) return res.status(400).json({ error: 'Message cannot be empty' });

@@ -9,6 +9,7 @@ const taskRoutes = require('./routes/tasks');
 const profileRoutes = require('./routes/profile');
 const chatRoutes = require('./routes/chat');
 const dmChatRoutes = require('./routes/dm-chat');
+const dmSettingsRoutes = require('./routes/dm-settings');
 const { router: reactionRoutes } = require('./routes/reactions');
 const { supabaseAdmin } = require('./lib/supabase');
 const { toSessionUser } = require('./lib/user');
@@ -51,6 +52,7 @@ app.use(taskRoutes);
 app.use(profileRoutes);
 app.use(chatRoutes);
 app.use(dmChatRoutes);
+app.use(dmSettingsRoutes);
 app.use(reactionRoutes);
 
 // Pages

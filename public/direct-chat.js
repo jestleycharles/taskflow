@@ -32,6 +32,9 @@
   let newConvError = '';
   let conversationsLoaded = false;
   let eventsBound = false;
+  let dmSettings = { blocked_emails: [], blocked_user_ids: [], ignored_user_ids: [] };
+  let blockedEmailStartTarget = null;
+  let headerAvatarMenuOpen = false;
   let showConfirm = (opts) => { if (window.confirm(opts.message)) opts.onConfirm?.(); };
   let showAlert = (msg) => { window.alert(msg); };
   const dmReadByConv = new Map();
@@ -52,6 +55,29 @@
     if (conv.is_self) return 'Note to self';
     const u = conv.other_user;
     return u ? u.username : 'Unknown';
+  }
+
+  function normalizeEmailLocal(email) {
+    return (email || '').trim().toLowerCase();
+  }
+
+  function isEmailBlockedLocal(email) {
+    const n = normalizeEmailLocal(email);
+    if (!n) return false;
+    return dmSettings.blocked_emails.some((e) => normalizeEmailLocal(e) === n);
+  }
+
+  function isUserIgnoredLocal(userId) {
+    if (!userId) return false;
+    return dmSettings.ignored_user_ids.some((id) => String(id) === String(userId));
+  }
+
+  function visibleConversations() {
+    return conversations.filter((conv) => {
+      if (conv.is_self) return true;
+      const email = conv.other_user?.email;
+      return !email || !isEmailBlockedLocal(email);
+    });
   }
 
   function conversationSubtitle(conv) {
@@ -79,6 +105,7 @@
   function convUnreadCount(conv) {
     if (!conv) return 0;
     if (panelOpen && view === 'thread' && conv.id === activeConversationId) return 0;
+    if (!conv.is_self && isUserIgnoredLocal(conv.other_user?.id)) return 0;
     return conv.unread_count || 0;
   }
 
@@ -163,17 +190,242 @@
     updateUnreadBadge();
   }
 
+  function closeHeaderAvatarMenu() {
+    headerAvatarMenuOpen = false;
+    $('dmChatHeaderAvatarMenu')?.classList.add('hidden');
+    const btn = $('dmChatHeaderAvatarBtn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function syncHeaderAvatar() {
+    const wrap = $('dmChatHeaderAvatarWrap');
+    const avatarHost = $('dmChatHeaderAvatar');
+    const btn = $('dmChatHeaderAvatarBtn');
+    const inThread = view === 'thread' && activeConversationId;
+    const isSelf = activeConversation?.is_self;
+    const other = activeConversation?.other_user;
+    closeHeaderAvatarMenu();
+
+    if (!inThread || isSelf || !other) {
+      wrap?.classList.add('hidden');
+      return;
+    }
+
+    wrap?.classList.remove('hidden');
+    if (avatarHost) avatarHost.innerHTML = userAvatarHtml(other, 'w-9 h-9');
+    if (btn) {
+      btn.disabled = false;
+      btn.setAttribute('aria-label', `Options for ${other.username || 'user'}`);
+    }
+  }
+
   function syncView() {
     const inThread = view === 'thread' && activeConversationId;
     $('dmChatListView')?.classList.toggle('hidden', inThread);
     $('dmChatThreadView')?.classList.toggle('hidden', !inThread);
     $('dmChatBackBtn')?.classList.toggle('hidden', !inThread);
+    $('dmBlockedEmailsBtn')?.classList.toggle('hidden', inThread);
     $('dmChatHeaderTitle').textContent = inThread ? conversationTitle(activeConversation) : 'Messages';
     $('dmChatHeaderSubtitle')?.classList.toggle('hidden', !inThread);
     if (inThread) {
       $('dmChatHeaderSubtitle').textContent = conversationSubtitle(activeConversation);
     }
     $('dmNewConvForm')?.classList.toggle('hidden', inThread);
+    syncHeaderAvatar();
+  }
+
+  async function loadDmSettings() {
+    const r = await apiFetch('/api/dm/settings');
+    if (!r.ok) return;
+    const data = await parseJsonResponse(r);
+    if (!data || typeof data !== 'object') return;
+    dmSettings = {
+      blocked_emails: Array.isArray(data.blocked_emails) ? data.blocked_emails : [],
+      blocked_user_ids: Array.isArray(data.blocked_user_ids) ? data.blocked_user_ids : [],
+      ignored_user_ids: Array.isArray(data.ignored_user_ids) ? data.ignored_user_ids : [],
+    };
+  }
+
+  function applyDmSettings(data) {
+    if (!data || typeof data !== 'object') return;
+    dmSettings = {
+      blocked_emails: Array.isArray(data.blocked_emails) ? data.blocked_emails : dmSettings.blocked_emails,
+      blocked_user_ids: Array.isArray(data.blocked_user_ids) ? data.blocked_user_ids : dmSettings.blocked_user_ids,
+      ignored_user_ids: Array.isArray(data.ignored_user_ids) ? data.ignored_user_ids : dmSettings.ignored_user_ids,
+    };
+    renderConversationList();
+    updateUnreadBadge();
+    renderBlockedEmailsList();
+  }
+
+  function openBlockedEmailsModal() {
+    renderBlockedEmailsList();
+    $('dmBlockedEmailAddError')?.classList.add('hidden');
+    $('dmBlockedEmailAddInput').value = '';
+    $('dmBlockedEmailsModal')?.classList.remove('hidden');
+  }
+
+  function closeBlockedEmailsModal() {
+    $('dmBlockedEmailsModal')?.classList.add('hidden');
+  }
+
+  function renderBlockedEmailsList() {
+    const list = $('dmBlockedEmailsList');
+    if (!list) return;
+    const emails = dmSettings.blocked_emails || [];
+    if (!emails.length) {
+      list.innerHTML = '<li class="text-center py-4 text-gray-600">No blocked emails yet.</li>';
+      return;
+    }
+    list.innerHTML = emails.map((email) => `
+      <li class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-ink-700/60 border border-white/10">
+        <span class="text-gray-200 truncate">${escHtml(email)}</span>
+        <button type="button" data-dm-unblock-email="${encodeURIComponent(email)}"
+          class="text-xs text-brand-500 hover:text-brand-400 shrink-0 font-medium">Remove</button>
+      </li>`).join('');
+    list.querySelectorAll('[data-dm-unblock-email]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        removeBlockedEmail(decodeURIComponent(btn.getAttribute('data-dm-unblock-email') || ''));
+      });
+    });
+  }
+
+  async function addBlockedEmailFromModal() {
+    const input = $('dmBlockedEmailAddInput');
+    const errEl = $('dmBlockedEmailAddError');
+    const email = (input?.value || '').trim();
+    errEl?.classList.add('hidden');
+    if (!email) {
+      if (errEl) {
+        errEl.textContent = 'Enter an email address.';
+        errEl.classList.remove('hidden');
+      }
+      return;
+    }
+    if (normalizeEmailLocal(email) === normalizeEmailLocal(currentUser?.email)) {
+      if (errEl) {
+        errEl.textContent = 'You cannot block your own email.';
+        errEl.classList.remove('hidden');
+      }
+      return;
+    }
+    const btn = $('dmBlockedEmailAddBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Adding…';
+    }
+    const r = await apiFetch('/api/dm/blocked-emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await parseJsonResponse(r);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Add';
+    }
+    if (!r.ok) {
+      if (errEl) {
+        errEl.textContent = data.error || 'Could not block email';
+        errEl.classList.remove('hidden');
+      }
+      return;
+    }
+    dmSettings.blocked_emails = data.emails || [];
+    input.value = '';
+    if (activeConversation && !activeConversation.is_self && isEmailBlockedLocal(activeConversation.other_user?.email)) {
+      await goToList();
+    } else {
+      renderConversationList();
+      updateUnreadBadge();
+    }
+    renderBlockedEmailsList();
+  }
+
+  async function removeBlockedEmail(email) {
+    const r = await apiFetch('/api/dm/blocked-emails', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await parseJsonResponse(r);
+    if (!r.ok) {
+      showAlert(data.error || 'Could not unblock email');
+      return;
+    }
+    dmSettings.blocked_emails = data.emails || [];
+    await loadDmSettings();
+    renderConversationList();
+    updateUnreadBadge();
+    renderBlockedEmailsList();
+  }
+
+  function showBlockedEmailStartModal(email) {
+    blockedEmailStartTarget = normalizeEmailLocal(email);
+    const msg = $('dmBlockedEmailStartMessage');
+    if (msg) {
+      msg.textContent = `${email} is in your block list. Unblock it to start a chat.`;
+    }
+    $('dmBlockedEmailStartModal')?.classList.remove('hidden');
+  }
+
+  function closeBlockedEmailStartModal() {
+    blockedEmailStartTarget = null;
+    $('dmBlockedEmailStartModal')?.classList.add('hidden');
+  }
+
+  async function unblockEmailFromStartModal() {
+    if (!blockedEmailStartTarget) return;
+    const email = blockedEmailStartTarget;
+    const btn = $('dmBlockedEmailUnblockBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Unblocking…';
+    }
+    await removeBlockedEmail(email);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Unblock';
+    }
+    closeBlockedEmailStartModal();
+    $('dmNewConvEmail').value = email;
+    await startNewConversation();
+  }
+
+  function toggleHeaderAvatarMenu() {
+    if (!activeConversation || activeConversation.is_self) return;
+    headerAvatarMenuOpen = !headerAvatarMenuOpen;
+    $('dmChatHeaderAvatarMenu')?.classList.toggle('hidden', !headerAvatarMenuOpen);
+    const btn = $('dmChatHeaderAvatarBtn');
+    if (btn) btn.setAttribute('aria-expanded', headerAvatarMenuOpen ? 'true' : 'false');
+  }
+
+  async function blockActiveUser() {
+    const other = activeConversation?.other_user;
+    if (!other?.id) return;
+    closeHeaderAvatarMenu();
+    const r = await apiFetch(`/api/dm/users/${other.id}/block`, { method: 'POST' });
+    const data = await parseJsonResponse(r);
+    if (!r.ok) {
+      showAlert(data.error || 'Could not block user');
+      return;
+    }
+    applyDmSettings(data);
+    await goToList();
+  }
+
+  async function ignoreActiveUser() {
+    const other = activeConversation?.other_user;
+    if (!other?.id) return;
+    closeHeaderAvatarMenu();
+    const r = await apiFetch(`/api/dm/users/${other.id}/ignore`, { method: 'POST' });
+    const data = await parseJsonResponse(r);
+    if (!r.ok) {
+      showAlert(data.error || 'Could not ignore user');
+      return;
+    }
+    applyDmSettings(data);
+    showAlert(`${other.username || 'User'} is now ignored. New messages will not increase your unread count.`, 'Ignored');
   }
 
   async function openConversation(conv) {
@@ -212,11 +464,12 @@
     const list = $('dmConversationList');
     if (!list) return;
 
-    const selfRow = conversations.find((c) => c.is_self);
-    const others = conversations.filter((c) => !c.is_self);
+    const visible = visibleConversations();
+    const selfRow = visible.find((c) => c.is_self);
+    const others = visible.filter((c) => !c.is_self);
 
     let html = '';
-    if (!conversations.length) {
+    if (!visible.length) {
       html = '<p class="text-sm text-gray-600 text-center py-6 px-4">No conversations yet. Start a new message below.</p>';
     } else {
       const renderRow = (conv) => {
@@ -264,6 +517,10 @@
     newConvError = '';
     $('dmNewConvError')?.classList.add('hidden');
     const email = ($('dmNewConvEmail')?.value || '').trim();
+    if (email && isEmailBlockedLocal(email)) {
+      showBlockedEmailStartModal(email);
+      return;
+    }
     const body = email ? { email } : {};
     const btn = $('dmNewConvBtn');
     if (btn) {
@@ -281,6 +538,10 @@
       btn.textContent = 'Start chat';
     }
     if (!r.ok) {
+      if (r.status === 409 && data.code === 'blocked_email') {
+        showBlockedEmailStartModal(data.email || email);
+        return;
+      }
       newConvError = data.error || 'Could not start chat';
       const errEl = $('dmNewConvError');
       if (errEl) {
@@ -764,6 +1025,23 @@
     $('dmChatBackBtn')?.addEventListener('click', goToList);
     $('dmNewConvBtn')?.addEventListener('click', startNewConversation);
     $('dmSelfChatBtn')?.addEventListener('click', startSelfChat);
+    $('dmBlockedEmailsBtn')?.addEventListener('click', openBlockedEmailsModal);
+    $('dmBlockedEmailAddBtn')?.addEventListener('click', addBlockedEmailFromModal);
+    $('dmBlockedEmailUnblockBtn')?.addEventListener('click', unblockEmailFromStartModal);
+    document.querySelectorAll('[data-dm-close-blocked-modal]').forEach((el) => {
+      el.addEventListener('click', closeBlockedEmailsModal);
+    });
+    document.querySelectorAll('[data-dm-close-blocked-start-modal]').forEach((el) => {
+      el.addEventListener('click', closeBlockedEmailStartModal);
+    });
+    $('dmChatHeaderAvatarBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHeaderAvatarMenu();
+    });
+    $('dmChatHeaderAvatarMenu')?.querySelector('[data-dm-header-action="block"]')
+      ?.addEventListener('click', () => blockActiveUser());
+    $('dmChatHeaderAvatarMenu')?.querySelector('[data-dm-header-action="ignore"]')
+      ?.addEventListener('click', () => ignoreActiveUser());
     $('dmChatSendBtn')?.addEventListener('click', submitDmMessage);
     $('dmChatInput')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -839,6 +1117,10 @@
       if (e.target.closest('#dmReactionFloatLayer') || e.target.closest('[data-reaction-add]') || e.target.closest('[data-reaction-pill]')) return;
       closeReactionFloats();
     });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#dmChatHeaderAvatarWrap')) closeHeaderAvatarMenu();
+    });
   }
 
   function startPolling() {
@@ -873,7 +1155,9 @@
     }
     showFab();
     bindEvents();
-    loadConversations();
+    loadDmSettings().then(() => {
+      loadConversations();
+    });
     startPolling();
     updateUnreadBadge();
   }
@@ -889,7 +1173,7 @@
       showFab();
       bindEvents();
       if (!convPollInterval) startPolling();
-      loadConversations();
+      loadDmSettings().then(() => loadConversations());
     }
   }
 
