@@ -751,9 +751,9 @@
       const id = userId || user?.id;
       const online = id && isUserOnline(id);
       const title = online ? 'Online on this board' : escHtml(user?.username || '?');
-      return `<div class="relative shrink-0" title="${title}">
+      return `<div class="relative shrink-0 self-start w-8 h-8" title="${title}">
           ${userAvatarHtml(user, 'w-8 h-8')}
-          ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Online"></span>' : ''}
+          ${online ? '<span class="online-dot absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Online"></span>' : ''}
         </div>`;
     }
 
@@ -1130,7 +1130,7 @@
         : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(displayContent)}</p>`;
 
       const versionActiveClass = showingOriginal ? ' chat-msg-version-active' : '';
-      return `<div class="group flex gap-3${versionActiveClass}" data-chat-msg-id="${msg.id}">
+      return `<div class="group flex items-start gap-3${versionActiveClass}" data-chat-msg-id="${msg.id}">
           ${chatMessageAvatarHtml(user, msg.user_id)}
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-2 mb-1">
