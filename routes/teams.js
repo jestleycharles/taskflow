@@ -77,6 +77,32 @@ function mimeToExt(mime) {
   return map[mime] || '.jpg';
 }
 
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+
+function normalizeHexColor(value) {
+  const raw = String(value || '').trim();
+  const withHash = raw.startsWith('#') ? raw : `#${raw}`;
+  return HEX_COLOR_RE.test(withHash) ? withHash.toLowerCase() : null;
+}
+
+async function loadTeamRoles(teamId) {
+  const { data, error } = await supabaseAdmin
+    .from('team_roles')
+    .select('id, name, color_hex, sort_order')
+    .eq('team_id', teamId)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+function attachCustomRoles(members, roles) {
+  const roleById = new Map(roles.map((r) => [r.id, r]));
+  return members.map((m) => ({
+    ...m,
+    custom_role: m.custom_role_id ? roleById.get(m.custom_role_id) || null : null,
+  }));
+}
+
 // POST /api/presence/ping — heartbeat while viewing a board (guests included)
 router.post('/api/presence/ping', requireAuth, async (req, res) => {
   const { teamId } = req.body || {};
@@ -373,18 +399,32 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
   if (!membership) return res.status(403).json({ error: 'Not a member' });
 
   const { data: team } = await supabaseAdmin.from('teams').select('*').eq('id', id).single();
-  const { data: members } = await supabaseAdmin
+  const { data: members, error: membersErr } = await supabaseAdmin
     .from('team_members')
-    .select('role, users(id, username, email, avatar_color, avatar_url)')
+    .select('role, custom_role_id, users(id, username, email, avatar_color, avatar_url)')
     .eq('team_id', id);
 
-  const memberList = members.map(m => ({ ...m.users, role: m.role }));
+  if (membersErr) return sendError(res, 500, membersErr, 'load');
+
+  let roles = [];
+  try {
+    roles = await loadTeamRoles(id);
+  } catch (rolesErr) {
+    return sendError(res, 500, rolesErr, 'load');
+  }
+
+  const memberList = attachCustomRoles(
+    members.map((m) => ({ ...m.users, role: m.role, custom_role_id: m.custom_role_id })),
+    roles
+  );
   const memberIds = memberList.map((m) => m.id);
   ping(userId, id);
 
   res.json({
     ...team,
     members: memberList,
+    roles,
+    separate_role_members: !!team.separate_role_members,
     userRole: membership.role,
     member_count: memberList.length,
     online_count: getOnlineUserIds(memberIds, id).length,
@@ -413,6 +453,213 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
 
   await logActivity(id, userId, 'member_invited', `Invited ${invitee.username} to the team`);
   res.json({ success: true, user: invitee });
+});
+
+// PATCH /api/teams/:id/role-display — separate members by role (owner only)
+router.patch('/api/teams/:id/role-display', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { separate_role_members } = req.body || {};
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can change role display settings' });
+  }
+
+  if (typeof separate_role_members !== 'boolean') {
+    return res.status(400).json({ error: 'separate_role_members must be a boolean' });
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from('teams')
+    .update({ separate_role_members })
+    .eq('id', id)
+    .select('id, separate_role_members')
+    .single();
+
+  if (error) return sendError(res, 400, error, 'save');
+  res.json(updated);
+});
+
+// POST /api/teams/:id/roles — create custom role (owner only)
+router.post('/api/teams/:id/roles', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { name, color_hex } = req.body || {};
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can manage team roles' });
+  }
+
+  const trimmedName = String(name || '').trim();
+  if (!trimmedName) return res.status(400).json({ error: 'Role name is required' });
+  if (trimmedName.length > 48) return res.status(400).json({ error: 'Role name is too long' });
+
+  const color = normalizeHexColor(color_hex);
+  if (!color) return res.status(400).json({ error: 'Invalid color. Use a hex value like #4f6ef7' });
+
+  const existing = await loadTeamRoles(id);
+  const sort_order = existing.length ? Math.max(...existing.map((r) => r.sort_order)) + 1 : 0;
+
+  const { data: role, error } = await supabaseAdmin
+    .from('team_roles')
+    .insert({ team_id: id, name: trimmedName, color_hex: color, sort_order })
+    .select('id, name, color_hex, sort_order')
+    .single();
+
+  if (error) return sendError(res, 400, error, 'save');
+  res.json(role);
+});
+
+// PATCH /api/teams/:id/roles/:roleId — update custom role (owner only)
+router.patch('/api/teams/:id/roles/:roleId', requireAuth, async (req, res) => {
+  const { id, roleId } = req.params;
+  const userId = req.session.user.id;
+  const { name, color_hex } = req.body || {};
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can manage team roles' });
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from('team_roles')
+    .select('id')
+    .eq('id', roleId)
+    .eq('team_id', id)
+    .single();
+
+  if (!existing) return res.status(404).json({ error: 'Role not found' });
+
+  const updates = {};
+  if (name !== undefined) {
+    const trimmedName = String(name).trim();
+    if (!trimmedName) return res.status(400).json({ error: 'Role name is required' });
+    if (trimmedName.length > 48) return res.status(400).json({ error: 'Role name is too long' });
+    updates.name = trimmedName;
+  }
+  if (color_hex !== undefined) {
+    const color = normalizeHexColor(color_hex);
+    if (!color) return res.status(400).json({ error: 'Invalid color. Use a hex value like #4f6ef7' });
+    updates.color_hex = color;
+  }
+
+  if (!Object.keys(updates).length) {
+    const roles = await loadTeamRoles(id);
+    const role = roles.find((r) => r.id === roleId);
+    return res.json(role);
+  }
+
+  const { data: role, error } = await supabaseAdmin
+    .from('team_roles')
+    .update(updates)
+    .eq('id', roleId)
+    .eq('team_id', id)
+    .select('id, name, color_hex, sort_order')
+    .single();
+
+  if (error) return sendError(res, 400, error, 'save');
+  res.json(role);
+});
+
+// DELETE /api/teams/:id/roles/:roleId — delete custom role (owner only)
+router.delete('/api/teams/:id/roles/:roleId', requireAuth, async (req, res) => {
+  const { id, roleId } = req.params;
+  const userId = req.session.user.id;
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can manage team roles' });
+  }
+
+  const { error } = await supabaseAdmin
+    .from('team_roles')
+    .delete()
+    .eq('id', roleId)
+    .eq('team_id', id);
+
+  if (error) return sendError(res, 500, error, 'load');
+  res.json({ success: true });
+});
+
+// PUT /api/teams/:id/roles/reorder — reorder role hierarchy (owner only)
+router.put('/api/teams/:id/roles/reorder', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { roleIds } = req.body || {};
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can manage team roles' });
+  }
+
+  if (!Array.isArray(roleIds) || !roleIds.length) {
+    return res.status(400).json({ error: 'roleIds must be a non-empty array' });
+  }
+
+  const existing = await loadTeamRoles(id);
+  const existingIds = new Set(existing.map((r) => r.id));
+  if (roleIds.length !== existing.length || roleIds.some((rid) => !existingIds.has(rid))) {
+    return res.status(400).json({ error: 'roleIds must include every role for this team' });
+  }
+
+  await Promise.all(
+    roleIds.map((roleId, index) =>
+      supabaseAdmin
+        .from('team_roles')
+        .update({ sort_order: index })
+        .eq('id', roleId)
+        .eq('team_id', id)
+    )
+  );
+
+  const roles = await loadTeamRoles(id);
+  res.json(roles);
+});
+
+// PATCH /api/teams/:id/members/:uid/custom-role — assign display role (owner only)
+router.patch('/api/teams/:id/members/:uid/custom-role', requireAuth, async (req, res) => {
+  const { id, uid } = req.params;
+  const userId = req.session.user.id;
+  const { custom_role_id } = req.body || {};
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can assign roles' });
+  }
+
+  const roles = await loadTeamRoles(id);
+  if (!roles.length) {
+    return res.status(400).json({ error: 'Create at least one role before assigning members' });
+  }
+
+  const { data: target } = await supabaseAdmin
+    .from('team_members')
+    .select('role, users(username)')
+    .eq('team_id', id)
+    .eq('user_id', uid)
+    .single();
+
+  if (!target) return res.status(404).json({ error: 'Member not found' });
+  if (target.role === 'owner') {
+    return res.status(400).json({ error: 'The team owner cannot be assigned a custom role' });
+  }
+
+  let roleId = custom_role_id;
+  if (roleId === null || roleId === '' || roleId === undefined) {
+    roleId = null;
+  } else if (!roles.some((r) => r.id === roleId)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+
+  const { error } = await supabaseAdmin
+    .from('team_members')
+    .update({ custom_role_id: roleId })
+    .eq('team_id', id)
+    .eq('user_id', uid);
+
+  if (error) return sendError(res, 400, error, 'save');
+
+  const username = target.users?.username || 'A member';
+  const roleName = roleId ? roles.find((r) => r.id === roleId)?.name : 'none';
+  await logActivity(id, userId, 'member_role_assigned', `Set ${username}'s display role to ${roleName}`);
+
+  res.json({ success: true, custom_role_id: roleId });
 });
 
 // DELETE /api/teams/:id/members/:uid — owner only
@@ -466,6 +713,7 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
 
   await supabaseAdmin.from('activity_log').delete().eq('team_id', id);
   await supabaseAdmin.from('team_chat_messages').delete().eq('team_id', id);
+  await supabaseAdmin.from('team_roles').delete().eq('team_id', id);
   await supabaseAdmin.from('team_members').delete().eq('team_id', id);
 
   if (isStorageTeamAvatarUrl(team.avatar_url)) {

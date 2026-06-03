@@ -83,6 +83,11 @@
     .avatar-preset-btn { transition: box-shadow 0.15s, transform 0.15s; }
     .avatar-preset-btn:hover { transform: scale(1.05); }
     .avatar-preset-btn.selected { box-shadow: 0 0 0 2px #4f6ef7; }
+    .role-color-swatch { transition: box-shadow 0.15s, transform 0.15s; }
+    .role-color-swatch:hover { transform: scale(1.08); }
+    .role-color-swatch.selected { box-shadow: 0 0 0 2px #fff; }
+    .team-role-row.dragging { opacity: 0.45; }
+    .team-role-row.drag-over { outline: 1px dashed rgba(79, 110, 247, 0.55); }
 
     /* Team chat */
     #chatFab {
@@ -498,14 +503,18 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
-      <div class="p-4 border-b border-white/10 shrink-0 bg-ink-800">
+      <div class="p-4 border-b border-white/10 shrink-0 bg-ink-800 space-y-2">
         <button type="button" onclick="openEditTeamModal()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
           Edit team details
         </button>
+        <button type="button" onclick="openTeamRolesModal()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          Manage team roles
+        </button>
       </div>
       <div id="settingsPanelBody" class="flex-1 overflow-y-auto p-4 min-h-0">
-        <p class="text-xs text-gray-400 mb-3">Remove members</p>
+        <p class="text-xs text-gray-400 mb-3">Team members</p>
         <div id="settingsMemberList" class="space-y-2 mb-6"></div>
         <div class="border-t border-white/10 pt-4">
           <p class="text-xs text-gray-400 mb-3">Danger zone</p>
@@ -574,6 +583,56 @@
           <button type="button" id="editTeamSaveBtn" onclick="saveEditTeam()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Save changes</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Team Roles Modal -->
+  <div id="teamRolesModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeTeamRolesModal()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
+      <h2 class="text-lg font-semibold text-white mb-1">Team roles</h2>
+      <p class="text-gray-500 text-sm mb-5">Create display roles, set colors, and control how members are grouped on the board.</p>
+      <div id="teamRolesError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
+
+      <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-ink-700/50 border border-white/10 mb-5 cursor-pointer">
+        <span class="text-sm text-gray-200">Display role members separately</span>
+        <span id="separateRoleMembersTrack" class="relative w-11 h-6 rounded-full bg-white/10 transition shrink-0">
+          <input id="separateRoleMembersToggle" type="checkbox" class="sr-only" onchange="onSeparateRoleMembersToggle(this.checked)" />
+          <span id="separateRoleMembersKnob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"></span>
+        </span>
+      </label>
+
+      <div class="mb-4">
+        <p class="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Role hierarchy</p>
+        <p class="text-xs text-gray-500 mb-3">Drag to reorder. The team owner always appears first.</p>
+        <div id="teamRolesList" class="space-y-2 min-h-[2rem]"></div>
+        <p id="teamRolesEmpty" class="hidden text-xs text-gray-600 text-center py-4">No custom roles yet. Create one below.</p>
+      </div>
+
+      <div class="border-t border-white/10 pt-5 space-y-4">
+        <p id="teamRoleFormTitle" class="text-xs text-gray-400 font-medium uppercase tracking-wider">Add role</p>
+        <div>
+          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Role name</label>
+          <input id="teamRoleNameInput" type="text" placeholder="e.g. Developer"
+            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Color</label>
+          <div id="teamRoleColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
+          <div class="flex items-center gap-3">
+            <input id="teamRoleColorPicker" type="color" value="#4f6ef7"
+              class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
+            <input id="teamRoleHexInput" type="text" placeholder="#4f6ef7" maxlength="7"
+              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm font-mono uppercase" />
+          </div>
+        </div>
+        <div class="flex gap-3 pt-1">
+          <button type="button" id="teamRoleFormCancelBtn" onclick="resetTeamRoleForm()" class="hidden flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel edit</button>
+          <button type="button" id="teamRoleSaveBtn" onclick="saveTeamRole()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add role</button>
+        </div>
+      </div>
+
+      <button type="button" onclick="closeTeamRolesModal()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
     </div>
   </div>
 
@@ -827,6 +886,381 @@
       low:    { label: '🟢 Low',    color: 'text-green-400', bg: 'bg-green-500/10 text-green-400' },
     };
 
+    const ROLE_PRESET_COLORS = ['#4f6ef7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
+    let editingTeamRoleId = null;
+    let draggingTeamRoleId = null;
+
+    function normalizeRoleHex(value) {
+      const raw = String(value || '').trim();
+      const withHash = raw.startsWith('#') ? raw : `#${raw}`;
+      return /^#[0-9A-Fa-f]{6}$/.test(withHash) ? withHash.toLowerCase() : null;
+    }
+
+    function getTeamMember(userId) {
+      if (!userId || !teamData?.members) return null;
+      return teamData.members.find((m) => String(m.id) === String(userId)) || null;
+    }
+
+    function memberDisplayColor(member) {
+      if (!member || member.role === 'owner') return null;
+      return member.custom_role?.color_hex || null;
+    }
+
+    function memberNameHtml(memberOrUser, userId, extraClass = '') {
+      const member = memberOrUser?.role != null ? memberOrUser : getTeamMember(userId || memberOrUser?.id);
+      const user = member || memberOrUser;
+      if (!user?.username) return `<span class="${extraClass}">?</span>`;
+      const crown = member?.role === 'owner' ? '👑 ' : '';
+      const color = memberDisplayColor(member);
+      const style = color ? ` style="color:${escHtml(color)}"` : '';
+      const cls = ['font-medium', extraClass].filter(Boolean).join(' ');
+      return `<span class="${cls}"${style}>${crown}${escHtml(user.username)}</span>`;
+    }
+
+    function memberRoleLabelHtml(member) {
+      if (!member) return '';
+      if (member.role === 'owner') {
+        return '<p class="text-[10px] uppercase tracking-wider text-brand-500 font-semibold mb-0.5">owner</p>';
+      }
+      if (member.custom_role) {
+        const c = escHtml(member.custom_role.color_hex);
+        const n = escHtml(member.custom_role.name);
+        return `<p class="text-[10px] uppercase tracking-wider font-semibold mb-0.5" style="color:${c}">${n}</p>`;
+      }
+      return '';
+    }
+
+    function sortMembersForDisplay(members) {
+      const list = [...(members || [])];
+      const owners = list.filter((m) => m.role === 'owner');
+      const rest = list.filter((m) => m.role !== 'owner');
+      const roles = teamData?.roles || [];
+      const ordered = [...owners];
+      for (const role of roles) {
+        ordered.push(...rest.filter((m) => m.custom_role_id === role.id));
+      }
+      ordered.push(...rest.filter((m) => !m.custom_role_id));
+      return ordered;
+    }
+
+    function buildMemberDisplaySections(members) {
+      const list = members || [];
+      if (!teamData?.separate_role_members) {
+        return [{ title: null, titleColor: null, members: sortMembersForDisplay(list) }];
+      }
+      const sections = [];
+      const owners = list.filter((m) => m.role === 'owner');
+      if (owners.length) sections.push({ title: 'Owner', titleColor: '#f59e0b', members: owners });
+      for (const role of teamData.roles || []) {
+        const ms = list.filter((m) => m.custom_role_id === role.id);
+        if (ms.length) sections.push({ title: role.name, titleColor: role.color_hex, members: ms });
+      }
+      const unassigned = list.filter((m) => m.role !== 'owner' && !m.custom_role_id);
+      if (unassigned.length) sections.push({ title: 'Members', titleColor: '#9ca3af', members: unassigned });
+      return sections;
+    }
+
+    function memberRowHtml(m, options = {}) {
+      const { showAssign = false, showRemove = false, showPermissionRole = true } = options;
+      const assignBlock = showAssign && (teamData?.roles?.length || 0) > 0 && m.role !== 'owner'
+        ? `<select class="assign-role-select mt-1 w-full bg-ink-700 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-brand-500" data-user-id="${m.id}">
+            <option value="">No role</option>
+            ${(teamData.roles || []).map((r) => `<option value="${r.id}" ${m.custom_role_id === r.id ? 'selected' : ''}>${escHtml(r.name)}</option>`).join('')}
+          </select>`
+        : '';
+      const permBadge = showPermissionRole && !m.custom_role && m.role !== 'owner'
+        ? `<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-400">${m.role}</span>`
+        : showPermissionRole && m.role === 'owner'
+          ? ''
+          : '';
+      return `<div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5">
+          ${memberAvatarHtml(m, 'w-8 h-8')}
+          <div class="flex-1 min-w-0">
+            ${memberRoleLabelHtml(m)}
+            <p class="text-sm truncate">${memberNameHtml(m)}</p>
+            <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
+            ${assignBlock}
+          </div>
+          ${permBadge}
+          ${showRemove && m.role !== 'owner' ? `<button type="button" class="remove-member-btn text-gray-500 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10" data-user-id="${m.id}" data-username="${escHtml(m.username)}" title="Remove member">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>` : ''}
+        </div>`;
+    }
+
+    function renderMemberSectionsHtml(members, rowOptions) {
+      const sections = buildMemberDisplaySections(members);
+      return sections.map((section, idx) => {
+        const header = section.title
+          ? `<p class="text-xs font-semibold uppercase tracking-wider mb-2 ${idx ? 'mt-4' : ''}" style="color:${escHtml(section.titleColor || '#9ca3af')}">${escHtml(section.title)}</p>`
+          : '';
+        const rows = section.members.map((m) => memberRowHtml(m, rowOptions)).join('');
+        return `${header}${rows}`;
+      }).join('');
+    }
+
+    function canAssignTeamRoles() {
+      return teamData?.userRole === 'owner' && (teamData?.roles?.length || 0) > 0;
+    }
+
+    function syncSeparateRoleToggleUi() {
+      const on = !!teamData?.separate_role_members;
+      const input = document.getElementById('separateRoleMembersToggle');
+      const track = document.getElementById('separateRoleMembersTrack');
+      const knob = document.getElementById('separateRoleMembersKnob');
+      if (!input || !track || !knob) return;
+      input.checked = on;
+      track.classList.toggle('bg-brand-500', on);
+      track.classList.toggle('bg-white/10', !on);
+      knob.style.transform = on ? 'translateX(1.25rem)' : 'translateX(0)';
+    }
+
+    function showTeamRolesError(msg) {
+      const el = document.getElementById('teamRolesError');
+      if (!msg) {
+        el.classList.add('hidden');
+        el.textContent = '';
+        return;
+      }
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function renderTeamRoleColorSwatches(activeHex) {
+      const hex = normalizeRoleHex(activeHex) || ROLE_PRESET_COLORS[0];
+      document.getElementById('teamRoleColorSwatches').innerHTML = ROLE_PRESET_COLORS.map((c) =>
+        `<button type="button" class="role-color-swatch w-8 h-8 rounded-lg border border-white/10 ${c === hex ? 'selected' : ''}" style="background:${c}" data-hex="${c}" title="${c}"></button>`
+      ).join('');
+      document.getElementById('teamRoleColorPicker').value = hex;
+      document.getElementById('teamRoleHexInput').value = hex;
+    }
+
+    function setTeamRoleFormColor(hex) {
+      const normalized = normalizeRoleHex(hex);
+      if (!normalized) return;
+      renderTeamRoleColorSwatches(normalized);
+    }
+
+    function resetTeamRoleForm() {
+      editingTeamRoleId = null;
+      document.getElementById('teamRoleNameInput').value = '';
+      document.getElementById('teamRoleFormTitle').textContent = 'Add role';
+      document.getElementById('teamRoleSaveBtn').textContent = 'Add role';
+      document.getElementById('teamRoleFormCancelBtn').classList.add('hidden');
+      renderTeamRoleColorSwatches(ROLE_PRESET_COLORS[0]);
+      showTeamRolesError('');
+    }
+
+    function renderTeamRolesList() {
+      const roles = teamData?.roles || [];
+      const listEl = document.getElementById('teamRolesList');
+      const emptyEl = document.getElementById('teamRolesEmpty');
+      if (!roles.length) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+      emptyEl.classList.add('hidden');
+      listEl.innerHTML = roles.map((r) => `
+        <div class="team-role-row flex items-center gap-2 p-2.5 rounded-xl bg-ink-700/60 border border-white/10"
+          draggable="true" data-role-id="${r.id}">
+          <button type="button" class="role-drag-handle text-gray-500 hover:text-gray-300 p-1 cursor-grab" title="Drag to reorder" tabindex="-1">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M7 2a2 2 0 11-.001 4.001A2 2 0 017 2zm0 6a2 2 0 11-.001 4.001A2 2 0 017 8zm0 6a2 2 0 11-.001 4.001A2 2 0 017 14zm6-12a2 2 0 11-.001 4.001A2 2 0 0113 2zm0 6a2 2 0 11-.001 4.001A2 2 0 0113 8zm0 6a2 2 0 11-.001 4.001A2 2 0 0113 14z"/></svg>
+          </button>
+          <span class="w-4 h-4 rounded-md shrink-0 border border-white/10" style="background:${escHtml(r.color_hex)}"></span>
+          <span class="flex-1 text-sm text-white truncate">${escHtml(r.name)}</span>
+          <button type="button" class="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10" onclick="editTeamRole('${r.id}')" title="Edit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <button type="button" class="text-gray-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10" onclick="deleteTeamRole('${r.id}')" title="Delete">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>`).join('');
+      bindTeamRoleDragRows();
+    }
+
+    function bindTeamRoleDragRows() {
+      const rows = document.querySelectorAll('#teamRolesList .team-role-row');
+      rows.forEach((row) => {
+        row.addEventListener('dragstart', (e) => {
+          draggingTeamRoleId = row.dataset.roleId;
+          row.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        row.addEventListener('dragend', () => {
+          row.classList.remove('dragging');
+          draggingTeamRoleId = null;
+          rows.forEach((r) => r.classList.remove('drag-over'));
+        });
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (!draggingTeamRoleId || row.dataset.roleId === draggingTeamRoleId) return;
+          row.classList.add('drag-over');
+        });
+        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          row.classList.remove('drag-over');
+          const targetId = row.dataset.roleId;
+          if (!draggingTeamRoleId || targetId === draggingTeamRoleId) return;
+          const ids = (teamData.roles || []).map((r) => r.id);
+          const from = ids.indexOf(draggingTeamRoleId);
+          const to = ids.indexOf(targetId);
+          if (from < 0 || to < 0) return;
+          ids.splice(from, 1);
+          ids.splice(to, 0, draggingTeamRoleId);
+          const r = await apiFetch(`/api/teams/${teamId}/roles/reorder`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roleIds: ids }),
+          });
+          const d = await r.json();
+          if (!r.ok) {
+            showTeamRolesError(d.error || 'Failed to reorder roles');
+            return;
+          }
+          teamData.roles = d;
+          renderTeamRolesList();
+          renderMemberList(teamData.members);
+          renderSettingsMemberList(teamData.members);
+          if (tasks.length) renderBoard();
+        });
+      });
+    }
+
+    function openTeamRolesModal() {
+      if (teamData?.userRole !== 'owner') return;
+      showTeamRolesError('');
+      syncSeparateRoleToggleUi();
+      resetTeamRoleForm();
+      renderTeamRolesList();
+      document.getElementById('teamRolesModal').classList.remove('hidden');
+    }
+
+    function closeTeamRolesModal() {
+      document.getElementById('teamRolesModal').classList.add('hidden');
+      resetTeamRoleForm();
+    }
+
+    function editTeamRole(roleId) {
+      const role = (teamData?.roles || []).find((r) => r.id === roleId);
+      if (!role) return;
+      editingTeamRoleId = roleId;
+      document.getElementById('teamRoleNameInput').value = role.name;
+      document.getElementById('teamRoleFormTitle').textContent = 'Edit role';
+      document.getElementById('teamRoleSaveBtn').textContent = 'Save role';
+      document.getElementById('teamRoleFormCancelBtn').classList.remove('hidden');
+      renderTeamRoleColorSwatches(role.color_hex);
+      showTeamRolesError('');
+    }
+
+    async function saveTeamRole() {
+      const name = document.getElementById('teamRoleNameInput').value.trim();
+      const color = normalizeRoleHex(document.getElementById('teamRoleHexInput').value);
+      if (!name) {
+        showTeamRolesError('Role name is required');
+        return;
+      }
+      if (!color) {
+        showTeamRolesError('Enter a valid hex color like #4f6ef7');
+        return;
+      }
+      const btn = document.getElementById('teamRoleSaveBtn');
+      btn.disabled = true;
+      const url = editingTeamRoleId
+        ? `/api/teams/${teamId}/roles/${editingTeamRoleId}`
+        : `/api/teams/${teamId}/roles`;
+      const r = await apiFetch(url, {
+        method: editingTeamRoleId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, color_hex: color }),
+      });
+      const d = await r.json();
+      btn.disabled = false;
+      if (!r.ok) {
+        showTeamRolesError(d.error || 'Failed to save role');
+        return;
+      }
+      if (editingTeamRoleId) {
+        teamData.roles = (teamData.roles || []).map((role) => role.id === d.id ? d : role);
+        teamData.members = (teamData.members || []).map((m) =>
+          m.custom_role_id === d.id ? { ...m, custom_role: d } : m
+        );
+      } else {
+        teamData.roles = [...(teamData.roles || []), d];
+      }
+      resetTeamRoleForm();
+      renderTeamRolesList();
+      renderMemberList(teamData.members);
+      renderSettingsMemberList(teamData.members);
+      if (tasks.length) renderBoard();
+    }
+
+    function deleteTeamRole(roleId) {
+      const role = (teamData?.roles || []).find((r) => r.id === roleId);
+      if (!role) return;
+      showConfirm({
+        title: 'Delete role',
+        message: `Delete the "${role.name}" role? Members with this role will be unassigned.`,
+        confirmLabel: 'Delete',
+        danger: true,
+        onConfirm: () => executeDeleteTeamRole(roleId),
+      });
+    }
+
+    async function executeDeleteTeamRole(roleId) {
+      const r = await apiFetch(`/api/teams/${teamId}/roles/${roleId}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (!r.ok) {
+        showAlert(d.error || 'Failed to delete role');
+        return;
+      }
+      teamData.roles = (teamData.roles || []).filter((role) => role.id !== roleId);
+      teamData.members = (teamData.members || []).map((m) =>
+        m.custom_role_id === roleId ? { ...m, custom_role_id: null, custom_role: null } : m
+      );
+      if (editingTeamRoleId === roleId) resetTeamRoleForm();
+      renderTeamRolesList();
+      renderMemberList(teamData.members);
+      renderSettingsMemberList(teamData.members);
+      if (tasks.length) renderBoard();
+    }
+
+    async function onSeparateRoleMembersToggle(checked) {
+      syncSeparateRoleToggleUi();
+      const r = await apiFetch(`/api/teams/${teamId}/role-display`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ separate_role_members: checked }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        showTeamRolesError(d.error || 'Failed to update display setting');
+        document.getElementById('separateRoleMembersToggle').checked = !!teamData.separate_role_members;
+        syncSeparateRoleToggleUi();
+        return;
+      }
+      teamData.separate_role_members = d.separate_role_members;
+      renderMemberList(teamData.members);
+      renderSettingsMemberList(teamData.members);
+    }
+
+    async function assignMemberCustomRole(userId, roleId) {
+      const r = await apiFetch(`/api/teams/${teamId}/members/${userId}/custom-role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ custom_role_id: roleId || null }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        showAlert(d.error || 'Failed to assign role');
+        return;
+      }
+      await loadTeam();
+      renderSettingsMemberList(teamData.members);
+      if (tasks.length) renderBoard();
+    }
+
     async function init() {
       const r = await apiFetch('/api/me');
       const meData = await parseJsonResponse(r);
@@ -861,6 +1295,8 @@
       const r = await apiFetch(`/api/teams/${teamId}`);
       if (!r.ok) return window.location = '/dashboard';
       teamData = await r.json();
+      teamData.roles = teamData.roles || [];
+      teamData.separate_role_members = !!teamData.separate_role_members;
       applyTeamHeader();
       renderMemberAvatars(teamData.members);
       renderMemberList(teamData.members);
@@ -918,15 +1354,11 @@
     }
 
     function renderMemberList(members) {
-      document.getElementById('memberList').innerHTML = members.map(m => `
-        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5">
-          ${memberAvatarHtml(m, 'w-8 h-8')}
-          <div class="flex-1 min-w-0">
-            <p class="text-sm text-white font-medium truncate">${escHtml(m.username)}</p>
-            <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
-          </div>
-          <span class="text-xs px-2 py-0.5 rounded-full ${m.role === 'owner' ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-gray-400'}">${m.role}</span>
-        </div>`).join('');
+      document.getElementById('memberList').innerHTML = renderMemberSectionsHtml(members, {
+        showAssign: canAssignTeamRoles(),
+        showRemove: false,
+        showPermissionRole: !canAssignTeamRoles(),
+      });
       if (!['owner','admin'].includes(teamData?.userRole)) {
         document.getElementById('inviteSection').classList.add('hidden');
       }
@@ -1007,7 +1439,7 @@
         <div class="flex items-center justify-between mt-2">
           ${task.assignee ? `<div class="flex items-center gap-1.5">
             ${userAvatarHtml(task.assignee, 'w-5 h-5')}
-            <span class="text-xs text-gray-500">${escHtml(task.assignee.username)}</span>
+            <span class="text-xs">${memberNameHtml(task.assignee, task.assignee.id, 'text-xs')}</span>
           </div>` : '<div></div>'}
           <div class="task-card-badges flex items-center gap-2 shrink-0">
             ${(task.unread_comment_count || 0) > 0 ? `<span class="task-comment-unread-badge flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1" title="Unread comments">${task.unread_comment_count > 99 ? '99+' : task.unread_comment_count}</span>` : ''}
@@ -1125,7 +1557,9 @@
       document.getElementById('detailPriority').value = task.priority;
       document.getElementById('detailDue').value = task.due_date ? task.due_date.split('T')[0] : '';
       document.getElementById('detailAssignee').value = task.assigned_to || '';
-      document.getElementById('detailCreator').textContent = task.creator?.username || 'Unknown';
+      document.getElementById('detailCreator').innerHTML = task.creator
+        ? memberNameHtml(task.creator, task.creator.id, 'text-sm text-gray-300')
+        : '<span class="text-sm text-gray-300">Unknown</span>';
       document.getElementById('taskModal').classList.remove('hidden');
       await loadTaskCommentReadState(taskId);
       await loadComments(taskId);
@@ -1357,7 +1791,7 @@
           ${userAvatarHtml(c.user, 'w-7 h-7')}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-xs font-medium text-white">${escHtml(c.user?.username || '?')}</span>
+              <span class="text-xs font-medium">${memberNameHtml(c.user, c.user_id, 'text-xs')}</span>
               <span class="text-xs text-gray-600">${timeAgo(c.created_at)}</span>
             </div>
             <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(c.content)}</p>
@@ -1664,7 +2098,7 @@
       if (msg.deleted_at) {
         return `<div class="chat-msg-tombstone rounded-xl p-3" data-chat-msg-id="${msg.id}">
             <p class="text-xs text-gray-500 italic">Message deleted</p>
-            <p class="text-xs text-gray-600 mt-1.5">${escHtml(user.username)} · ${escHtml(sentAt)}</p>
+            <p class="text-xs text-gray-600 mt-1.5">${memberNameHtml(user, msg.user_id, 'text-xs inline')} · ${escHtml(sentAt)}</p>
           </div>`;
       }
 
@@ -1710,7 +2144,7 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-2 mb-1">
               <div class="min-w-0">
-                <span class="text-xs font-medium text-white">${escHtml(user.username)}</span>
+                <span class="text-xs font-medium">${memberNameHtml(user, msg.user_id, 'text-xs')}</span>
                 <p class="text-xs text-gray-600 mt-0.5">${escHtml(sentAt)}${editedNote}</p>
               </div>
               ${renderChatMessageActions(msg)}
@@ -1793,7 +2227,7 @@
              <ul class="space-y-2">${users.map((u) => `
                <li class="flex items-center gap-2">
                  ${userAvatarHtml(u, 'w-6 h-6')}
-                 <span class="text-sm text-gray-200 truncate">${escHtml(u.username)}</span>
+                 <span class="text-sm truncate">${memberNameHtml(u, u.id, 'text-sm')}</span>
                </li>`).join('')}</ul>`
           : `<p class="text-xs text-gray-400">${sym} — no reactions yet</p>`;
         positionReactionFloat(pop, anchor);
@@ -2296,18 +2730,15 @@
     document.getElementById('editTeamName')?.addEventListener('input', updateEditTeamPreview);
 
     function renderSettingsMemberList(members) {
-      document.getElementById('settingsMemberList').innerHTML = members.map(m => `
-        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5">
-          ${userAvatarHtml(m, 'w-8 h-8')}
-          <div class="flex-1 min-w-0">
-            <p class="text-sm text-white font-medium truncate">${escHtml(m.username)}</p>
-            <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
-          </div>
-          <span class="text-xs px-2 py-0.5 rounded-full ${m.role === 'owner' ? 'bg-brand-500/20 text-brand-500' : 'bg-white/10 text-gray-400'}">${m.role}</span>
-          ${m.role !== 'owner' ? `<button type="button" class="remove-member-btn text-gray-500 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10" data-user-id="${m.id}" data-username="${escHtml(m.username)}" title="Remove member">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>` : ''}
-        </div>`).join('');
+      const assignHint = canAssignTeamRoles()
+        ? '<p class="text-xs text-gray-500 mb-3">Assign a display role to each member (owner cannot be changed).</p>'
+        : '';
+      document.getElementById('settingsMemberList').innerHTML =
+        assignHint + renderMemberSectionsHtml(members, {
+          showAssign: canAssignTeamRoles(),
+          showRemove: true,
+          showPermissionRole: !canAssignTeamRoles(),
+        });
     }
 
     function removeMember(userId, username) {
@@ -2444,7 +2875,7 @@
           <span class="${dotClass}"></span>
         </div>
         <div class="flex-1 min-w-0 pr-1">
-          <p class="text-sm text-white font-medium truncate">${escHtml(member.username)}</p>
+          <p class="text-sm truncate">${memberNameHtml(member, member.id, 'text-sm')}</p>
           <p class="text-xs text-gray-400">${message}</p>
         </div>
         <button type="button" class="toast-close shrink-0 text-gray-500 hover:text-white transition p-1 rounded-lg hover:bg-white/10" aria-label="Dismiss">
@@ -2592,6 +3023,33 @@
       if (!btn) return;
       removeMember(btn.dataset.userId, btn.dataset.username);
     });
+
+    document.getElementById('memberList').addEventListener('change', (e) => {
+      const sel = e.target.closest('.assign-role-select');
+      if (!sel) return;
+      assignMemberCustomRole(sel.dataset.userId, sel.value || null);
+    });
+
+    document.getElementById('settingsMemberList').addEventListener('change', (e) => {
+      const sel = e.target.closest('.assign-role-select');
+      if (!sel) return;
+      assignMemberCustomRole(sel.dataset.userId, sel.value || null);
+    });
+
+    document.getElementById('teamRoleColorSwatches')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-hex]');
+      if (!btn) return;
+      setTeamRoleFormColor(btn.dataset.hex);
+    });
+    document.getElementById('teamRoleColorPicker')?.addEventListener('input', (e) => {
+      setTeamRoleFormColor(e.target.value);
+    });
+    document.getElementById('teamRoleHexInput')?.addEventListener('input', (e) => {
+      const hex = normalizeRoleHex(e.target.value);
+      if (hex) setTeamRoleFormColor(hex);
+    });
+
+    renderTeamRoleColorSwatches(ROLE_PRESET_COLORS[0]);
 
     init();
   </script>
