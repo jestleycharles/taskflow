@@ -486,6 +486,7 @@
     </div>
   </div>
 
+  <script src="/avatar-utils.js"></script>
   <script src="/api.js"></script>
   <script>
     const teamId = window.location.pathname.split('/').pop();
@@ -577,14 +578,14 @@
     function renderMemberAvatars(members) {
       const container = document.getElementById('memberAvatars');
       container.innerHTML = members.slice(0, 4).map(m =>
-        `<div class="w-7 h-7 rounded-full border-2 border-ink-900 flex items-center justify-center text-white text-xs font-bold pointer-events-none" style="background:${m.avatar_color}" title="${escHtml(m.username)}">${m.username[0].toUpperCase()}</div>`
+        userAvatarHtml(m, 'w-7 h-7 pointer-events-none')
       ).join('');
     }
 
     function memberAvatarHtml(m, sizeClass) {
       const online = isUserOnline(m.id);
-      return `<div class="relative shrink-0">
-          <div class="${sizeClass} rounded-full flex items-center justify-center text-white text-xs font-bold" style="background:${m.avatar_color}">${m.username[0].toUpperCase()}</div>
+      return `<div class="relative shrink-0" title="${escHtml(m.username)}">
+          ${userAvatarHtml(m, sizeClass)}
           ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Online"></span>' : ''}
         </div>`;
     }
@@ -653,7 +654,7 @@
         ${task.description ? `<p class="text-xs text-gray-500 mb-2.5 line-clamp-2">${escHtml(task.description)}</p>` : ''}
         <div class="flex items-center justify-between mt-2">
           ${task.assignee ? `<div class="flex items-center gap-1.5">
-            <div class="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background:${task.assignee.avatar_color}">${task.assignee.username[0].toUpperCase()}</div>
+            ${userAvatarHtml(task.assignee, 'w-5 h-5')}
             <span class="text-xs text-gray-500">${escHtml(task.assignee.username)}</span>
           </div>` : '<div></div>'}
           ${due ? `<span class="text-xs font-medium ${due.class}">${due.label}</span>` : ''}
@@ -789,7 +790,7 @@
       document.getElementById('commentCount').textContent = comments.length;
       document.getElementById('commentsList').innerHTML = comments.map(c => `
         <div class="flex gap-3">
-          <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:${c.user.avatar_color}">${c.user.username[0].toUpperCase()}</div>
+          ${userAvatarHtml(c.user, 'w-7 h-7')}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-xs font-medium text-white">${escHtml(c.user.username)}</span>
@@ -846,7 +847,7 @@
     function renderSettingsMemberList(members) {
       document.getElementById('settingsMemberList').innerHTML = members.map(m => `
         <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:${m.avatar_color}">${m.username[0].toUpperCase()}</div>
+          ${userAvatarHtml(m, 'w-8 h-8')}
           <div class="flex-1 min-w-0">
             <p class="text-sm text-white font-medium truncate">${escHtml(m.username)}</p>
             <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
@@ -907,7 +908,7 @@
       const logs = await r.json();
       document.getElementById('activityList').innerHTML = logs.map(l => `
         <div class="flex gap-3">
-          <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5" style="background:${l.user?.avatar_color || '#4f6ef7'}">${(l.user?.username || '?')[0].toUpperCase()}</div>
+          ${userAvatarHtml(l.user || { username: '?', avatar_color: '#4f6ef7' }, 'w-7 h-7 mt-0.5')}
           <div class="flex-1 min-w-0">
             <p class="text-xs text-gray-300 leading-relaxed">${escHtml(l.description)}</p>
             <p class="text-xs text-gray-600 mt-1">${timeAgo(l.created_at)}</p>
@@ -988,7 +989,7 @@
       const message = online ? 'is now online on this board' : 'left the board';
       toast.innerHTML = `
         <div class="relative shrink-0">
-          <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style="background:${member.avatar_color}">${member.username[0].toUpperCase()}</div>
+          ${userAvatarHtml(member, 'w-9 h-9 text-sm')}
           <span class="${dotClass}"></span>
         </div>
         <div class="flex-1 min-w-0 pr-1">

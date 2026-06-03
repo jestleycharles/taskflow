@@ -20,7 +20,7 @@ router.get('/api/teams/:teamId/tasks', requireAuth, async (req, res) => {
 
   const { data, error } = await supabaseAdmin
     .from('tasks')
-    .select('*, assignee:assigned_to(id, username, avatar_color), creator:created_by(id, username)')
+    .select('*, assignee:assigned_to(id, username, avatar_color, avatar_url), creator:created_by(id, username)')
     .eq('team_id', teamId)
     .order('position', { ascending: true });
 
@@ -53,7 +53,7 @@ router.post('/api/teams/:teamId/tasks', requireAuth, async (req, res) => {
       created_by: userId,
       position: (maxPos?.position || 0) + 1000
     })
-    .select('*, assignee:assigned_to(id, username, avatar_color), creator:created_by(id, username)')
+    .select('*, assignee:assigned_to(id, username, avatar_color, avatar_url), creator:created_by(id, username)')
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
@@ -79,7 +79,7 @@ router.patch('/api/tasks/:id', requireAuth, async (req, res) => {
     .from('tasks')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
-    .select('*, assignee:assigned_to(id, username, avatar_color), creator:created_by(id, username)')
+    .select('*, assignee:assigned_to(id, username, avatar_color, avatar_url), creator:created_by(id, username)')
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
@@ -115,7 +115,7 @@ router.get('/api/tasks/:id/comments', requireAuth, async (req, res) => {
 
   const { data } = await supabaseAdmin
     .from('comments')
-    .select('*, user:user_id(id, username, avatar_color)')
+    .select('*, user:user_id(id, username, avatar_color, avatar_url)')
     .eq('task_id', id)
     .order('created_at', { ascending: true });
 
@@ -134,7 +134,7 @@ router.post('/api/tasks/:id/comments', requireAuth, async (req, res) => {
   const { data: comment, error } = await supabaseAdmin
     .from('comments')
     .insert({ task_id: id, user_id: userId, content })
-    .select('*, user:user_id(id, username, avatar_color)')
+    .select('*, user:user_id(id, username, avatar_color, avatar_url)')
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
@@ -150,7 +150,7 @@ router.get('/api/teams/:teamId/activity', requireAuth, async (req, res) => {
 
   const { data } = await supabaseAdmin
     .from('activity_log')
-    .select('*, user:user_id(id, username, avatar_color)')
+    .select('*, user:user_id(id, username, avatar_color, avatar_url)')
     .eq('team_id', teamId)
     .order('created_at', { ascending: false })
     .limit(50);

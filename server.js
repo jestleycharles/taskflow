@@ -6,6 +6,9 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const teamRoutes = require('./routes/teams');
 const taskRoutes = require('./routes/tasks');
+const profileRoutes = require('./routes/profile');
+const { supabaseAdmin } = require('./lib/supabase');
+const { toSessionUser } = require('./lib/user');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
@@ -57,8 +60,15 @@ app.get('/board/:teamId', requireAuth, (req, res) => {
   res.sendFile('board.html', { root: './public' });
 });
 
-// API: current user
-app.get('/api/me', requireAuth, (req, res) => {
+// API: current user (refreshed from DB for avatar_url etc.)
+app.get('/api/me', requireAuth, async (req, res) => {
+  const { data: user, error } = await supabaseAdmin
+    .from('users')
+    .select('id, username, email, avatar_color, avatar_url')
+    .eq('id', req.session.user.id)
+    .single();
+  if (error || !user) return res.status(401).json({ error: 'Unauthorized' });
+  req.session.user = toSessionUser(user);
   res.json(req.session.user);
 });
 

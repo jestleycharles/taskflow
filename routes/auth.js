@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { supabaseAdmin } = require('../lib/supabase');
 const { redirectIfAuth } = require('../middleware/auth');
+const { toSessionUser } = require('../lib/user');
 const router = express.Router();
 
 // GET /login
@@ -29,7 +30,7 @@ router.post('/api/auth/register', async (req, res) => {
 
   if (error) return res.status(400).json({ error: error.message });
 
-  req.session.user = { id: data.id, username: data.username, email: data.email, avatar_color: data.avatar_color };
+  req.session.user = toSessionUser(data);
   res.json({ success: true });
 });
 
@@ -50,7 +51,7 @@ router.post('/api/auth/login', async (req, res) => {
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-  req.session.user = { id: user.id, username: user.username, email: user.email, avatar_color: user.avatar_color };
+  req.session.user = toSessionUser(user);
   res.json({ success: true });
 });
 
@@ -64,7 +65,7 @@ router.post('/api/auth/guest', async (req, res) => {
 
   if (!user) return res.status(500).json({ error: 'Guest account not found' });
 
-  req.session.user = { id: user.id, username: user.username, email: user.email, avatar_color: user.avatar_color };
+  req.session.user = toSessionUser(user);
   res.json({ success: true });
 });
 

@@ -107,7 +107,7 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
   const { data: team } = await supabaseAdmin.from('teams').select('*').eq('id', id).single();
   const { data: members } = await supabaseAdmin
     .from('team_members')
-    .select('role, users(id, username, email, avatar_color)')
+    .select('role, users(id, username, email, avatar_color, avatar_url)')
     .eq('team_id', id);
 
   res.json({ ...team, members: members.map(m => ({ ...m.users, role: m.role })), userRole: membership.role });
