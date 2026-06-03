@@ -1,8 +1,24 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
 const { supabaseAdmin } = require('../lib/supabase');
 const { requireAuth } = require('../middleware/auth');
 const { ping, leave, getOnlineUserIds } = require('../lib/presence');
+const {
+  AVATAR_PRESETS,
+  isStorageTeamAvatarUrl,
+  randomColor,
+} = require('../lib/user');
 const router = express.Router();
+
+const AVATAR_BUCKET = 'avatars';
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_AVATAR_BYTES },
+});
 
 async function assertTeamMember(teamId, userId) {
   const { data } = await supabaseAdmin
@@ -12,6 +28,52 @@ async function assertTeamMember(teamId, userId) {
     .eq('user_id', userId)
     .single();
   return !!data;
+}
+
+async function assertTeamOwner(teamId, userId) {
+  const { data } = await supabaseAdmin
+    .from('team_members')
+    .select('role')
+    .eq('team_id', teamId)
+    .eq('user_id', userId)
+    .single();
+  return data?.role === 'owner';
+}
+
+async function deleteStoredTeamAvatars(teamId) {
+  const prefix = `teams/${teamId}`;
+  const { data: files } = await supabaseAdmin.storage.from(AVATAR_BUCKET).list(prefix);
+  if (!files?.length) return;
+  const paths = files.map((f) => `${prefix}/${f.name}`);
+  await supabaseAdmin.storage.from(AVATAR_BUCKET).remove(paths);
+}
+
+function resolvePresetUrl(avatarUrl) {
+  if (!avatarUrl) return null;
+  const match = AVATAR_PRESETS.find((p) => p.url === avatarUrl || avatarUrl.endsWith(p.url));
+  return match?.url || null;
+}
+
+function avatarUpload(req, res, next) {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'Image must be 2 MB or smaller' });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+}
+
+function mimeToExt(mime) {
+  const map = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+  };
+  return map[mime] || '.jpg';
 }
 
 // POST /api/presence/ping — heartbeat while viewing a board (guests included)
@@ -63,7 +125,7 @@ router.get('/api/teams', requireAuth, async (req, res) => {
   const userId = req.session.user.id;
   const { data, error } = await supabaseAdmin
     .from('team_members')
-    .select('role, teams(id, name, description, created_by, created_at)')
+    .select('role, teams(id, name, description, avatar_color, avatar_url, created_by, created_at)')
     .eq('user_id', userId);
 
   if (error) return res.status(500).json({ error: error.message });
@@ -73,12 +135,27 @@ router.get('/api/teams', requireAuth, async (req, res) => {
 
 // POST /api/teams - create team
 router.post('/api/teams', requireAuth, async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, avatar_url } = req.body;
   const userId = req.session.user.id;
+
+  const trimmedName = String(name || '').trim();
+  if (!trimmedName) return res.status(400).json({ error: 'Team name is required' });
+
+  let presetUrl = null;
+  if (avatar_url) {
+    presetUrl = resolvePresetUrl(avatar_url);
+    if (!presetUrl) return res.status(400).json({ error: 'Invalid avatar preset' });
+  }
 
   const { data: team, error } = await supabaseAdmin
     .from('teams')
-    .insert({ name, description, created_by: userId })
+    .insert({
+      name: trimmedName,
+      description: description?.trim() || null,
+      created_by: userId,
+      avatar_color: randomColor(),
+      avatar_url: presetUrl,
+    })
     .select()
     .single();
 
@@ -86,9 +163,138 @@ router.post('/api/teams', requireAuth, async (req, res) => {
 
   await supabaseAdmin.from('team_members').insert({ team_id: team.id, user_id: userId, role: 'owner' });
 
-  await logActivity(team.id, userId, 'team_created', `Created team "${name}"`);
+  await logActivity(team.id, userId, 'team_created', `Created team "${trimmedName}"`);
   res.json(team);
 });
+
+// PATCH /api/teams/:id — update name & description (owner only)
+router.patch('/api/teams/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { name, description } = req.body || {};
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can edit team details' });
+  }
+
+  const { data: team, error: fetchErr } = await supabaseAdmin.from('teams').select('*').eq('id', id).single();
+  if (fetchErr || !team) return res.status(404).json({ error: 'Team not found' });
+
+  const updates = {};
+
+  if (name !== undefined) {
+    const trimmed = String(name).trim();
+    if (!trimmed) return res.status(400).json({ error: 'Team name is required' });
+    updates.name = trimmed;
+  }
+
+  if (description !== undefined) {
+    updates.description = String(description).trim() || null;
+  }
+
+  if (!Object.keys(updates).length) {
+    return res.json(team);
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from('teams')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  const label = updates.name || team.name;
+  await logActivity(id, userId, 'team_updated', `Updated team "${label}"`);
+  res.json(updated);
+});
+
+// PUT /api/teams/:id/avatar/preset — owner only
+router.put('/api/teams/:id/avatar/preset', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { preset } = req.body || {};
+
+  if (!await assertTeamOwner(id, userId)) {
+    return res.status(403).json({ error: 'Only the team owner can change the team avatar' });
+  }
+
+  const match = AVATAR_PRESETS.find((p) => p.id === preset);
+  if (!match) return res.status(400).json({ error: 'Invalid avatar preset' });
+
+  const { data: team } = await supabaseAdmin.from('teams').select('avatar_url').eq('id', id).single();
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  if (isStorageTeamAvatarUrl(team.avatar_url)) {
+    await deleteStoredTeamAvatars(id);
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from('teams')
+    .update({ avatar_url: match.url })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ team: updated });
+});
+
+// POST /api/teams/:id/avatar/upload — owner only
+router.post(
+  '/api/teams/:id/avatar/upload',
+  requireAuth,
+  avatarUpload,
+  async (req, res) => {
+    const { id } = req.params;
+    const userId = req.session.user.id;
+
+    if (!await assertTeamOwner(id, userId)) {
+      return res.status(403).json({ error: 'Only the team owner can change the team avatar' });
+    }
+
+    if (!req.file) return res.status(400).json({ error: 'No image file provided' });
+    if (!ALLOWED_MIME.has(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Image must be JPEG, PNG, WebP, or GIF' });
+    }
+
+    const { data: team } = await supabaseAdmin.from('teams').select('avatar_url').eq('id', id).single();
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+
+    const ext = path.extname(req.file.originalname).toLowerCase() || mimeToExt(req.file.mimetype);
+    const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : mimeToExt(req.file.mimetype);
+    const storagePath = `teams/${id}/${Date.now()}${safeExt}`;
+
+    await deleteStoredTeamAvatars(id);
+
+    const { error: uploadErr } = await supabaseAdmin.storage
+      .from(AVATAR_BUCKET)
+      .upload(storagePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      return res.status(500).json({
+        error: uploadErr.message || 'Upload failed. Ensure the avatars storage bucket exists.',
+      });
+    }
+
+    const { data: urlData } = supabaseAdmin.storage.from(AVATAR_BUCKET).getPublicUrl(storagePath);
+    const avatarUrl = urlData.publicUrl;
+
+    const { data: updated, error: dbErr } = await supabaseAdmin
+      .from('teams')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (dbErr) return res.status(400).json({ error: dbErr.message });
+    res.json({ team: updated });
+  }
+);
 
 // GET /api/teams/:id - get team details + members
 router.get('/api/teams/:id', requireAuth, async (req, res) => {
@@ -176,7 +382,7 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
   if (!membership || membership.role !== 'owner')
     return res.status(403).json({ error: 'Only the team owner can delete this team' });
 
-  const { data: team } = await supabaseAdmin.from('teams').select('name').eq('id', id).single();
+  const { data: team } = await supabaseAdmin.from('teams').select('name, avatar_url').eq('id', id).single();
   if (!team) return res.status(404).json({ error: 'Team not found' });
 
   const { data: teamTasks } = await supabaseAdmin.from('tasks').select('id').eq('team_id', id);
@@ -188,6 +394,10 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
 
   await supabaseAdmin.from('activity_log').delete().eq('team_id', id);
   await supabaseAdmin.from('team_members').delete().eq('team_id', id);
+
+  if (isStorageTeamAvatarUrl(team.avatar_url)) {
+    await deleteStoredTeamAvatars(id);
+  }
 
   const { error } = await supabaseAdmin.from('teams').delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
