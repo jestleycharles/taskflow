@@ -427,6 +427,7 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
   }
 
   await supabaseAdmin.from('activity_log').delete().eq('team_id', id);
+  await supabaseAdmin.from('team_chat_messages').delete().eq('team_id', id);
   await supabaseAdmin.from('team_members').delete().eq('team_id', id);
 
   if (isStorageTeamAvatarUrl(team.avatar_url)) {

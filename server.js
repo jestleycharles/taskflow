@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const teamRoutes = require('./routes/teams');
 const taskRoutes = require('./routes/tasks');
 const profileRoutes = require('./routes/profile');
+const chatRoutes = require('./routes/chat');
 const { supabaseAdmin } = require('./lib/supabase');
 const { toSessionUser } = require('./lib/user');
 const { requireAuth } = require('./middleware/auth');
@@ -46,6 +47,7 @@ app.use(authRoutes);
 app.use(teamRoutes);
 app.use(taskRoutes);
 app.use(profileRoutes);
+app.use(chatRoutes);
 
 // Pages
 app.get('/', (req, res) => {

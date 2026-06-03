@@ -26,6 +26,7 @@ https://taskflow-byjest.onrender.com
 - Kanban board (To Do / Doing / Done) with drag-and-drop
 - Real-time task updates via polling (5s interval)
 - Task comments
+- Team chat (read-only for guests; send, edit, and delete for signed-in users)
 - Due dates, priorities, and assignees
 - Activity history per team
 - Responsive design
@@ -66,6 +67,9 @@ taskflow/
 6. **Click a task** to open its detail panel (edit priority, due date, assignee, add comments)
 7. Click **Team** in the navbar to invite members by email
 8. Click **Activity** to see recent team activity
+9. Use the **chat button** (bottom-left) for team-wide messages
+
+Run `migrations/team_chat_messages.sql` in the Supabase SQL Editor before using team chat.
 
 ---
 
