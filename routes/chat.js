@@ -43,6 +43,57 @@ router.get('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
   res.json(data || []);
 });
 
+// GET /api/teams/:teamId/chat/read — last time this user read the team chat
+router.get('/api/teams/:teamId/chat/read', requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  const userId = req.session.user.id;
+  if (!await assertTeamMember(teamId, userId))
+    return res.status(403).json({ error: 'Not a member' });
+
+  const { data, error } = await supabaseAdmin
+    .from('team_chat_read_state')
+    .select('last_read_at')
+    .eq('team_id', teamId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) return sendError(res, 500, error, 'load');
+  res.json({ last_read_at: data?.last_read_at || null });
+});
+
+// PUT /api/teams/:teamId/chat/read — mark chat as read up to a timestamp
+router.put('/api/teams/:teamId/chat/read', requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  const userId = req.session.user.id;
+  if (!await assertTeamMember(teamId, userId))
+    return res.status(403).json({ error: 'Not a member' });
+
+  let incoming = new Date();
+  if (req.body?.last_read_at) {
+    const parsed = new Date(req.body.last_read_at);
+    if (!Number.isNaN(parsed.getTime())) incoming = parsed;
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from('team_chat_read_state')
+    .select('last_read_at')
+    .eq('team_id', teamId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const existingMs = existing?.last_read_at ? new Date(existing.last_read_at).getTime() : 0;
+  const lastReadAt = new Date(Math.max(existingMs, incoming.getTime())).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from('team_chat_read_state')
+    .upsert({ team_id: teamId, user_id: userId, last_read_at: lastReadAt }, { onConflict: 'team_id,user_id' })
+    .select('last_read_at')
+    .single();
+
+  if (error) return sendError(res, 500, error, 'save');
+  res.json({ last_read_at: data.last_read_at });
+});
+
 // POST /api/teams/:teamId/chat
 router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
   if (rejectGuestWrite(req, res)) return;

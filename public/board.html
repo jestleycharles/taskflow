@@ -141,8 +141,23 @@
       padding-top: 0.75rem;
       padding-bottom: 0.25rem;
     }
+    #activityPanel,
+    #teamPanel,
+    #settingsPanel {
+      height: 100%;
+      max-height: 100%;
+    }
+    #activityList,
+    #memberList,
+    #settingsPanelBody {
+      flex: 1 1 0;
+      min-height: 0;
+    }
     @media (max-width: 767px) {
-      #chatPanel:not(.hidden) {
+      #chatPanel:not(.hidden),
+      #activityPanel:not(.hidden),
+      #teamPanel:not(.hidden),
+      #settingsPanel:not(.hidden) {
         position: fixed;
         top: var(--nav-h);
         left: 0;
@@ -153,8 +168,10 @@
         height: auto;
         z-index: 45;
         border-right: none;
+        border-left: none;
       }
-      body.chat-panel-mobile-open {
+      body.chat-panel-mobile-open,
+      body.side-panel-mobile-open {
         overflow: hidden;
       }
     }
@@ -381,25 +398,25 @@
     </div>
 
     <!-- Activity Side Panel -->
-    <div id="activityPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0">
-      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+    <div id="activityPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
         <h2 class="font-semibold text-sm text-white">Activity</h2>
-        <button onclick="closeActivityPanel()" class="text-gray-500 hover:text-white transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        <button type="button" onclick="closeActivityPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close activity">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
-      <div id="activityList" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+      <div id="activityList" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"></div>
     </div>
 
     <!-- Team Side Panel -->
-    <div id="teamPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0">
-      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+    <div id="teamPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
         <h2 class="font-semibold text-sm text-white">Team Members</h2>
-        <button onclick="closeTeamPanel()" class="text-gray-500 hover:text-white transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        <button type="button" onclick="closeTeamPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close team members">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
-      <div class="p-4 border-b border-white/10" id="inviteSection">
+      <div class="p-4 border-b border-white/10 shrink-0 bg-ink-800" id="inviteSection">
         <p class="text-xs text-gray-400 mb-2">Invite by email</p>
         <div class="flex gap-2">
           <input id="inviteEmail" type="email" placeholder="colleague@email.com"
@@ -408,24 +425,24 @@
         </div>
         <p id="inviteMsg" class="text-xs mt-2 hidden"></p>
       </div>
-      <div id="memberList" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+      <div id="memberList" class="flex-1 overflow-y-auto p-4 space-y-2 min-h-0"></div>
     </div>
 
     <!-- Team Settings Panel (owners only) -->
-    <div id="settingsPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0">
-      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+    <div id="settingsPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
         <h2 class="font-semibold text-sm text-white">Team Settings</h2>
-        <button onclick="closeSettingsPanel()" class="text-gray-500 hover:text-white transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        <button type="button" onclick="closeSettingsPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close settings">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
-      <div class="p-4 border-b border-white/10">
+      <div class="p-4 border-b border-white/10 shrink-0 bg-ink-800">
         <button type="button" onclick="openEditTeamModal()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
           Edit team details
         </button>
       </div>
-      <div class="flex-1 overflow-y-auto p-4">
+      <div id="settingsPanelBody" class="flex-1 overflow-y-auto p-4 min-h-0">
         <p class="text-xs text-gray-400 mb-3">Remove members</p>
         <div id="settingsMemberList" class="space-y-2 mb-6"></div>
         <div class="border-t border-white/10 pt-4">
@@ -674,6 +691,7 @@
     let chatMessages = [];
     let chatPanelOpen = false;
     let chatLastReadAt = 0;
+    let chatReadPersistTimer = null;
     let chatPollInterval = null;
     let editingChatId = null;
     let chatEditDraft = '';
@@ -729,6 +747,7 @@
       await loadTeam();
       await loadTasks();
       applyChatComposerState();
+      await loadChatReadState();
       await loadChat();
       startPolling();
       startChatPolling();
@@ -1014,13 +1033,22 @@
       document.getElementById('activityPanel').classList.add('hidden');
       document.getElementById('teamPanel').classList.add('hidden');
       document.getElementById('settingsPanel').classList.add('hidden');
+      setSidePanelMobileOpen(false);
     }
 
     // Team Chat
+    function isMobileBoardLayout() {
+      return window.matchMedia('(max-width: 767px)').matches;
+    }
+
     function setChatPanelOpenUi(open) {
-      const mobile = window.matchMedia('(max-width: 767px)').matches;
+      const mobile = isMobileBoardLayout();
       document.body.classList.toggle('chat-panel-mobile-open', open && mobile);
       document.getElementById('chatMobileBackdrop')?.classList.toggle('hidden', !open);
+    }
+
+    function setSidePanelMobileOpen(open) {
+      document.body.classList.toggle('side-panel-mobile-open', open && isMobileBoardLayout());
     }
 
     function openChatPanel() {
@@ -1065,6 +1093,27 @@
       });
     }
 
+    async function loadChatReadState() {
+      const r = await apiFetch(`/api/teams/${teamId}/chat/read`);
+      if (!r.ok) return;
+      const data = await parseJsonResponse(r);
+      if (data?.last_read_at) {
+        const t = new Date(data.last_read_at).getTime();
+        if (!Number.isNaN(t)) chatLastReadAt = t;
+      }
+    }
+
+    function persistChatReadState() {
+      clearTimeout(chatReadPersistTimer);
+      chatReadPersistTimer = setTimeout(async () => {
+        await apiFetch(`/api/teams/${teamId}/chat/read`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ last_read_at: new Date(chatLastReadAt).toISOString() }),
+        });
+      }, 300);
+    }
+
     function markChatRead() {
       const latest = chatMessages.reduce((max, m) => {
         const t = new Date(m.created_at).getTime();
@@ -1072,6 +1121,7 @@
       }, 0);
       chatLastReadAt = Math.max(chatLastReadAt, latest, Date.now());
       updateChatUnreadBadge();
+      persistChatReadState();
     }
 
     function updateChatUnreadBadge() {
@@ -1340,24 +1390,36 @@
     function openActivityPanel() {
       closeAllSidePanels();
       document.getElementById('activityPanel').classList.remove('hidden');
+      setSidePanelMobileOpen(true);
       loadActivity();
     }
-    function closeActivityPanel() { document.getElementById('activityPanel').classList.add('hidden'); }
+    function closeActivityPanel() {
+      document.getElementById('activityPanel').classList.add('hidden');
+      setSidePanelMobileOpen(false);
+    }
     function openTeamPanel() {
       closeAllSidePanels();
       document.getElementById('teamPanel').classList.remove('hidden');
+      setSidePanelMobileOpen(true);
       fetchOnlineMembers();
     }
-    function closeTeamPanel() { document.getElementById('teamPanel').classList.add('hidden'); }
+    function closeTeamPanel() {
+      document.getElementById('teamPanel').classList.add('hidden');
+      setSidePanelMobileOpen(false);
+    }
 
     // Settings Panel (owners only)
     function openSettingsPanel() {
       if (teamData?.userRole !== 'owner') return;
       closeAllSidePanels();
       document.getElementById('settingsPanel').classList.remove('hidden');
+      setSidePanelMobileOpen(true);
       renderSettingsMemberList(teamData.members);
     }
-    function closeSettingsPanel() { document.getElementById('settingsPanel').classList.add('hidden'); }
+    function closeSettingsPanel() {
+      document.getElementById('settingsPanel').classList.add('hidden');
+      setSidePanelMobileOpen(false);
+    }
 
     function applyTeamHeader() {
       if (!teamData) return;
