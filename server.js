@@ -38,10 +38,27 @@ app.use(session({
   },
 }));
 
-// Health check
-app.get('/health', (req, res) => {
+// Health check (dummy table wakes Postgres without touching app data)
+app.get('/health', async (req, res) => {
+  const { error } = await supabaseAdmin
+    .from('_health_ping')
+    .select('id', { count: 'exact', head: true })
+    .limit(1);
+
+  const dbOk = !error || error.code === 'PGRST205';
+
+  if (!dbOk) {
+    return res.status(503).json({
+      status: 'degraded',
+      db: 'error',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   res.status(200).json({
     status: 'ok',
+    db: 'ok',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
