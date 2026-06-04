@@ -601,6 +601,12 @@
         <p id="inviteMsg" class="text-xs mt-2 hidden"></p>
       </div>
       <div id="memberList" class="flex-1 overflow-y-auto p-4 space-y-2 min-h-0"></div>
+      <div id="teamPanelLeaveSection" class="hidden shrink-0 p-4 border-t border-white/10 bg-ink-800">
+        <p class="text-xs text-gray-400 mb-3">Membership</p>
+        <button type="button" id="leaveTeamBtn" onclick="confirmLeaveTeam()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">
+          Leave team
+        </button>
+      </div>
     </div>
 
     <!-- Team Settings Panel (owners only) -->
@@ -628,6 +634,16 @@
       <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
         <p class="text-xs text-gray-400 mb-3 shrink-0">Team members</p>
         <div id="settingsMemberList" class="flex-1 overflow-y-auto space-y-2 min-h-0 mb-4"></div>
+        <div id="transferOwnershipSection" class="hidden border-t border-white/10 pt-4 shrink-0 mb-4">
+          <p class="text-xs text-gray-400 mb-2">Transfer ownership</p>
+          <p class="text-xs text-gray-500 mb-3 leading-relaxed">Make another registered member the owner. You will become a regular member and keep access to this board.</p>
+          <select id="transferOwnershipSelect" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2 text-white text-sm mb-2 focus:outline-none focus:border-brand-500 transition">
+            <option value="">Select a member…</option>
+          </select>
+          <button type="button" id="transferOwnershipBtn" onclick="confirmTransferOwnership()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium disabled:opacity-50 disabled:pointer-events-none">
+            Transfer ownership
+          </button>
+        </div>
         <div class="border-t border-white/10 pt-4 shrink-0">
           <p class="text-xs text-gray-400 mb-3">Danger zone</p>
           <p class="text-xs text-gray-500 mb-3 leading-relaxed">Permanently delete this team, all tasks, comments, chat, and activity. This cannot be undone.</p>
@@ -1426,6 +1442,7 @@
       renderMemberList(teamData.members);
       populateAssigneeDropdowns(teamData.members);
       if (teamData.userRole === 'owner') renderSettingsMemberList(teamData.members);
+      applyMembershipActionsUi();
       if (!document.getElementById('teamRolesModal').classList.contains('hidden')) {
         syncSeparateRoleToggleUi();
         renderTeamRolesList();
@@ -2029,7 +2046,10 @@
       if (teamData.userRole === 'owner') {
         document.getElementById('settingsNavBtn').classList.remove('hidden');
         renderSettingsMemberList(teamData.members);
+      } else {
+        document.getElementById('settingsNavBtn').classList.add('hidden');
       }
+      applyMembershipActionsUi();
       fetchOnlineMembers();
       updateMemberStatsDisplay();
       captureTeamRoleStateSig();
@@ -4235,6 +4255,98 @@
       }
       await loadTeam();
       renderSettingsMemberList(teamData.members);
+    }
+
+    function isRegisteredMemberEmail(email) {
+      return String(email || '').trim().toLowerCase() !== GUEST_EMAIL;
+    }
+
+    function transferOwnershipCandidates() {
+      return (teamData?.members || []).filter(
+        (m) =>
+          m.role !== 'owner' &&
+          String(m.id) !== String(currentUser?.id) &&
+          isRegisteredMemberEmail(m.email),
+      );
+    }
+
+    function applyMembershipActionsUi() {
+      const leaveSection = document.getElementById('teamPanelLeaveSection');
+      const transferSection = document.getElementById('transferOwnershipSection');
+      const canLeave =
+        !isGuest() && teamData?.userRole === 'member';
+      leaveSection?.classList.toggle('hidden', !canLeave);
+
+      const candidates = transferOwnershipCandidates();
+      const showTransfer =
+        !isGuest() && teamData?.userRole === 'owner' && candidates.length > 0;
+      transferSection?.classList.toggle('hidden', !showTransfer);
+      const select = document.getElementById('transferOwnershipSelect');
+      if (select && showTransfer) {
+        select.innerHTML =
+          '<option value="">Select a member…</option>' +
+          candidates
+            .map(
+              (m) =>
+                `<option value="${m.id}">${escHtml(m.username)} (${escHtml(m.email)})</option>`,
+            )
+            .join('');
+      }
+    }
+
+    function confirmLeaveTeam() {
+      const name = teamData?.name || 'this team';
+      showConfirm({
+        title: 'Leave team',
+        message: `Leave "${name}"? You will lose access to its board, tasks, and chat.`,
+        confirmLabel: 'Leave team',
+        danger: true,
+        onConfirm: () => executeLeaveTeam(),
+      });
+    }
+
+    async function executeLeaveTeam() {
+      const r = await apiFetch(`/api/teams/${teamId}/leave`, { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) {
+        showAlert(d.error || 'Could not leave team');
+        return;
+      }
+      window.location = '/dashboard';
+    }
+
+    function confirmTransferOwnership() {
+      const select = document.getElementById('transferOwnershipSelect');
+      const targetId = select?.value;
+      if (!targetId) {
+        showAlert('Choose a member to transfer ownership to.');
+        return;
+      }
+      const target = teamData?.members?.find((m) => String(m.id) === String(targetId));
+      const name = target?.username || 'this member';
+      showConfirm({
+        title: 'Transfer ownership',
+        message: `Transfer ownership of "${teamData?.name || 'this team'}" to ${name}? You will become a member and they will control invites and settings.`,
+        confirmLabel: 'Transfer ownership',
+        danger: true,
+        onConfirm: () => executeTransferOwnership(targetId),
+      });
+    }
+
+    async function executeTransferOwnership(targetUserId) {
+      const r = await apiFetch(`/api/teams/${teamId}/transfer-ownership`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: targetUserId }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        showAlert(d.error || 'Could not transfer ownership');
+        return;
+      }
+      closeSettingsPanel();
+      await loadTeam();
+      showAlert('Ownership transferred. You are now a team member.', 'Done');
     }
 
     function deleteTeam() {

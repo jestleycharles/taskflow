@@ -88,6 +88,7 @@ cp .env.example .env
 | `PORT` | No | Default `3000` |
 | `TURNSTILE_SITE_KEY` | No | Cloudflare Turnstile site key (guest feedback captcha) |
 | `TURNSTILE_SECRET_KEY` | No | Turnstile secret key |
+| `FEEDBACK_ADMIN_EMAIL` | No | Registered user email that can view the feedback inbox (hidden when unset) |
 
 ### 3. Supabase setup
 

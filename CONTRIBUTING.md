@@ -31,10 +31,9 @@ Open [http://localhost:3000](http://localhost:3000).
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side database access (keep secret) |
 | `SESSION_SECRET` | Express session signing |
 | `TURNSTILE_*` | Optional; guest feedback captcha in production |
+| `FEEDBACK_ADMIN_EMAIL` | Optional; registered user with this email can view the feedback inbox on the dashboard |
 
-To become the app admin (Can see user feedbacks):
-
-Edit line 1428 of [/public/dashboard.html](/public/dashboard.html) `FEEDBACK_ADMIN_EMAIL` variable set to your email
+Set `FEEDBACK_ADMIN_EMAIL` in `.env` to your account email to access the feedback inbox. Leave unset to hide the inbox for everyone.
 
 ### Database
 

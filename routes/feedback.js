@@ -2,7 +2,7 @@ const express = require('express');
 const { supabaseAdmin } = require('../lib/supabase');
 const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
-const { FEEDBACK_ADMIN_EMAIL } = require('../lib/constants');
+const { isFeedbackAdmin } = require('../lib/feedback-admin');
 const { isGuestUser } = require('../lib/user');
 const { assertCanSubmitFeedback } = require('../lib/feedback-send-guard');
 const { ilikePattern, quotePostgrestValue } = require('../lib/ilike');
@@ -17,10 +17,6 @@ const router = express.Router();
 const MAX_MESSAGE_LEN = 5000;
 const PAGE_SIZE = 20;
 const MAX_SEARCH_LEN = 200;
-
-function isFeedbackAdmin(user) {
-  return String(user?.email || '').trim().toLowerCase() === FEEDBACK_ADMIN_EMAIL;
-}
 
 function parsePageParam(raw) {
   const page = Math.max(1, parseInt(String(raw || '1'), 10) || 1);

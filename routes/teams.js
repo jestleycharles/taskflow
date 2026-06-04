@@ -938,6 +938,131 @@ router.patch('/api/teams/:id/members/:uid/custom-role', requireAuth, async (req,
   res.json({ success: true, custom_role_id: roleId });
 });
 
+async function clearUserTeamInvites(teamId, userId) {
+  await supabaseAdmin.from('team_invites').delete().eq('team_id', teamId).eq('user_id', userId);
+}
+
+// POST /api/teams/:id/transfer-ownership — owner only; target must be registered member
+router.post('/api/teams/:id/transfer-ownership', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const targetUserId = String(req.body?.user_id || '').trim();
+
+  if (isGuestUser(req.session.user)) {
+    return res.status(403).json({ error: 'Guest accounts cannot transfer ownership' });
+  }
+  if (!targetUserId || targetUserId === userId) {
+    return res.status(400).json({ error: 'Choose a registered team member to transfer ownership to' });
+  }
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members')
+    .select('role')
+    .eq('team_id', id)
+    .eq('user_id', userId)
+    .single();
+  if (!membership || membership.role !== 'owner') {
+    return res.status(403).json({ error: 'Only the team owner can transfer ownership' });
+  }
+
+  const { data: targetMember } = await supabaseAdmin
+    .from('team_members')
+    .select('role, users(id, username, email)')
+    .eq('team_id', id)
+    .eq('user_id', targetUserId)
+    .single();
+  if (!targetMember) return res.status(404).json({ error: 'Member not found' });
+  if (targetMember.role === 'owner') {
+    return res.status(400).json({ error: 'That user is already the owner' });
+  }
+  if (isGuestUser(targetMember.users)) {
+    return res.status(400).json({ error: 'Ownership cannot be transferred to a guest account' });
+  }
+
+  const { error: demoteErr } = await supabaseAdmin
+    .from('team_members')
+    .update({ role: 'member' })
+    .eq('team_id', id)
+    .eq('user_id', userId);
+  if (demoteErr) return sendError(res, 500, demoteErr, 'save');
+
+  const { error: promoteErr } = await supabaseAdmin
+    .from('team_members')
+    .update({ role: 'owner' })
+    .eq('team_id', id)
+    .eq('user_id', targetUserId);
+  if (promoteErr) {
+    await supabaseAdmin
+      .from('team_members')
+      .update({ role: 'owner' })
+      .eq('team_id', id)
+      .eq('user_id', userId);
+    return sendError(res, 500, promoteErr, 'save');
+  }
+
+  const { error: teamErr } = await supabaseAdmin
+    .from('teams')
+    .update({ created_by: targetUserId })
+    .eq('id', id);
+  if (teamErr) {
+    await supabaseAdmin
+      .from('team_members')
+      .update({ role: 'owner' })
+      .eq('team_id', id)
+      .eq('user_id', userId);
+    await supabaseAdmin
+      .from('team_members')
+      .update({ role: 'member' })
+      .eq('team_id', id)
+      .eq('user_id', targetUserId);
+    return sendError(res, 500, teamErr, 'save');
+  }
+
+  const newUsername = targetMember.users?.username || 'A member';
+  const oldUsername = req.session.user.username || 'The owner';
+  await logActivity(id, userId, 'ownership_transferred', `Transferred ownership to ${newUsername}`);
+  await logActivity(id, targetUserId, 'ownership_received', `${oldUsername} transferred ownership to you`);
+
+  res.json({ success: true, new_owner_id: targetUserId });
+});
+
+// POST /api/teams/:id/leave — registered members only (not owner)
+router.post('/api/teams/:id/leave', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+
+  if (isGuestUser(req.session.user)) {
+    return res.status(403).json({ error: 'Guest accounts cannot leave teams' });
+  }
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members')
+    .select('role')
+    .eq('team_id', id)
+    .eq('user_id', userId)
+    .single();
+  if (!membership) return res.status(403).json({ error: 'Not a member of this team' });
+  if (membership.role === 'owner') {
+    return res.status(400).json({
+      error: 'Transfer ownership or delete the team before leaving',
+    });
+  }
+
+  const { error } = await supabaseAdmin
+    .from('team_members')
+    .delete()
+    .eq('team_id', id)
+    .eq('user_id', userId);
+  if (error) return sendError(res, 500, error, 'save');
+
+  await clearUserTeamInvites(id, userId);
+  leave(userId, id);
+
+  const username = req.session.user.username || 'A member';
+  await logActivity(id, userId, 'member_left', `${username} left the team`);
+  res.json({ success: true });
+});
+
 // DELETE /api/teams/:id/members/:uid — owner only
 router.delete('/api/teams/:id/members/:uid', requireAuth, async (req, res) => {
   const { id, uid } = req.params;

@@ -26,7 +26,7 @@ Use this document to pick **one feature per PR/agent session**. Each section is 
 
 ## 1. Transfer ownership & leave team
 
-**Status:** `[ ]` Not started
+**Status:** `[x]` Done
 
 ### Goal
 
@@ -42,22 +42,22 @@ Use this document to pick **one feature per PR/agent session**. Each section is 
 
 ### Schema / API
 
-- [ ] `POST /api/teams/:id/transfer-ownership` — body: `{ user_id }`; caller must be owner; target must be registered member of team, not guest.
-- [ ] `POST /api/teams/:id/leave` — caller must be `member` (not `owner`); removes `team_members` row; clears pending invites for that user on that team.
-- [ ] Activity log entries for transfer and leave (`activity_log` via existing `logActivity` in `routes/teams.js`).
-- [ ] Optional: notify transferred owner in UI (toast + activity).
+- [x] `POST /api/teams/:id/transfer-ownership` — body: `{ user_id }`; caller must be owner; target must be registered member of team, not guest.
+- [x] `POST /api/teams/:id/leave` — caller must be `member` (not `owner`); removes `team_members` row; clears pending invites for that user on that team.
+- [x] Activity log entries for transfer and leave (`activity_log` via existing `logActivity` in `routes/teams.js`).
+- [x] Optional: notify transferred owner in UI (toast + activity).
 
 ### UI
 
-- [ ] `public/board.html` — Team settings: owner sees “Transfer ownership” (member picker); non-owner members see “Leave team” with confirm modal.
-- [ ] `public/dashboard.html` — After leave, redirect/update team list without stale cards.
+- [x] `public/board.html` — Team settings: owner sees “Transfer ownership” (member picker); non-owner members see “Leave team” with confirm modal.
+- [x] `public/dashboard.html` — After leave, redirect/update team list without stale cards.
 
 ### Acceptance criteria
 
-- [ ] Owner who tries `leave` gets clear 400/403 (“Transfer ownership or delete the team first”).
-- [ ] Guest users cannot transfer or receive ownership.
-- [ ] After transfer, old owner becomes `member`, new owner is `owner`; invite/settings permissions follow new owner.
-- [ ] Documented in `FEATURES.md`.
+- [x] Owner who tries `leave` gets clear 400/403 (“Transfer ownership or delete the team first”).
+- [x] Guest users cannot transfer or receive ownership.
+- [x] After transfer, old owner becomes `member`, new owner is `owner`; invite/settings permissions follow new owner.
+- [x] Documented in `FEATURES.md`.
 
 ---
 
@@ -536,7 +536,7 @@ Use this document to pick **one feature per PR/agent session**. Each section is 
 
 ## 18. Configurable feedback admin via env
 
-**Status:** `[ ]` Not started
+**Status:** `[x]` Done
 
 ### Goal
 
@@ -550,18 +550,18 @@ Use this document to pick **one feature per PR/agent session**. Each section is 
 
 ### Implementation
 
-- [ ] `.env.example` — `FEEDBACK_ADMIN_EMAIL=you@example.com`
-- [ ] `lib/constants.js` — `process.env.FEEDBACK_ADMIN_EMAIL || ''` (no personal email in repo).
-- [ ] `GET /api/auth/me` or `GET /api/profile` returns `is_feedback_admin: boolean` (never expose target email to others).
-- [ ] Remove client-side email string; use API flag for inbox visibility.
-- [ ] `lib/spam-guard-override.js` uses same env via `constants.js`.
-- [ ] Update `CONTRIBUTING.md`, `README.md`, `FEATURES.md` — configure via `.env` only.
+- [x] `.env.example` — `FEEDBACK_ADMIN_EMAIL=you@example.com`
+- [x] `lib/constants.js` — `process.env.FEEDBACK_ADMIN_EMAIL || ''` (no personal email in repo).
+- [x] `GET /api/me` (and profile responses via `toSessionUser`) return `is_feedback_admin: boolean` (never expose target email to others).
+- [x] Remove client-side email string; use API flag for inbox visibility.
+- [x] `lib/spam-guard-override.js` uses same env via `lib/feedback-admin.js`.
+- [x] Update `CONTRIBUTING.md`, `README.md`, `FEATURES.md` — configure via `.env` only.
 
 ### Acceptance criteria
 
-- [ ] No hardcoded admin email in `public/` or committed defaults.
-- [ ] Inbox hidden when env unset.
-- [ ] Spam bypass only for that admin account.
+- [x] No hardcoded admin email in `public/` or committed defaults.
+- [x] Inbox hidden when env unset.
+- [x] Spam bypass only for that admin account.
 
 ---
 

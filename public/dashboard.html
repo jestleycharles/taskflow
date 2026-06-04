@@ -1440,15 +1440,10 @@
       let onlineTeamIds = new Set();
       let teamOnlinePollInterval = null;
       const TEAM_ONLINE_POLL_MS = 4000;
-      const FEEDBACK_ADMIN_EMAIL = "jestley.charles@gmail.com"; // TODO: replace with your email
       let registeredFeaturesCache = null;
 
       function isFeedbackAdmin() {
-        return (
-          String(currentUser?.email || "")
-            .trim()
-            .toLowerCase() === FEEDBACK_ADMIN_EMAIL
-        );
+        return !!currentUser?.is_feedback_admin;
       }
 
       function parseFeaturesMarkdown(text) {

@@ -81,9 +81,9 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **DM online status** — See which DM contacts are online (app-level presence).
 - **Feedback** — Same as guests
 
-### Feedback admin (registered, configured email only)
+### Feedback admin (registered, `FEEDBACK_ADMIN_EMAIL` in server `.env`)
 
-- **Feedback inbox** — Paginated list of all user submissions with search.
+- **Feedback inbox** — Paginated list of all user submissions with search. Only visible when `FEEDBACK_ADMIN_EMAIL` is set and matches your signed-in email. The admin address is never exposed to the client; `/api/me` returns `is_feedback_admin: true` for that account only.
 
 ---
 
@@ -109,12 +109,19 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Upload team avatar** — Custom image to Supabase Storage (replaces stored file when changing avatar).
 - **Email invites** — Invite registered users by email; pending invites appear until accepted. Guest accounts cannot be invited.
 - **Cancel pending invites** — Remove a pending invitation.
+- **Transfer ownership** — Assign another registered member as owner (you become a member). Guest accounts cannot receive ownership. Recorded in the activity log.
 
 ### Registered users — as team **member**
 
 - **Join via invite** — Accept invite from dashboard; decline to dismiss.
 - **Board access** — Full Kanban participation (see Tasks).
+- **Leave team** — Voluntarily leave from the team panel on the board (pending invites for you on that team are cleared).
 - **No administration** — No team settings or invites unless you are the team owner.
+
+### Ownership & leaving (rules)
+
+- **Owners cannot leave** until they transfer ownership to another registered member or delete the team.
+- **Guest accounts** cannot transfer ownership, receive ownership, or use leave-team (API returns 403/400 with a clear message).
 
 ### All signed-in members
 
@@ -180,7 +187,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 
 ## Security & abuse prevention
 
-- **Message send guard** — Cooldown, duplicate, near-duplicate, and burst detection for chat, DMs, and comments; composers show a live countdown when rate-limited. The configured feedback admin email bypasses these guards.
+- **Message send guard** — Cooldown, duplicate, near-duplicate, and burst detection for chat, DMs, and comments; composers show a live countdown when rate-limited. The account matching `FEEDBACK_ADMIN_EMAIL` in `.env` bypasses these guards.
 - **Feedback honeypot** — Hidden field bot trap on feedback form.
 - **Guest feedback limits** — Per-session hourly/daily caps and cooldown (server-side).
 - **Turnstile** — Cloudflare captcha for guest feedback when keys are configured.
