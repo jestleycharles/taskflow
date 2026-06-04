@@ -613,6 +613,9 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
 
   const trimmedEmail = String(email || '').trim().toLowerCase();
   if (!trimmedEmail) return res.status(400).json({ error: 'Email is required' });
+  if (isGuestUser({ email: trimmedEmail })) {
+    return res.status(400).json({ error: 'Guest accounts cannot be invited to teams.' });
+  }
 
   const { data: invitee } = await supabaseAdmin
     .from('users')
@@ -620,6 +623,9 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
     .eq('email', trimmedEmail)
     .single();
   if (!invitee) return res.status(404).json({ error: 'User not found' });
+  if (isGuestUser(invitee)) {
+    return res.status(400).json({ error: 'Guest accounts cannot be invited to teams.' });
+  }
 
   if (invitee.id === userId) return res.status(400).json({ error: 'You cannot invite yourself' });
 

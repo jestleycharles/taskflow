@@ -107,7 +107,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 
 - **Everything guest owners have**, plus:
 - **Upload team avatar** — Custom image to Supabase Storage (replaces stored file when changing avatar).
-- **Email invites** — Invite registered users by email; pending invites appear until accepted.
+- **Email invites** — Invite registered users by email; pending invites appear until accepted. Guest accounts cannot be invited.
 - **Cancel pending invites** — Remove a pending invitation.
 
 ### Registered users — as team **member**
@@ -156,7 +156,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 
 ### Team **owner** (registered)
 
-- **Invite panel on board** — Email invite UI (disabled if team owner is guest).
+- **Invite panel on board** — Email invite UI (disabled if team owner is guest; guest accounts cannot be invited).
 - **Team settings panel** — Edit team info, avatar (disabled if team owner is guest), custom roles, member roles, and remove members.
 
 ---
