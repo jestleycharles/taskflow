@@ -4694,6 +4694,28 @@
         setBoardZoom(Number(e.target.value));
       });
 
+      function boardZoomWheelDelta(deltaY) {
+        return deltaY < 0 ? -BOARD_ZOOM_STEP : BOARD_ZOOM_STEP;
+      }
+
+      function onBoardZoomWheel(e, focalX, focalY) {
+        if (mobileMq.matches) return;
+        e.preventDefault();
+        changeBoardZoom(boardZoomWheelDelta(e.deltaY), focalX, focalY);
+      }
+
+      document.getElementById('boardZoomWrap')?.addEventListener('wheel', (e) => {
+        onBoardZoomWheel(e);
+      }, { passive: false });
+
+      container.addEventListener('wheel', (e) => {
+        if (mobileMq.matches) return;
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.target.closest('.task-card, button, input, textarea, select, a, label, #boardZoomWrap')) return;
+        const rect = container.getBoundingClientRect();
+        onBoardZoomWheel(e, e.clientX - rect.left, e.clientY - rect.top);
+      }, { passive: false });
+
       let pinch = null;
 
       function pinchDistance(touches) {
@@ -4729,7 +4751,7 @@
         const center = pinchCenter(e.touches, rect);
         const dist = pinchDistance(e.touches);
         const ratio = dist / pinch.startDist;
-        setBoardZoom(pinch.startPct * ratio, center.x, center.y);
+        setBoardZoom(pinch.startPct / ratio, center.x, center.y);
       }, { passive: false });
 
       function endPinch() {
@@ -4738,7 +4760,9 @@
         container.classList.remove('board-zoom-pinching');
       }
 
-      container.addEventListener('touchend', endPinch);
+      container.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) endPinch();
+      });
       container.addEventListener('touchcancel', endPinch);
 
       const board = document.getElementById('kanbanBoard');
