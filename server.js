@@ -11,6 +11,7 @@ const chatRoutes = require('./routes/chat');
 const dmChatRoutes = require('./routes/dm-chat');
 const dmSettingsRoutes = require('./routes/dm-settings');
 const { router: reactionRoutes } = require('./routes/reactions');
+const feedbackRoutes = require('./routes/feedback');
 const { supabaseAdmin } = require('./lib/supabase');
 const { toSessionUser } = require('./lib/user');
 const { requireAuth } = require('./middleware/auth');
@@ -54,6 +55,11 @@ app.use(chatRoutes);
 app.use(dmChatRoutes);
 app.use(dmSettingsRoutes);
 app.use(reactionRoutes);
+app.use(feedbackRoutes);
+
+app.get('/features.md', (req, res) => {
+  res.sendFile(path.join(__dirname, 'features.md'));
+});
 
 // Pages
 app.get('/', (req, res) => {

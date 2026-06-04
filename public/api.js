@@ -213,3 +213,17 @@ function messageListSkeletonHtml(count = 4) {
   const n = Math.min(count, variants.length);
   return `<div class="space-y-4">${variants.slice(0, n).join('')}</div>`;
 }
+
+const GUEST_DASHBOARD_NOTICE_KEY = 'taskflow_guest_dashboard_notice';
+
+function clearGuestDashboardNotice() {
+  try { sessionStorage.removeItem(GUEST_DASHBOARD_NOTICE_KEY); } catch (_) { /* ignore */ }
+}
+
+function hasGuestDashboardNoticeDismissed() {
+  try { return sessionStorage.getItem(GUEST_DASHBOARD_NOTICE_KEY) === '1'; } catch (_) { return false; }
+}
+
+function setGuestDashboardNoticeDismissed() {
+  try { sessionStorage.setItem(GUEST_DASHBOARD_NOTICE_KEY, '1'); } catch (_) { /* ignore */ }
+}

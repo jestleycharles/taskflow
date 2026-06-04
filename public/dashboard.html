@@ -129,6 +129,11 @@
       pointer-events: auto;
     }
     #dmReactionFloatLayer { z-index: 200; }
+    #feedbackFabWrap {
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 25;
+    }
   </style>
 </head>
 <body class="grid-bg min-h-screen text-white">
@@ -244,6 +249,21 @@
         </div>
       </div>
     </div>
+
+    <!-- User feedback inbox (admin only) -->
+    <section id="feedbackAdminSection" class="hidden fade-up mt-14 pt-10 border-t border-white/10">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-1">User feedback</h2>
+          <p class="text-gray-400 text-sm">Bug reports and suggestions submitted from the dashboard.</p>
+        </div>
+        <button type="button" id="feedbackAdminRefreshBtn" onclick="loadAdminFeedback()"
+          class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition shrink-0">
+          Refresh
+        </button>
+      </div>
+      <div id="feedbackAdminList" class="space-y-3"></div>
+    </section>
   </main>
 
   <!-- Profile Modal -->
@@ -454,6 +474,58 @@
     </div>
   </div>
 
+  <!-- Guest account notice (first dashboard visit per guest session) -->
+  <div id="guestNoticeModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 overflow-y-auto">
+    <div class="modal-overlay absolute inset-0 bg-black/60"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
+      <h2 class="text-lg font-semibold text-white mb-2">Shared guest account</h2>
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4">
+        <p class="text-sm text-amber-200/90 leading-relaxed">
+          You are using a <strong class="text-amber-100 font-medium">public guest account</strong> shared with anyone who chooses “Continue as guest.”
+          Other guests can view, change, or remove teams, tasks, comments, and chat content you create.
+          In particular, another guest may <strong class="text-amber-100 font-medium">delete tasks you added</strong> or even <strong class="text-amber-100 font-medium">delete entire teams</strong> you set up.
+        </p>
+      </div>
+      <p class="text-sm text-gray-400 leading-relaxed mb-4">
+        For private workspaces and full collaboration features, create a free registered account.
+      </p>
+      <div class="mb-5">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">With a registered account you get</p>
+        <ul id="guestNoticeFeaturesList" class="text-sm text-gray-300 space-y-2 list-disc list-inside marker:text-brand-500/80"></ul>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <a href="/register" class="flex-1 text-center bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-medium py-2.5 rounded-xl transition text-sm">Create account</a>
+        <button type="button" onclick="dismissGuestNotice()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">I understand</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback / bug report -->
+  <div id="feedbackModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeFeedbackModal()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
+      <h2 class="text-base font-semibold text-white mb-1">Send feedback</h2>
+      <p class="text-sm text-gray-500 mb-4">Report a bug or share a suggestion. We read every submission.</p>
+      <div id="feedbackError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
+      <div class="mb-4">
+        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Type</label>
+        <select id="feedbackCategory" class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-500 transition">
+          <option value="feedback">Feedback / suggestion</option>
+          <option value="bug">Bug report</option>
+        </select>
+      </div>
+      <div class="mb-5">
+        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Message</label>
+        <textarea id="feedbackMessage" rows="4" placeholder="Describe what happened or what you'd like to see…"
+          class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition resize-y min-h-[6rem]"></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="closeFeedbackModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
+        <button type="button" id="feedbackSubmitBtn" onclick="submitFeedback()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Submit</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Alert Modal -->
   <div id="alertModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
     <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeAlertModal()"></div>
@@ -462,6 +534,17 @@
       <p id="alertMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
       <button type="button" onclick="closeAlertModal()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
     </div>
+  </div>
+
+  <!-- Feedback FAB (bottom-right; all users) -->
+  <div id="feedbackFabWrap" class="fixed">
+    <button type="button" id="feedbackFab" onclick="openFeedbackModal()"
+      class="w-12 h-12 rounded-full bg-ink-700 hover:bg-ink-600 border border-white/15 text-gray-300 hover:text-white shadow-lg flex items-center justify-center transition hover:scale-105"
+      title="Send feedback or report a bug" aria-label="Send feedback">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+      </svg>
+    </button>
   </div>
 
   <!-- Messages FAB (bottom-left; same placement as team chat on board) -->
@@ -526,6 +609,135 @@
     let onlineTeamIds = new Set();
     let teamOnlinePollInterval = null;
     const TEAM_ONLINE_POLL_MS = 4000;
+    const FEEDBACK_ADMIN_EMAIL = 'jestley.charles@gmail.com';
+    let registeredFeaturesCache = null;
+
+    function isFeedbackAdmin() {
+      return String(currentUser?.email || '').trim().toLowerCase() === FEEDBACK_ADMIN_EMAIL;
+    }
+
+    function parseFeaturesMarkdown(text) {
+      return String(text || '')
+        .split('\n')
+        .map((line) => line.match(/^\s*-\s+\*\*(.+?)\*\*\s*[—–-]\s*(.+)$/) || line.match(/^\s*-\s+(.+)$/))
+        .filter(Boolean)
+        .map((m) => (m[2]
+          ? `<span class="text-white font-medium">${escHtml(m[1])}</span><span class="text-gray-400"> — ${escHtml(m[2])}</span>`
+          : escHtml(m[1])));
+    }
+
+    async function loadRegisteredFeatures() {
+      if (registeredFeaturesCache) return registeredFeaturesCache;
+      try {
+        const r = await fetch('/features.md', { cache: 'no-store' });
+        if (!r.ok) return [];
+        const text = await r.text();
+        registeredFeaturesCache = parseFeaturesMarkdown(text);
+        return registeredFeaturesCache;
+      } catch {
+        return [];
+      }
+    }
+
+    async function renderGuestNoticeFeatures() {
+      const list = document.getElementById('guestNoticeFeaturesList');
+      const items = await loadRegisteredFeatures();
+      if (!items.length) {
+        list.innerHTML = '<li class="text-gray-500 list-none -ml-0">Sign up to unlock private workspaces and collaboration tools.</li>';
+        return;
+      }
+      list.innerHTML = items.map((html) => `<li>${html}</li>`).join('');
+    }
+
+    async function maybeShowGuestNotice() {
+      if (!currentUser?.is_guest || hasGuestDashboardNoticeDismissed()) return;
+      await renderGuestNoticeFeatures();
+      document.getElementById('guestNoticeModal').classList.remove('hidden');
+    }
+
+    function dismissGuestNotice() {
+      setGuestDashboardNoticeDismissed();
+      document.getElementById('guestNoticeModal').classList.add('hidden');
+    }
+
+    function openFeedbackModal() {
+      document.getElementById('feedbackError').classList.add('hidden');
+      document.getElementById('feedbackMessage').value = '';
+      document.getElementById('feedbackCategory').value = 'feedback';
+      document.getElementById('feedbackModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('feedbackMessage')?.focus(), 50);
+    }
+
+    function closeFeedbackModal() {
+      document.getElementById('feedbackModal').classList.add('hidden');
+    }
+
+    async function submitFeedback() {
+      const message = document.getElementById('feedbackMessage').value.trim();
+      const category = document.getElementById('feedbackCategory').value;
+      const errEl = document.getElementById('feedbackError');
+      const btn = document.getElementById('feedbackSubmitBtn');
+      errEl.classList.add('hidden');
+      if (message.length < 5) {
+        errEl.textContent = 'Please enter at least 5 characters.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      const r = await apiFetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, category }),
+      });
+      const data = await parseJsonResponse(r);
+      btn.disabled = false;
+      btn.textContent = 'Submit';
+      if (!r.ok) {
+        errEl.textContent = data.error || 'Could not send feedback';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      closeFeedbackModal();
+      showAlert('Thank you — your feedback has been submitted.', 'Received');
+      if (isFeedbackAdmin()) loadAdminFeedback();
+    }
+
+    function formatFeedbackDate(iso) {
+      try {
+        return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      } catch {
+        return iso || '';
+      }
+    }
+
+    async function loadAdminFeedback() {
+      if (!isFeedbackAdmin()) return;
+      const list = document.getElementById('feedbackAdminList');
+      list.innerHTML = '<p class="text-sm text-gray-500">Loading…</p>';
+      const r = await apiFetch('/api/feedback');
+      const rows = await parseJsonResponse(r);
+      if (!r.ok) {
+        list.innerHTML = `<p class="text-sm text-red-400">${escHtml(rows?.error || 'Could not load feedback')}</p>`;
+        return;
+      }
+      if (!Array.isArray(rows) || !rows.length) {
+        list.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">No submissions yet.</p>';
+        return;
+      }
+      list.innerHTML = rows.map((row) => {
+        const isBug = row.category === 'bug';
+        const badge = isBug
+          ? '<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">Bug</span>'
+          : '<span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">Feedback</span>';
+        const who = escHtml(row.username || 'Unknown') + (row.user_email ? ` <span class="text-gray-500">(${escHtml(row.user_email)})</span>` : '');
+        return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-4">
+          <div class="flex flex-wrap items-center gap-2 mb-2">${badge}<span class="text-xs text-gray-500">${escHtml(formatFeedbackDate(row.created_at))}</span></div>
+          <p class="text-xs text-gray-400 mb-2">${who}</p>
+          <p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escHtml(row.message)}</p>
+        </article>`;
+      }).join('');
+    }
 
     function renderNavUser() {
       const isGuest = currentUser.is_guest;
@@ -705,6 +917,11 @@
       }
       loadTeams();
       loadTeamInvites();
+      if (isFeedbackAdmin()) {
+        document.getElementById('feedbackAdminSection').classList.remove('hidden');
+        loadAdminFeedback();
+      }
+      maybeShowGuestNotice();
     }
 
     async function loadTeamInvites() {
@@ -1090,6 +1307,7 @@
 
     async function logout() {
       DirectChat.leaveAppPresence?.();
+      clearGuestDashboardNotice();
       await apiFetch('/api/auth/logout', { method: 'POST' });
       window.location = '/login';
     }
