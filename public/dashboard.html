@@ -964,6 +964,19 @@
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
             />
           </div>
+          <div>
+            <label
+              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+              >Kanban board type</label
+            >
+            <select
+              id="teamKanbanPreset"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+            >
+              <option value="classic">Classic — To Do, Doing, Done</option>
+            </select>
+            <p id="teamKanbanPresetDesc" class="text-xs text-gray-500 mt-1.5 leading-relaxed"></p>
+          </div>
           <div class="flex gap-3 pt-2">
             <button
               type="button"
@@ -1420,6 +1433,7 @@
         pendingFile: null,
       };
       let createTeamSaving = false;
+      let kanbanPresets = [];
       let teamsList = [];
       let teamInvitesList = [];
       let onlineTeamIds = new Set();
@@ -2326,12 +2340,46 @@
         });
       }
 
+      async function loadKanbanPresets() {
+        if (kanbanPresets.length) return;
+        const r = await apiFetch("/api/kanban-presets");
+        const data = await parseJsonResponse(r);
+        if (r.ok && Array.isArray(data)) kanbanPresets = data;
+      }
+
+      function renderKanbanPresetSelect() {
+        const sel = document.getElementById("teamKanbanPreset");
+        if (!sel || !kanbanPresets.length) return;
+        sel.innerHTML = kanbanPresets
+          .map(
+            (p) =>
+              `<option value="${p.id}">${p.name} (${p.column_count} columns)</option>`
+          )
+          .join("");
+        updateKanbanPresetDescription();
+      }
+
+      function updateKanbanPresetDescription() {
+        const sel = document.getElementById("teamKanbanPreset");
+        const desc = document.getElementById("teamKanbanPresetDesc");
+        if (!sel || !desc) return;
+        const preset = kanbanPresets.find((p) => p.id === sel.value);
+        if (!preset) {
+          desc.textContent = "";
+          return;
+        }
+        const cols = (preset.columns || []).map((c) => c.name).join(" → ");
+        desc.textContent = preset.description + (cols ? ` · ${cols}` : "");
+      }
+
       async function openCreateModal() {
         document.getElementById("modalError").classList.add("hidden");
         document.getElementById("teamName").value = "";
         document.getElementById("teamDesc").value = "";
         document.getElementById("createTeamAvatarFile").value = "";
         if (!avatarPresets.length) await loadAvatarPresets();
+        await loadKanbanPresets();
+        renderKanbanPresetSelect();
         resetCreateTeamDraft();
         renderCreateTeamAvatarPresetGrid();
         updateCreateTeamPreview();
@@ -2367,7 +2415,9 @@
           return;
         }
         const desc = document.getElementById("teamDesc").value.trim();
-        const body = { name, description: desc };
+        const kanbanPreset =
+          document.getElementById("teamKanbanPreset")?.value || "classic";
+        const body = { name, description: desc, kanban_preset: kanbanPreset };
         if (!createTeamDraft.pendingFile && createTeamDraft.avatar_url) {
           body.avatar_url = createTeamDraft.avatar_url;
         }
@@ -2443,6 +2493,10 @@
           updateCreateTeamPreview();
         }
       });
+
+      document
+        .getElementById("teamKanbanPreset")
+        ?.addEventListener("change", updateKanbanPresetDescription);
 
       async function logout() {
         DirectChat.leaveAppPresence?.();

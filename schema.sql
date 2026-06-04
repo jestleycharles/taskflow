@@ -75,6 +75,23 @@ CREATE TABLE IF NOT EXISTS team_invites (
 CREATE INDEX IF NOT EXISTS team_invites_user_id_idx ON team_invites (user_id);
 
 -- =============================================================================
+-- Kanban columns (per-team; tasks.status stores column slug)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS team_columns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
+  slug TEXT NOT NULL,
+  name TEXT NOT NULL,
+  color_hex TEXT NOT NULL DEFAULT '#64748b',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (team_id, slug)
+);
+
+CREATE INDEX IF NOT EXISTS team_columns_team_sort_idx ON team_columns (team_id, sort_order);
+
+-- =============================================================================
 -- Tasks, comments, activity
 -- =============================================================================
 
@@ -83,7 +100,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   team_id UUID NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done')),
+  status TEXT NOT NULL DEFAULT 'todo',
+  cover_image_url TEXT,
   priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('urgent', 'high', 'medium', 'low')),
   due_date TIMESTAMPTZ,
   assigned_to UUID REFERENCES users (id) ON DELETE SET NULL,
@@ -98,6 +116,19 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 CREATE INDEX IF NOT EXISTS tasks_team_status_position_idx ON tasks (team_id, status, position);
+
+CREATE TABLE IF NOT EXISTS task_attachments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks (id) ON DELETE CASCADE,
+  file_url TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  file_size INTEGER NOT NULL DEFAULT 0,
+  uploaded_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS task_attachments_task_id_idx ON task_attachments (task_id);
 
 CREATE TABLE IF NOT EXISTS comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -261,7 +292,9 @@ ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE team_columns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE task_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_comment_read_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
@@ -277,8 +310,9 @@ ALTER TABLE dm_ignored_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 
 -- =============================================================================
--- Storage: create public "avatars" bucket in Supabase Dashboard → Storage
--- Paths: {userId}/... for profiles, teams/{teamId}/... for team avatars
+-- Storage (Supabase Dashboard → Storage, public buckets):
+--   avatars — {userId}/..., teams/{teamId}/...
+--   task-files — tasks/{taskId}/...
 -- =============================================================================
 
 -- =============================================================================

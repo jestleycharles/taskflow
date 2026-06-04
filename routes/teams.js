@@ -11,6 +11,8 @@ const {
   isStorageTeamAvatarUrl,
   randomColor,
 } = require('../lib/user');
+const { getKanbanPreset } = require('../lib/kanban-presets');
+const { seedTeamColumns, ensureTeamColumns } = require('../lib/team-columns');
 const router = express.Router();
 
 const AVATAR_BUCKET = 'avatars';
@@ -291,11 +293,13 @@ router.get('/api/teams/online', requireAuth, async (req, res) => {
 
 // POST /api/teams - create team
 router.post('/api/teams', requireAuth, async (req, res) => {
-  const { name, description, avatar_url } = req.body;
+  const { name, description, avatar_url, kanban_preset } = req.body;
   const userId = req.session.user.id;
 
   const trimmedName = String(name || '').trim();
   if (!trimmedName) return res.status(400).json({ error: 'Team name is required' });
+
+  const preset = getKanbanPreset(kanban_preset);
 
   let presetUrl = null;
   if (avatar_url) {
@@ -319,8 +323,15 @@ router.post('/api/teams', requireAuth, async (req, res) => {
 
   await supabaseAdmin.from('team_members').insert({ team_id: team.id, user_id: userId, role: 'owner' });
 
+  try {
+    await seedTeamColumns(team.id, preset.id);
+  } catch (colErr) {
+    await supabaseAdmin.from('teams').delete().eq('id', team.id);
+    return sendError(res, 500, colErr, 'save');
+  }
+
   await logActivity(team.id, userId, 'team_created', `Created team "${trimmedName}"`);
-  res.json(team);
+  res.json({ ...team, kanban_preset: preset.id });
 });
 
 // PATCH /api/teams/:id — update name & description (owner only)
@@ -484,6 +495,13 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
     return sendError(res, 500, rolesErr, 'load');
   }
 
+  let columns = [];
+  try {
+    columns = await ensureTeamColumns(id);
+  } catch (colErr) {
+    return sendError(res, 500, colErr, 'load');
+  }
+
   const memberList = attachCustomRoles(
     (members || []).map((m) => ({ ...m.users, role: m.role, custom_role_id: m.custom_role_id })),
     roles
@@ -503,6 +521,7 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
     members: memberList,
     pending_invites,
     roles,
+    columns,
     separate_role_members: !!team.separate_role_members,
     userRole: membership.role,
     owner_is_guest: ownerIsGuest,

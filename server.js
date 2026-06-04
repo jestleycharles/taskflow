@@ -6,6 +6,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const teamRoutes = require('./routes/teams');
 const taskRoutes = require('./routes/tasks');
+const columnRoutes = require('./routes/columns');
 const profileRoutes = require('./routes/profile');
 const chatRoutes = require('./routes/chat');
 const dmChatRoutes = require('./routes/dm-chat');
@@ -50,6 +51,7 @@ app.get('/health', (req, res) => {
 app.use(authRoutes);
 app.use(teamRoutes);
 app.use(taskRoutes);
+app.use(columnRoutes);
 app.use(profileRoutes);
 app.use(chatRoutes);
 app.use(dmChatRoutes);
