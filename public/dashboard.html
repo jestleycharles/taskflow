@@ -141,6 +141,15 @@
     body.dashboard-has-dm-fab #feedbackFabWrap {
       bottom: calc(1rem + 3rem + 0.75rem);
     }
+    .feedback-hp {
+      position: absolute;
+      left: -10000px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body class="grid-bg min-h-screen text-white">
@@ -269,7 +278,29 @@
           Refresh
         </button>
       </div>
+      <form id="feedbackAdminSearchForm" class="flex flex-col sm:flex-row gap-2 mb-4" onsubmit="searchAdminFeedback(event)">
+        <input type="search" id="feedbackAdminSearchInput" placeholder="Search message, username, or email…"
+          class="flex-1 bg-ink-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition" />
+        <button type="submit"
+          class="text-sm text-white bg-brand-500 hover:bg-brand-600 px-4 py-2.5 rounded-xl transition shrink-0">Search</button>
+        <button type="button" id="feedbackAdminSearchClearBtn" onclick="clearAdminFeedbackSearch()"
+          class="hidden text-sm text-gray-300 hover:text-white px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition shrink-0">
+          Clear
+        </button>
+      </form>
+      <p id="feedbackAdminMeta" class="hidden text-xs text-gray-500 mb-3"></p>
       <div id="feedbackAdminList" class="space-y-3"></div>
+      <div id="feedbackAdminPager" class="hidden flex items-center justify-center gap-3 mt-6">
+        <button type="button" id="feedbackAdminPrevBtn" onclick="feedbackAdminGoPage(-1)"
+          class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition disabled:opacity-40 disabled:pointer-events-none">
+          Previous
+        </button>
+        <span id="feedbackAdminPageLabel" class="text-sm text-gray-400 min-w-[7rem] text-center"></span>
+        <button type="button" id="feedbackAdminNextBtn" onclick="feedbackAdminGoPage(1)"
+          class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition disabled:opacity-40 disabled:pointer-events-none">
+          Next
+        </button>
+      </div>
     </section>
   </main>
 
@@ -523,6 +554,10 @@
         </p>
       </div>
       <div id="feedbackError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
+      <label id="feedbackHpWrap" class="feedback-hp" aria-hidden="true">
+        <span>Company</span>
+        <input type="text" id="feedbackHp" name="tf_hp" tabindex="-1" autocomplete="off" />
+      </label>
       <div class="mb-4">
         <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Type</label>
         <select id="feedbackCategory" class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-500 transition">
@@ -534,6 +569,9 @@
         <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Message</label>
         <textarea id="feedbackMessage" rows="4" placeholder="Describe what happened or what you'd like to see…"
           class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition resize-y min-h-[6rem]"></textarea>
+      </div>
+      <div id="feedbackCaptchaWrap" class="hidden mb-4 flex justify-center">
+        <div id="feedbackTurnstile"></div>
       </div>
       <div class="flex gap-3">
         <button type="button" onclick="closeFeedbackModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
@@ -703,17 +741,82 @@
       document.getElementById('guestNoticeModal').classList.add('hidden');
     }
 
-    function openFeedbackModal() {
+    let feedbackCaptchaConfig = { guestCaptchaRequired: false, turnstileSiteKey: null };
+    let feedbackCaptchaToken = null;
+    let feedbackTurnstileWidgetId = null;
+    let feedbackTurnstileScriptPromise = null;
+
+    async function loadFeedbackCaptchaConfig() {
+      const r = await apiFetch('/api/feedback/captcha-config');
+      if (!r.ok) return;
+      const data = await parseJsonResponse(r);
+      feedbackCaptchaConfig = {
+        guestCaptchaRequired: !!data.guestCaptchaRequired,
+        turnstileSiteKey: data.turnstileSiteKey || null,
+      };
+    }
+
+    function loadTurnstileScript() {
+      if (window.turnstile) return Promise.resolve();
+      if (feedbackTurnstileScriptPromise) return feedbackTurnstileScriptPromise;
+      feedbackTurnstileScriptPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        s.async = true;
+        s.defer = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Could not load verification'));
+        document.head.appendChild(s);
+      });
+      return feedbackTurnstileScriptPromise;
+    }
+
+    function resetFeedbackTurnstile() {
+      feedbackCaptchaToken = null;
+      if (feedbackTurnstileWidgetId != null && window.turnstile) {
+        try { turnstile.remove(feedbackTurnstileWidgetId); } catch (_) { /* ignore */ }
+        feedbackTurnstileWidgetId = null;
+      }
+      document.getElementById('feedbackTurnstile').innerHTML = '';
+    }
+
+    async function mountFeedbackTurnstile() {
+      const wrap = document.getElementById('feedbackCaptchaWrap');
+      const needsCaptcha = !!currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired;
+      wrap.classList.toggle('hidden', !needsCaptcha);
+      resetFeedbackTurnstile();
+      if (!needsCaptcha) return;
+      try {
+        await loadTurnstileScript();
+        feedbackTurnstileWidgetId = turnstile.render('#feedbackTurnstile', {
+          sitekey: feedbackCaptchaConfig.turnstileSiteKey,
+          theme: 'dark',
+          callback: (token) => { feedbackCaptchaToken = token; },
+          'expired-callback': () => { feedbackCaptchaToken = null; },
+          'error-callback': () => { feedbackCaptchaToken = null; },
+        });
+      } catch {
+        document.getElementById('feedbackError').textContent = 'Could not load verification. Refresh and try again.';
+        document.getElementById('feedbackError').classList.remove('hidden');
+      }
+    }
+
+    async function openFeedbackModal() {
       document.getElementById('feedbackError').classList.add('hidden');
       document.getElementById('feedbackMessage').value = '';
+      const hp = document.getElementById('feedbackHp');
+      if (hp) hp.value = '';
       document.getElementById('feedbackCategory').value = 'feedback';
       document.getElementById('feedbackGuestNotice')?.classList.toggle('hidden', !currentUser?.is_guest);
       document.getElementById('feedbackModal').classList.remove('hidden');
+      await mountFeedbackTurnstile();
       setTimeout(() => document.getElementById('feedbackMessage')?.focus(), 50);
     }
 
     function closeFeedbackModal() {
       document.getElementById('feedbackModal').classList.add('hidden');
+      resetFeedbackTurnstile();
+      document.getElementById('feedbackCaptchaWrap').classList.add('hidden');
     }
 
     async function submitFeedback() {
@@ -727,12 +830,25 @@
         errEl.classList.remove('hidden');
         return;
       }
+      if (currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired && !feedbackCaptchaToken) {
+        errEl.textContent = 'Please complete the verification check below.';
+        errEl.classList.remove('hidden');
+        return;
+      }
       btn.disabled = true;
       btn.textContent = 'Sending…';
+      const body = {
+        message,
+        category,
+        tf_hp: document.getElementById('feedbackHp')?.value || '',
+      };
+      if (currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired) {
+        body.captchaToken = feedbackCaptchaToken;
+      }
       const r = await apiFetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, category }),
+        body: JSON.stringify(body),
       });
       const data = await parseJsonResponse(r);
       btn.disabled = false;
@@ -743,6 +859,7 @@
         return;
       }
       closeFeedbackModal();
+      resetFeedbackTurnstile();
       showAlert('Thank you — your feedback has been submitted.', 'Received');
       if (isFeedbackAdmin()) loadAdminFeedback();
     }
@@ -755,32 +872,83 @@
       }
     }
 
+    let feedbackAdminPage = 1;
+    let feedbackAdminQuery = '';
+
+    function renderFeedbackAdminItem(row) {
+      const isBug = row.category === 'bug';
+      const badge = isBug
+        ? '<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">Bug</span>'
+        : '<span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">Feedback</span>';
+      const who = escHtml(row.username || 'Unknown') + (row.user_email ? ` <span class="text-gray-500">(${escHtml(row.user_email)})</span>` : '');
+      return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-4">
+        <div class="flex flex-wrap items-center gap-2 mb-2">${badge}<span class="text-xs text-gray-500">${escHtml(formatFeedbackDate(row.created_at))}</span></div>
+        <p class="text-xs text-gray-400 mb-2">${who}</p>
+        <p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escHtml(row.message)}</p>
+      </article>`;
+    }
+
+    function updateFeedbackAdminPager(payload) {
+      const pager = document.getElementById('feedbackAdminPager');
+      const meta = document.getElementById('feedbackAdminMeta');
+      const prevBtn = document.getElementById('feedbackAdminPrevBtn');
+      const nextBtn = document.getElementById('feedbackAdminNextBtn');
+      const pageLabel = document.getElementById('feedbackAdminPageLabel');
+      const showPager = payload.total > 0 && (payload.hasPrev || payload.hasNext || payload.totalPages > 1);
+      pager.classList.toggle('hidden', !showPager);
+      prevBtn.disabled = !payload.hasPrev;
+      nextBtn.disabled = !payload.hasNext;
+      pageLabel.textContent = `Page ${payload.page} of ${payload.totalPages}`;
+      meta.classList.toggle('hidden', payload.total === 0);
+      const qNote = feedbackAdminQuery ? ` matching "${feedbackAdminQuery}"` : '';
+      meta.textContent = payload.total === 0
+        ? (feedbackAdminQuery ? 'No results for this search.' : '')
+        : `${payload.total} submission${payload.total === 1 ? '' : 's'}${qNote} - 20 per page`;
+    }
+
+    function searchAdminFeedback(e) {
+      e.preventDefault();
+      feedbackAdminQuery = document.getElementById('feedbackAdminSearchInput').value.trim();
+      feedbackAdminPage = 1;
+      document.getElementById('feedbackAdminSearchClearBtn').classList.toggle('hidden', !feedbackAdminQuery);
+      loadAdminFeedback();
+    }
+
+    function clearAdminFeedbackSearch() {
+      feedbackAdminQuery = '';
+      feedbackAdminPage = 1;
+      document.getElementById('feedbackAdminSearchInput').value = '';
+      document.getElementById('feedbackAdminSearchClearBtn').classList.add('hidden');
+      loadAdminFeedback();
+    }
+
+    function feedbackAdminGoPage(delta) {
+      feedbackAdminPage = Math.max(1, feedbackAdminPage + delta);
+      loadAdminFeedback();
+    }
+
     async function loadAdminFeedback() {
       if (!isFeedbackAdmin()) return;
       const list = document.getElementById('feedbackAdminList');
       list.innerHTML = '<p class="text-sm text-gray-500">Loading…</p>';
-      const r = await apiFetch('/api/feedback');
-      const rows = await parseJsonResponse(r);
+      const params = new URLSearchParams({ page: String(feedbackAdminPage) });
+      if (feedbackAdminQuery) params.set('q', feedbackAdminQuery);
+      const r = await apiFetch(`/api/feedback?${params}`);
+      const payload = await parseJsonResponse(r);
       if (!r.ok) {
-        list.innerHTML = `<p class="text-sm text-red-400">${escHtml(rows?.error || 'Could not load feedback')}</p>`;
+        document.getElementById('feedbackAdminPager').classList.add('hidden');
+        document.getElementById('feedbackAdminMeta').classList.add('hidden');
+        list.innerHTML = `<p class="text-sm text-red-400">${escHtml(payload?.error || 'Could not load feedback')}</p>`;
         return;
       }
-      if (!Array.isArray(rows) || !rows.length) {
-        list.innerHTML = '<p class="text-sm text-gray-500 text-center py-8">No submissions yet.</p>';
+      const rows = payload.items || [];
+      feedbackAdminPage = payload.page || 1;
+      updateFeedbackAdminPager(payload);
+      if (!rows.length) {
+        list.innerHTML = `<p class="text-sm text-gray-500 text-center py-8">${feedbackAdminQuery ? 'No matching submissions.' : 'No submissions yet.'}</p>`;
         return;
       }
-      list.innerHTML = rows.map((row) => {
-        const isBug = row.category === 'bug';
-        const badge = isBug
-          ? '<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">Bug</span>'
-          : '<span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">Feedback</span>';
-        const who = escHtml(row.username || 'Unknown') + (row.user_email ? ` <span class="text-gray-500">(${escHtml(row.user_email)})</span>` : '');
-        return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-4">
-          <div class="flex flex-wrap items-center gap-2 mb-2">${badge}<span class="text-xs text-gray-500">${escHtml(formatFeedbackDate(row.created_at))}</span></div>
-          <p class="text-xs text-gray-400 mb-2">${who}</p>
-          <p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escHtml(row.message)}</p>
-        </article>`;
-      }).join('');
+      list.innerHTML = rows.map(renderFeedbackAdminItem).join('');
     }
 
     function renderNavUser() {
@@ -953,6 +1121,7 @@
       }
       currentUser = meData;
       if (currentUser.error) return;
+      await loadFeedbackCaptchaConfig();
       renderNavUser();
       if (!currentUser.is_guest) {
         document.getElementById('profileBtn').onclick = openProfileModal;
