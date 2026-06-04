@@ -621,10 +621,10 @@
 
   <!-- Board zoom (bottom-right; same layer as chat FAB, below toasts) -->
   <div id="boardZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Board zoom">
-    <button type="button" id="boardZoomIn" class="board-zoom-btn" aria-label="Zoom in">+</button>
-    <input type="range" id="boardZoomSlider" class="max-md:hidden" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom level" />
+    <button type="button" id="boardZoomIn" class="board-zoom-btn" aria-label="Zoom in (closer view)">+</button>
+    <input type="range" id="boardZoomSlider" class="max-md:hidden" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom (100% normal, 500% zoomed out)" />
     <button type="button" id="boardZoomPct" class="board-zoom-btn" aria-label="Set zoom level">100%</button>
-    <button type="button" id="boardZoomOut" class="board-zoom-btn" aria-label="Zoom out">−</button>
+    <button type="button" id="boardZoomOut" class="board-zoom-btn" aria-label="Zoom out (wider view)">−</button>
   </div>
 
   <!-- Toast notifications (bottom-right stack) -->
@@ -4601,8 +4601,9 @@
       return Math.min(BOARD_ZOOM_MAX, Math.max(BOARD_ZOOM_MIN, n));
     }
 
+    /** 100% = normal size; higher % = zoomed out (smaller scale, more board visible). */
     function boardZoomScale() {
-      return boardZoomPct / 100;
+      return 100 / boardZoomPct;
     }
 
     function updateBoardZoomUi() {
@@ -4612,8 +4613,8 @@
       const zoomOut = document.getElementById('boardZoomOut');
       if (pctBtn) pctBtn.textContent = `${boardZoomPct}%`;
       if (slider) slider.value = String(boardZoomPct);
-      if (zoomIn) zoomIn.disabled = boardZoomPct >= BOARD_ZOOM_MAX;
-      if (zoomOut) zoomOut.disabled = boardZoomPct <= BOARD_ZOOM_MIN;
+      if (zoomIn) zoomIn.disabled = boardZoomPct <= BOARD_ZOOM_MIN;
+      if (zoomOut) zoomOut.disabled = boardZoomPct >= BOARD_ZOOM_MAX;
     }
 
     function applyBoardZoomLayout(focalX, focalY) {
@@ -4670,7 +4671,7 @@
     }
 
     function promptBoardZoomLevel() {
-      const raw = window.prompt('Zoom level (100–500%)', String(boardZoomPct));
+      const raw = window.prompt('Zoom level (100% = normal, 500% = zoomed out)', String(boardZoomPct));
       if (raw == null) return;
       const parsed = parseInt(String(raw).replace(/%/g, '').trim(), 10);
       if (!Number.isFinite(parsed)) return;
@@ -4683,10 +4684,10 @@
       if (!container) return;
 
       document.getElementById('boardZoomIn')?.addEventListener('click', () => {
-        changeBoardZoom(BOARD_ZOOM_STEP);
+        changeBoardZoom(-BOARD_ZOOM_STEP);
       });
       document.getElementById('boardZoomOut')?.addEventListener('click', () => {
-        changeBoardZoom(-BOARD_ZOOM_STEP);
+        changeBoardZoom(BOARD_ZOOM_STEP);
       });
       document.getElementById('boardZoomPct')?.addEventListener('click', promptBoardZoomLevel);
       document.getElementById('boardZoomSlider')?.addEventListener('input', (e) => {
