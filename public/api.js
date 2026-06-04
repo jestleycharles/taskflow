@@ -134,10 +134,23 @@ function conversationListSkeletonHtml(count = 5) {
 
 const messageSendInFlight = new Set();
 
+/** Clear a message composer and cancel any in-flight send guard for it. */
+function resetMessageComposer(inputEl, sendBtnEl) {
+  if (!inputEl) return;
+  const key = inputEl.dataset.sendGuardKey;
+  if (key) messageSendInFlight.delete(key);
+  inputEl.value = '';
+  inputEl.disabled = false;
+  delete inputEl.dataset.sendGuardSnapshot;
+  delete inputEl.dataset.sendGuardKey;
+  delete inputEl.dataset.sendComposerDismissed;
+  if (sendBtnEl) sendBtnEl.disabled = false;
+}
+
 /**
  * Prevents duplicate message sends while a POST is in flight (per `key`).
  * Clears the input immediately so rapid Enter/clicks cannot resend the same text.
- * Restores the input if `send` returns false or throws.
+ * Restores the input if `send` returns false or throws (unless the composer was dismissed).
  * @returns {Promise<boolean>} whether a send was attempted and completed successfully
  */
 async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl }) {
@@ -149,7 +162,9 @@ async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl }) 
   const input = inputEl || null;
   const btn = sendBtnEl || null;
   if (input) {
+    input.dataset.sendGuardKey = key;
     input.dataset.sendGuardSnapshot = input.value;
+    delete input.dataset.sendComposerDismissed;
     input.value = '';
     input.disabled = true;
   }
@@ -159,18 +174,32 @@ async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl }) 
   try {
     ok = !!(await send(content));
   } catch (err) {
-    if (input && !input.value) input.value = input.dataset.sendGuardSnapshot || '';
+    const dismissed = input?.dataset.sendComposerDismissed === '1';
+    if (input && !input.value && !dismissed) input.value = input.dataset.sendGuardSnapshot || '';
     throw err;
   } finally {
     messageSendInFlight.delete(key);
-    if (!ok && input && !input.value) input.value = input.dataset.sendGuardSnapshot || '';
+    const dismissed = input?.dataset.sendComposerDismissed === '1';
+    if (!ok && input && !input.value && !dismissed) {
+      input.value = input.dataset.sendGuardSnapshot || '';
+    } else if (input && (ok || dismissed)) {
+      input.value = '';
+    }
     if (input) {
       delete input.dataset.sendGuardSnapshot;
+      delete input.dataset.sendGuardKey;
+      delete input.dataset.sendComposerDismissed;
       input.disabled = false;
     }
     if (btn) btn.disabled = false;
   }
   return ok;
+}
+
+/** Mark composer dismissed so failed sends do not restore text after the panel closes. */
+function dismissMessageComposer(inputEl, sendBtnEl) {
+  if (inputEl) inputEl.dataset.sendComposerDismissed = '1';
+  resetMessageComposer(inputEl, sendBtnEl);
 }
 
 /** Shimmer rows for chat threads and comment lists. */

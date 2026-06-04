@@ -186,6 +186,46 @@ router.post('/api/teams/:teamId/tasks', requireAuth, async (req, res) => {
   res.json(task);
 });
 
+// PUT /api/teams/:teamId/tasks/reorder — reorder tasks within a column
+router.put('/api/teams/:teamId/tasks/reorder', requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  const userId = req.session.user.id;
+  const { status, taskIds } = req.body || {};
+
+  if (!await isMember(teamId, userId)) return res.status(403).json({ error: 'Not a member' });
+  if (!status || !['todo', 'doing', 'done'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  if (!Array.isArray(taskIds) || !taskIds.length) {
+    return res.status(400).json({ error: 'taskIds must be a non-empty array' });
+  }
+
+  const { data: existing, error } = await supabaseAdmin
+    .from('tasks')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('status', status);
+
+  if (error) return sendError(res, 500, error, 'load');
+
+  const existingIds = new Set((existing || []).map((t) => t.id));
+  if (taskIds.length !== existingIds.size || taskIds.some((id) => !existingIds.has(id))) {
+    return res.status(400).json({ error: 'taskIds must include every task in this column' });
+  }
+
+  await Promise.all(
+    taskIds.map((id, index) =>
+      supabaseAdmin
+        .from('tasks')
+        .update({ position: (index + 1) * 1000, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('team_id', teamId)
+    )
+  );
+
+  res.json({ success: true });
+});
+
 // PATCH /api/tasks/:id
 router.patch('/api/tasks/:id', requireAuth, async (req, res) => {
   const { id } = req.params;

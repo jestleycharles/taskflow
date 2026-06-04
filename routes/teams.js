@@ -59,7 +59,7 @@ async function loadTeamPendingInvites(teamId) {
   }
   if (!rows?.length) return [];
 
-  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const userIds = [...new Set(rows.flatMap((r) => [r.user_id, r.invited_by].filter(Boolean)))];
   const { data: users, error: usersErr } = await supabaseAdmin
     .from('users')
     .select('id, username, email, avatar_color, avatar_url')
@@ -70,6 +70,7 @@ async function loadTeamPendingInvites(teamId) {
   const userById = new Map((users || []).map((u) => [u.id, u]));
   return rows.map((row) => {
     const u = userById.get(row.user_id) || {};
+    const inviter = row.invited_by ? userById.get(row.invited_by) : null;
     return {
       id: u.id || row.user_id,
       invite_id: row.id,
@@ -78,6 +79,9 @@ async function loadTeamPendingInvites(teamId) {
       avatar_color: u.avatar_color,
       avatar_url: u.avatar_url,
       invited_by: row.invited_by,
+      invited_by_user: inviter
+        ? { id: inviter.id, username: inviter.username, email: inviter.email }
+        : null,
       pending: true,
     };
   });
@@ -497,7 +501,7 @@ router.get('/api/team-invites', requireAuth, async (req, res) => {
 
   const { data, error } = await supabaseAdmin
     .from('team_invites')
-    .select('id, team_id, created_at, teams(id, name, description, avatar_color, avatar_url)')
+    .select('id, team_id, created_at, invited_by, teams(id, name, description, avatar_color, avatar_url)')
     .eq('user_id', userId);
 
   if (error) {
@@ -505,10 +509,24 @@ router.get('/api/team-invites', requireAuth, async (req, res) => {
     return sendError(res, 500, error, 'load');
   }
 
+  const inviterIds = [...new Set((data || []).map((r) => r.invited_by).filter(Boolean))];
+  let inviterById = new Map();
+  if (inviterIds.length) {
+    const { data: inviters, error: inviterErr } = await supabaseAdmin
+      .from('users')
+      .select('id, username, email')
+      .in('id', inviterIds);
+    if (inviterErr) return sendError(res, 500, inviterErr, 'load');
+    inviterById = new Map((inviters || []).map((u) => [u.id, u]));
+  }
+
   const invites = (data || []).map((row) => ({
     id: row.id,
     team_id: row.team_id,
     team: row.teams,
+    invited_by: row.invited_by
+      ? inviterById.get(row.invited_by) || null
+      : null,
   }));
   res.json(invites);
 });

@@ -201,6 +201,7 @@
   async function closePanel() {
     await flushDmReadState();
     closeReactionFloats();
+    dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
     panelOpen = false;
     $('dmChatPanel')?.classList.add('hidden');
     setPanelOpenUi(false);
@@ -213,6 +214,7 @@
 
   async function goToList() {
     await flushDmReadState();
+    dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
     view = 'list';
     activeConversationId = null;
     activeConversation = null;
@@ -849,15 +851,16 @@
   }
 
   async function submitDmMessage() {
-    if (!activeConversationId) return;
+    const conversationId = activeConversationId;
+    if (!conversationId) return;
     const input = $('dmChatInput');
     const btn = $('dmChatSendBtn');
-    await submitMessageOnce(`dm:${activeConversationId}`, {
+    await submitMessageOnce(`dm:${conversationId}`, {
       inputEl: input,
       sendBtnEl: btn,
       getContent: () => prepareOutgoingDmMessage(input?.value),
       send: async (content) => {
-        const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages`, {
+        const r = await apiFetch(`/api/dm/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content }),

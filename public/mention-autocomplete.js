@@ -13,20 +13,38 @@
     return el;
   }
 
+  function isInputVisible(input) {
+    if (!input || !input.isConnected) return false;
+    const rect = input.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
   function positionDropdown(dropdown, input) {
     const rect = input.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      dropdown.classList.add('hidden');
+      return false;
+    }
+
     dropdown.style.position = 'fixed';
     dropdown.style.left = `${Math.max(8, rect.left)}px`;
     dropdown.style.width = `${Math.min(280, Math.max(rect.width, 220))}px`;
     dropdown.style.zIndex = '210';
-    const maxH = 192;
-    const below = rect.bottom + 4;
-    const above = rect.top - maxH - 4;
-    if (below + maxH > window.innerHeight - 8 && above > 8) {
-      dropdown.style.top = `${above}px`;
+
+    const dropdownHeight = Math.min(dropdown.offsetHeight || dropdown.scrollHeight || 192, 192);
+    const gap = 4;
+    const preferAbove = input.dataset.mentionPreferAbove === '1'
+      || rect.bottom > window.innerHeight * 0.55;
+    const spaceBelow = window.innerHeight - rect.bottom - gap;
+    const spaceAbove = rect.top - gap;
+    const openAbove = preferAbove || (spaceBelow < dropdownHeight && spaceAbove >= spaceBelow);
+
+    if (openAbove) {
+      dropdown.style.top = `${Math.max(8, rect.top - dropdownHeight - gap)}px`;
     } else {
-      dropdown.style.top = `${below}px`;
+      dropdown.style.top = `${rect.bottom + gap}px`;
     }
+    return true;
   }
 
   function getMentionQuery(value, caret) {
@@ -50,16 +68,21 @@
       this.onKeyDown = this.onKeyDown.bind(this);
       this.onBlur = this.onBlur.bind(this);
       this.onDropdownClick = this.onDropdownClick.bind(this);
+      this.onReposition = this.onReposition.bind(this);
       input.addEventListener('input', this.onInput);
       input.addEventListener('keydown', this.onKeyDown, true);
       input.addEventListener('blur', this.onBlur);
       this.dropdown.addEventListener('mousedown', this.onDropdownClick);
+      window.addEventListener('scroll', this.onReposition, true);
+      window.addEventListener('resize', this.onReposition);
     }
 
     destroy() {
       this.input.removeEventListener('input', this.onInput);
-      this.input.removeEventListener('keydown', this.onKeyDown);
+      this.input.removeEventListener('keydown', this.onKeyDown, true);
       this.input.removeEventListener('blur', this.onBlur);
+      window.removeEventListener('scroll', this.onReposition, true);
+      window.removeEventListener('resize', this.onReposition);
       this.dropdown.remove();
     }
 
@@ -68,6 +91,15 @@
       this.items = [];
       this.dropdown.classList.add('hidden');
       this.dropdown.innerHTML = '';
+    }
+
+    onReposition() {
+      if (!this.open) return;
+      if (!isInputVisible(this.input)) {
+        this.hide();
+        return;
+      }
+      positionDropdown(this.dropdown, this.input);
     }
 
     renderItems() {
@@ -98,7 +130,7 @@
 
     show(query) {
       const teamData = this.getTeamData?.();
-      if (!teamData || !global.MessageFormat) {
+      if (!teamData || !global.MessageFormat || !isInputVisible(this.input)) {
         this.hide();
         return;
       }
@@ -110,8 +142,12 @@
       }
       this.open = true;
       this.renderItems();
-      positionDropdown(this.dropdown, this.input);
       this.dropdown.classList.remove('hidden');
+      if (!positionDropdown(this.dropdown, this.input)) {
+        this.hide();
+        return;
+      }
+      positionDropdown(this.dropdown, this.input);
     }
 
     onInput() {
@@ -154,10 +190,12 @@
         e.preventDefault();
         this.activeIndex = (this.activeIndex + 1) % this.items.length;
         this.renderItems();
+        positionDropdown(this.dropdown, this.input);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         this.activeIndex = (this.activeIndex - 1 + this.items.length) % this.items.length;
         this.renderItems();
+        positionDropdown(this.dropdown, this.input);
       } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         e.stopImmediatePropagation();

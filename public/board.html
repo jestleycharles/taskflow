@@ -136,6 +136,12 @@
       line-height: 1.125rem;
       font-size: 0.625rem;
     }
+    .task-card.drag-over-top {
+      box-shadow: inset 0 2px 0 0 #4f6ef7;
+    }
+    .task-card.drag-over-bottom {
+      box-shadow: inset 0 -2px 0 0 #4f6ef7;
+    }
     .chat-msg-tombstone {
       background: rgba(26, 29, 46, 0.85);
       border: 1px dashed rgba(255, 255, 255, 0.08);
@@ -342,7 +348,7 @@
       <div id="chatMessagesList" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"></div>
       <div id="chatComposer" class="px-4 pt-4 border-t border-white/10 shrink-0 bg-ink-800">
         <div id="chatComposerActive" class="flex gap-2">
-          <input id="chatInput" type="text" placeholder="Message the team..."
+          <input id="chatInput" type="text" placeholder="Message the team..." data-mention-prefer-above="1"
             class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
           <button id="chatSendBtn" type="button" onclick="submitChatMessage()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
         </div>
@@ -828,7 +834,7 @@
           <div id="commentsList" class="flex-1 p-6 space-y-4 overflow-y-auto max-h-64"></div>
           <div class="p-4 border-t border-white/10">
             <div class="flex gap-2">
-              <input id="commentInput" type="text" placeholder="Add a comment..."
+              <input id="commentInput" type="text" placeholder="Add a comment..." data-mention-prefer-above="1"
                 class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
               <button id="commentSendBtn" type="button" onclick="submitComment()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium">Send</button>
             </div>
@@ -852,6 +858,8 @@
     let tasks = [];
     let activeTaskId = null;
     let draggedTaskId = null;
+    let dragOverTaskId = null;
+    let dragOverTaskPlacement = null;
     let addTaskStatus = 'todo';
     let pollInterval = null;
     let presenceInterval = null;
@@ -1152,6 +1160,9 @@
             ${(teamData.roles || []).map((r) => `<option value="${r.id}" ${m.custom_role_id === r.id ? 'selected' : ''}>${escHtml(r.name)}</option>`).join('')}
           </select>`
         : '';
+      const invitedByLine = isPending && m.invited_by_user?.username
+        ? `<p class="text-xs text-amber-400/80 mt-0.5">Invited by ${escHtml(m.invited_by_user.username)}${m.invited_by_user.email ? ` (${escHtml(m.invited_by_user.email)})` : ''}</p>`
+        : '';
       const permBadge = isPending
         ? `<span class="text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 bg-amber-500/10 shrink-0">pending</span>`
         : showPermissionRole && !m.custom_role && m.role !== 'owner'
@@ -1174,6 +1185,7 @@
             ${isPending ? '' : memberRoleLabelHtml(m)}
             <p class="text-sm truncate">${memberNameHtml(m)}</p>
             <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
+            ${invitedByLine}
             ${assignBlock}
           </div>
           ${permBadge}
@@ -1669,7 +1681,7 @@
       );
       ['todo','doing','done'].forEach(status => {
         const col = document.getElementById(`col-${status}`);
-        const colTasks = tasks.filter(t => t.status === status);
+        const colTasks = getSortedColumnTasks(status);
         document.getElementById(`count-${status}`).textContent = colTasks.length;
         col.innerHTML = '';
         colTasks.forEach(task => {
@@ -1679,13 +1691,62 @@
       });
     }
 
+    function getSortedColumnTasks(status) {
+      return tasks
+        .filter((t) => t.status === status)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+    }
+
+    function clearTaskDragIndicators() {
+      dragOverTaskId = null;
+      dragOverTaskPlacement = null;
+      document.querySelectorAll('.task-card.drag-over-top, .task-card.drag-over-bottom').forEach((el) => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+    }
+
     function createTaskCard(task, animate = false) {
       const el = document.createElement('div');
       el.className = `task-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-xl p-3.5 priority-${task.priority}${animate ? ' fade-up' : ''}`;
       el.dataset.id = task.id;
       el.draggable = true;
-      el.addEventListener('dragstart', (e) => { draggedTaskId = task.id; el.classList.add('dragging'); });
-      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      el.addEventListener('dragstart', (e) => {
+        draggedTaskId = task.id;
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      el.addEventListener('dragend', () => {
+        el.classList.remove('dragging');
+        draggedTaskId = null;
+        clearTaskDragIndicators();
+      });
+      el.addEventListener('dragover', (e) => {
+        if (!draggedTaskId || draggedTaskId === task.id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = el.getBoundingClientRect();
+        const placement = e.clientY < rect.top + rect.height / 2 ? 'top' : 'bottom';
+        if (dragOverTaskId !== task.id || dragOverTaskPlacement !== placement) {
+          clearTaskDragIndicators();
+          dragOverTaskId = task.id;
+          dragOverTaskPlacement = placement;
+          el.classList.add(placement === 'top' ? 'drag-over-top' : 'drag-over-bottom');
+        }
+      });
+      el.addEventListener('dragleave', (e) => {
+        if (!el.contains(e.relatedTarget)) {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+          if (dragOverTaskId === task.id) {
+            dragOverTaskId = null;
+            dragOverTaskPlacement = null;
+          }
+        }
+      });
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTaskCardDrop(task, e);
+      });
       el.onclick = () => openTaskModal(task.id);
 
       const due = task.due_date ? formatDue(task.due_date) : null;
@@ -1729,20 +1790,129 @@
       if (!e.currentTarget.contains(e.relatedTarget))
         e.currentTarget.closest('.kanban-col')?.classList.remove('drag-over');
     }
+
+    function applyColumnOrder(status, orderedIds) {
+      orderedIds.forEach((id, index) => {
+        const t = tasks.find((x) => x.id === id);
+        if (t) {
+          t.status = status;
+          t.position = (index + 1) * 1000;
+        }
+      });
+    }
+
+    async function persistColumnOrder(status, taskIds) {
+      const r = await apiFetch(`/api/teams/${teamId}/tasks/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, taskIds }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        showAlert(d.error || 'Failed to reorder tasks');
+        await loadTasks();
+        return false;
+      }
+      return true;
+    }
+
+    async function reorderTasksInColumn(status, draggedId, targetId, placement) {
+      const colTasks = getSortedColumnTasks(status);
+      const from = colTasks.findIndex((t) => t.id === draggedId);
+      let insertAt = colTasks.findIndex((t) => t.id === targetId);
+      if (from < 0 || insertAt < 0 || from === insertAt) return;
+      const [item] = colTasks.splice(from, 1);
+      if (placement === 'bottom') insertAt += 1;
+      if (from < insertAt) insertAt -= 1;
+      colTasks.splice(insertAt, 0, item);
+      const taskIds = colTasks.map((t) => t.id);
+      applyColumnOrder(status, taskIds);
+      renderBoard();
+      await persistColumnOrder(status, taskIds);
+    }
+
+    async function handleTaskCardDrop(targetTask, e) {
+      const col = e.currentTarget.closest('.kanban-col');
+      col?.classList.remove('drag-over');
+      const status = col?.dataset.status;
+      const draggedId = draggedTaskId;
+      const placement = dragOverTaskPlacement
+        || (e.clientY < e.currentTarget.getBoundingClientRect().top + e.currentTarget.getBoundingClientRect().height / 2
+          ? 'top' : 'bottom');
+      clearTaskDragIndicators();
+      if (!draggedId || !status || draggedId === targetTask.id) return;
+
+      const task = tasks.find((t) => t.id === draggedId);
+      if (!task) return;
+
+      if (task.status === status) {
+        await reorderTasksInColumn(status, draggedId, targetTask.id, placement);
+        return;
+      }
+
+      const colTasks = getSortedColumnTasks(status).filter((t) => t.id !== draggedId);
+      let insertAt = colTasks.findIndex((t) => t.id === targetTask.id);
+      if (insertAt < 0) insertAt = colTasks.length;
+      if (placement === 'bottom') insertAt += 1;
+      colTasks.splice(insertAt, 0, task);
+      const taskIds = colTasks.map((t) => t.id);
+      applyColumnOrder(status, taskIds);
+      renderBoard();
+      const statusR = await apiFetch(`/api/tasks/${draggedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!statusR.ok) {
+        await loadTasks();
+        return;
+      }
+      const ok = await persistColumnOrder(status, taskIds);
+      if (!ok) return;
+      if (activeTaskId === draggedId) loadComments(activeTaskId);
+    }
+
     async function drop(e) {
       e.preventDefault();
       const col = e.currentTarget.closest('.kanban-col');
       col.classList.remove('drag-over');
+      clearTaskDragIndicators();
       const newStatus = col.dataset.status;
-      const task = tasks.find(t => t.id === draggedTaskId);
-      if (!task || task.status === newStatus) return;
-      task.status = newStatus;
+      const draggedId = draggedTaskId;
+      const task = tasks.find((t) => t.id === draggedId);
+      if (!task) return;
+
+      if (task.status === newStatus) {
+        const colTasks = getSortedColumnTasks(newStatus);
+        const from = colTasks.findIndex((t) => t.id === draggedId);
+        if (from >= 0 && from < colTasks.length - 1) {
+          const [item] = colTasks.splice(from, 1);
+          colTasks.push(item);
+          const taskIds = colTasks.map((t) => t.id);
+          applyColumnOrder(newStatus, taskIds);
+          renderBoard();
+          await persistColumnOrder(newStatus, taskIds);
+        }
+        return;
+      }
+
+      const colTasks = getSortedColumnTasks(newStatus).filter((t) => t.id !== draggedId);
+      colTasks.push(task);
+      const taskIds = colTasks.map((t) => t.id);
+      applyColumnOrder(newStatus, taskIds);
       renderBoard();
-      await apiFetch(`/api/tasks/${draggedTaskId}`, {
-        method: 'PATCH', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ status: newStatus })
+      const statusR = await apiFetch(`/api/tasks/${draggedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
       });
-      if (activeTaskId === draggedTaskId) loadComments(activeTaskId);
+      if (!statusR.ok) {
+        await loadTasks();
+        return;
+      }
+      const ok = await persistColumnOrder(newStatus, taskIds);
+      if (!ok) return;
+      if (activeTaskId === draggedId) loadComments(activeTaskId);
     }
 
     // Add Task
@@ -1823,6 +1993,29 @@
       if (list) list.scrollTop = list.scrollHeight;
     }
 
+    function isCommentsListAtBottom(list, threshold = 4) {
+      if (!list) return true;
+      return list.scrollHeight - list.scrollTop - list.clientHeight <= threshold;
+    }
+
+    async function ensureCommentsScrolledToBottom() {
+      const list = document.getElementById('commentsList');
+      if (!list) return;
+      for (let i = 0; i < 24; i++) {
+        scrollCommentsToBottom();
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        if (isCommentsListAtBottom(list)) return;
+        await new Promise((resolve) => setTimeout(resolve, 40));
+      }
+      scrollCommentsToBottom();
+    }
+
+    async function finishCommentsTabLoading() {
+      if (!taskCommentsTabActive) return;
+      await ensureCommentsScrolledToBottom();
+      clearCommentUnreadBadgeLoading();
+    }
+
     // Task Detail Modal
     async function openTaskModal(taskId) {
       activeTaskId = taskId;
@@ -1855,10 +2048,16 @@
       document.getElementById('taskModal').classList.remove('hidden');
       await loadTaskCommentReadState(taskId);
       await loadComments(taskId);
-      if (showUnreadBadgeLoading) clearCommentUnreadBadgeLoading();
+      if (showUnreadBadgeLoading && taskCommentsTabActive) {
+        await finishCommentsTabLoading();
+      }
     }
     async function closeTaskModal() {
       closeReactionFloats();
+      dismissMessageComposer(
+        document.getElementById('commentInput'),
+        document.getElementById('commentSendBtn')
+      );
       const closingTaskId = activeTaskId;
       if (closingTaskId) {
         await persistTaskCommentReadState(closingTaskId, true);
@@ -2027,20 +2226,14 @@
           : 'tab-inactive text-sm py-3 mr-6 transition-colors' + (t === 'comments' ? ' relative' : '');
       });
       if (tab === 'comments' && activeTaskId) {
-        commentUnreadBadgeLoading = false;
-        const tabBadge = document.getElementById('commentUnreadBadge');
-        if (tabBadge) {
-          tabBadge.textContent = '';
-          tabBadge.innerHTML = '';
-          tabBadge.classList.remove('is-loading');
-          tabBadge.classList.add('hidden');
-        }
+        const taskId = activeTaskId;
         if (!taskComments.length) {
+          if (commentUnreadBadgeLoading) showCommentUnreadBadgeLoading();
           document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
-          await loadComments(activeTaskId);
+          await loadComments(taskId);
         }
-        await markTaskCommentsRead(activeTaskId, true);
-        requestAnimationFrame(() => scrollCommentsToBottom());
+        await markTaskCommentsRead(taskId, true);
+        await finishCommentsTabLoading();
       } else if (activeTaskId) {
         updateTaskCommentUnreadBadge();
       }
@@ -2224,7 +2417,8 @@
         list.innerHTML = comments.map(renderCommentItem).join('')
           || '<p class="text-sm text-gray-600 text-center py-4">No comments yet.</p>';
         if (taskCommentsTabActive) {
-          requestAnimationFrame(() => scrollCommentsToBottom());
+          await ensureCommentsScrolledToBottom();
+          if (commentUnreadBadgeLoading) clearCommentUnreadBadgeLoading();
         }
       }
       if (taskCommentsTabActive) {
@@ -2239,15 +2433,16 @@
     }
 
     async function submitComment() {
-      if (!activeTaskId) return;
+      const taskId = activeTaskId;
+      if (!taskId) return;
       const input = document.getElementById('commentInput');
       const btn = document.getElementById('commentSendBtn');
-      await submitMessageOnce(`task-comment:${activeTaskId}`, {
+      await submitMessageOnce(`task-comment:${taskId}`, {
         inputEl: input,
         sendBtnEl: btn,
         getContent: () => prepareOutgoingMessage(input?.value),
         send: async (content) => {
-          const r = await apiFetch(`/api/tasks/${activeTaskId}/comments`, {
+          const r = await apiFetch(`/api/tasks/${taskId}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content }),
@@ -2257,7 +2452,7 @@
             showAlert(data.error || 'Failed to send comment');
             return false;
           }
-          await loadComments(activeTaskId);
+          await loadComments(taskId);
           return true;
         },
       });
@@ -2305,6 +2500,10 @@
 
     function closeChatPanel() {
       closeReactionFloats();
+      dismissMessageComposer(
+        document.getElementById('chatInput'),
+        document.getElementById('chatSendBtn')
+      );
       chatPanelOpen = false;
       document.getElementById('chatPanel').classList.add('hidden');
       document.getElementById('chatFabWrap').classList.remove('hidden');
