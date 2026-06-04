@@ -58,7 +58,7 @@ app.use(reactionRoutes);
 app.use(feedbackRoutes);
 
 app.get('/features.md', (req, res) => {
-  res.sendFile(path.join(__dirname, 'features.md'));
+  res.sendFile(path.join(__dirname, 'FEATURES.md'));
 });
 
 // Pages

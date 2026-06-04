@@ -639,7 +639,7 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
     .maybeSingle();
   if (existingInviteErr) {
     if (isTeamInvitesUnavailable(existingInviteErr)) {
-      return res.status(503).json({ error: 'Team invites are not set up yet. Run migrations/001_team_invites.sql in Supabase.' });
+      return res.status(503).json({ error: 'Team invites are not set up yet. Run schema.sql in Supabase.' });
     }
     return sendError(res, 500, existingInviteErr, 'load');
   }
@@ -653,7 +653,7 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
 
   if (error) {
     if (isTeamInvitesUnavailable(error)) {
-      return res.status(503).json({ error: 'Team invites are not set up yet. Run migrations/001_team_invites.sql in Supabase.' });
+      return res.status(503).json({ error: 'Team invites are not set up yet. Run schema.sql in Supabase.' });
     }
     return sendError(res, 400, error, 'save');
   }
@@ -681,7 +681,7 @@ router.delete('/api/teams/:id/invites/:uid', requireAuth, async (req, res) => {
 
   if (inviteErr) {
     if (isTeamInvitesUnavailable(inviteErr)) {
-      return res.status(503).json({ error: 'Team invites are not set up yet. Run migrations/001_team_invites.sql in Supabase.' });
+      return res.status(503).json({ error: 'Team invites are not set up yet. Run schema.sql in Supabase.' });
     }
     return sendError(res, 500, inviteErr, 'load');
   }

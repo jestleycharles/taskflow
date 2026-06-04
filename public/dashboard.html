@@ -1,1179 +1,2057 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TaskFlow — Dashboard</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <meta name="theme-color" content="#4f6ef7" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { mono: ['Space Mono', 'monospace'], sans: ['DM Sans', 'sans-serif'] },
-          colors: {
-            brand: { 50:'#f0f4ff', 500:'#4f6ef7', 600:'#3a57e8', 700:'#2d45cc' },
-            ink: { DEFAULT:'#0f1117', 900:'#0f1117', 800:'#1a1d2e', 700:'#252840', 600:'#363952', 500:'#4a4e6a' }
-          }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskFlow — Dashboard</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="theme-color" content="#4f6ef7" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              mono: ["Space Mono", "monospace"],
+              sans: ["DM Sans", "sans-serif"],
+            },
+            colors: {
+              brand: {
+                50: "#f0f4ff",
+                500: "#4f6ef7",
+                600: "#3a57e8",
+                700: "#2d45cc",
+              },
+              ink: {
+                DEFAULT: "#0f1117",
+                900: "#0f1117",
+                800: "#1a1d2e",
+                700: "#252840",
+                600: "#363952",
+                500: "#4a4e6a",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: "DM Sans", sans-serif;
+        background: #0f1117;
+      }
+      .grid-bg {
+        background-image:
+          linear-gradient(rgba(79, 110, 247, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(79, 110, 247, 0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
+      }
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
       }
-    }
-  </script>
-  <style>
-    body { font-family: 'DM Sans', sans-serif; background: #0f1117; }
-    .grid-bg {
-      background-image: linear-gradient(rgba(79,110,247,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(79,110,247,0.04) 1px, transparent 1px);
-      background-size: 40px 40px;
-    }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-    .fade-up { animation: fadeUp 0.4s ease forwards; }
-    .team-card:hover .arrow { transform: translateX(4px); }
-    .arrow { transition: transform 0.2s; }
-    .modal-overlay { backdrop-filter: blur(4px); }
+      .fade-up {
+        animation: fadeUp 0.4s ease forwards;
+      }
+      .team-card:hover .arrow {
+        transform: translateX(4px);
+      }
+      .arrow {
+        transition: transform 0.2s;
+      }
+      .modal-overlay {
+        backdrop-filter: blur(4px);
+      }
 
-    /* Shimmer skeleton */
-    @keyframes shimmer {
-      0% { background-position: -600px 0; }
-      100% { background-position: 600px 0; }
-    }
-    .skeleton {
-      background: linear-gradient(90deg, #1a1d2e 25%, #252840 50%, #1a1d2e 75%);
-      background-size: 600px 100%;
-      animation: shimmer 1.6s infinite linear;
-      border-radius: 6px;
-    }
-    .avatar-preset-btn { transition: box-shadow 0.15s, transform 0.15s; }
-    .avatar-preset-btn:hover { transform: scale(1.05); }
-    .avatar-preset-btn.selected { box-shadow: 0 0 0 2px #4f6ef7; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-    .online-dot { animation: pulse 2s infinite; }
+      /* Shimmer skeleton */
+      @keyframes shimmer {
+        0% {
+          background-position: -600px 0;
+        }
+        100% {
+          background-position: 600px 0;
+        }
+      }
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          #1a1d2e 25%,
+          #252840 50%,
+          #1a1d2e 75%
+        );
+        background-size: 600px 100%;
+        animation: shimmer 1.6s infinite linear;
+        border-radius: 6px;
+      }
+      .avatar-preset-btn {
+        transition:
+          box-shadow 0.15s,
+          transform 0.15s;
+      }
+      .avatar-preset-btn:hover {
+        transform: scale(1.05);
+      }
+      .avatar-preset-btn.selected {
+        box-shadow: 0 0 0 2px #4f6ef7;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      .online-dot {
+        animation: pulse 2s infinite;
+      }
 
-    /* Direct messages (registered users) — match team chat FAB on board */
-    #dmChatFab {
-      bottom: 1rem;
-      left: 1rem;
-    }
-    #dmChatFabWrap {
-      z-index: 25;
-    }
-    #dmUnreadBadge {
-      top: -0.15rem;
-      right: -0.15rem;
-      min-width: 1.125rem;
-      height: 1.125rem;
-      line-height: 1.125rem;
-      font-size: 0.625rem;
-    }
-    :root { --nav-h: 4rem; }
-    #dmChatPanel {
-      z-index: 45;
-    }
-    #dmChatBackdrop {
-      z-index: 44;
-    }
-    body.dm-panel-open {
-      overflow: hidden;
-    }
-    @media (min-width: 768px) {
-      #dmChatPanel:not(.hidden) {
-        top: var(--nav-h);
-        left: 0;
+      /* Direct messages (registered users) — match team chat FAB on board */
+      #dmChatFab {
+        bottom: 1rem;
+        left: 1rem;
+      }
+      #dmChatFabWrap {
+        z-index: 25;
+      }
+      #dmUnreadBadge {
+        top: -0.15rem;
+        right: -0.15rem;
+        min-width: 1.125rem;
+        height: 1.125rem;
+        line-height: 1.125rem;
+        font-size: 0.625rem;
+      }
+      :root {
+        --nav-h: 4rem;
+      }
+      #dmChatPanel {
+        z-index: 45;
+      }
+      #dmChatBackdrop {
+        z-index: 44;
+      }
+      body.dm-panel-open {
+        overflow: hidden;
+      }
+      @media (min-width: 768px) {
+        #dmChatPanel:not(.hidden) {
+          top: var(--nav-h);
+          left: 0;
+          right: auto;
+          bottom: 0;
+          width: 20rem;
+          max-width: 20rem;
+          height: auto;
+          border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+      }
+      #dmMessagesList.chat-viewing-original
+        > [data-dm-msg-id]:not(.chat-msg-version-active) {
+        filter: blur(4px);
+        opacity: 0.4;
+        pointer-events: none;
+        transition:
+          filter 0.2s ease,
+          opacity 0.2s ease;
+      }
+      #dmChatHeaderAvatarBtn:not([disabled]) {
+        cursor: pointer;
+      }
+      #dmChatHeaderAvatarBtn[disabled] {
+        cursor: default;
+        pointer-events: none;
+      }
+      #dmChatThreadView.chat-viewing-original #dmChatComposer {
+        filter: blur(4px);
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .chat-msg-tombstone {
+        background: rgba(26, 29, 46, 0.85);
+        border: 1px dashed rgba(255, 255, 255, 0.08);
+      }
+      .chat-msg-edited-card {
+        border-left: 2px solid rgba(79, 110, 247, 0.45);
+        padding-left: 0.625rem;
+      }
+      .reaction-pill.reaction-pill-active {
+        background: rgba(79, 110, 247, 0.2);
+        border-color: rgba(79, 110, 247, 0.45);
+      }
+      .reaction-picker,
+      .reactors-popover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        pointer-events: auto;
+      }
+      #dmReactionFloatLayer {
+        z-index: 200;
+      }
+      main {
+        padding-bottom: 5rem;
+      }
+      #feedbackFabWrap {
+        bottom: 1rem;
+        left: 1rem;
         right: auto;
-        bottom: 0;
-        width: 20rem;
-        max-width: 20rem;
-        height: auto;
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 25;
       }
-    }
-    #dmMessagesList.chat-viewing-original > [data-dm-msg-id]:not(.chat-msg-version-active) {
-      filter: blur(4px);
-      opacity: 0.4;
-      pointer-events: none;
-      transition: filter 0.2s ease, opacity 0.2s ease;
-    }
-    #dmChatHeaderAvatarBtn:not([disabled]) {
-      cursor: pointer;
-    }
-    #dmChatHeaderAvatarBtn[disabled] {
-      cursor: default;
-      pointer-events: none;
-    }
-    #dmChatThreadView.chat-viewing-original #dmChatComposer {
-      filter: blur(4px);
-      opacity: 0.4;
-      pointer-events: none;
-    }
-    .chat-msg-tombstone {
-      background: rgba(26, 29, 46, 0.85);
-      border: 1px dashed rgba(255, 255, 255, 0.08);
-    }
-    .chat-msg-edited-card {
-      border-left: 2px solid rgba(79, 110, 247, 0.45);
-      padding-left: 0.625rem;
-    }
-    .reaction-pill.reaction-pill-active {
-      background: rgba(79, 110, 247, 0.2);
-      border-color: rgba(79, 110, 247, 0.45);
-    }
-    .reaction-picker, .reactors-popover {
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-      pointer-events: auto;
-    }
-    #dmReactionFloatLayer { z-index: 200; }
-    main {
-      padding-bottom: 5rem;
-    }
-    #feedbackFabWrap {
-      bottom: 1rem;
-      left: 1rem;
-      right: auto;
-      z-index: 25;
-    }
-    body.dashboard-has-dm-fab #feedbackFabWrap {
-      bottom: calc(1rem + 3rem + 0.75rem);
-    }
-    .feedback-hp {
-      position: absolute;
-      left: -10000px;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      opacity: 0;
-      pointer-events: none;
-    }
-  </style>
-</head>
-<body class="grid-bg min-h-screen text-white">
-
-  <!-- Navbar -->
-  <nav class="border-b border-white/10 bg-ink-900/80 backdrop-blur-sm sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
-          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
+      body.dashboard-has-dm-fab #feedbackFabWrap {
+        bottom: calc(1rem + 3rem + 0.75rem);
+      }
+      .feedback-hp {
+        position: absolute;
+        left: -10000px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body class="grid-bg min-h-screen text-white">
+    <!-- Navbar -->
+    <nav
+      class="border-b border-white/10 bg-ink-900/80 backdrop-blur-sm sticky top-0 z-40"
+    >
+      <div
+        class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between"
+      >
+        <div class="flex items-center gap-2.5">
+          <div
+            class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center"
+          >
+            <svg
+              class="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+              />
+            </svg>
+          </div>
+          <span class="font-mono font-bold text-white text-base">TaskFlow</span>
         </div>
-        <span class="font-mono font-bold text-white text-base">TaskFlow</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <div id="userBadge" class="flex items-center gap-2.5">
-          <button type="button" id="profileBtn" class="flex items-center gap-2.5 rounded-lg transition hover:bg-white/10 px-1 py-1 -mx-1 hidden" title="Edit profile">
-            <div id="avatarCircle" class="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold"></div>
-            <span id="usernameDisplay" class="text-sm text-gray-300 hidden sm:block"></span>
+        <div class="flex items-center gap-3">
+          <div id="userBadge" class="flex items-center gap-2.5">
+            <button
+              type="button"
+              id="profileBtn"
+              class="flex items-center gap-2.5 rounded-lg transition hover:bg-white/10 px-1 py-1 -mx-1 hidden"
+              title="Edit profile"
+            >
+              <div
+                id="avatarCircle"
+                class="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold"
+              ></div>
+              <span
+                id="usernameDisplay"
+                class="text-sm text-gray-300 hidden sm:block"
+              ></span>
+            </button>
+            <div id="guestBadge" class="flex items-center gap-2.5 hidden">
+              <div
+                id="guestAvatarCircle"
+                class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              ></div>
+              <span
+                id="guestUsernameDisplay"
+                class="text-sm text-gray-300 hidden sm:block"
+              ></span>
+            </div>
+          </div>
+          <button
+            type="button"
+            data-pwa-install
+            class="hidden text-gray-400 hover:text-white text-sm transition px-3 py-1.5 rounded-lg hover:bg-white/10 flex items-center gap-1.5"
+            title="Install TaskFlow on your device"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            <span class="hidden sm:inline">Install app</span>
           </button>
-          <div id="guestBadge" class="flex items-center gap-2.5 hidden">
-            <div id="guestAvatarCircle" class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"></div>
-            <span id="guestUsernameDisplay" class="text-sm text-gray-300 hidden sm:block"></span>
+          <button
+            onclick="logout()"
+            class="text-gray-400 hover:text-white text-sm transition px-3 py-1.5 rounded-lg hover:bg-white/10"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <!-- Team Invites (shown when user has pending invites) -->
+      <section id="teamInvitesSection" class="hidden fade-up mb-12">
+        <div class="flex items-end justify-between gap-4 mb-6">
+          <div>
+            <div class="flex items-center gap-2.5 mb-1">
+              <h2 class="text-2xl font-bold text-white">Team Invites</h2>
+              <span
+                id="teamInvitesCount"
+                class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30"
+              ></span>
+            </div>
+            <p class="text-gray-400 text-sm">
+              You've been invited to join these teams. Accept to get access, or
+              decline to dismiss.
+            </p>
           </div>
         </div>
-        <button type="button" data-pwa-install
-          class="hidden text-gray-400 hover:text-white text-sm transition px-3 py-1.5 rounded-lg hover:bg-white/10 flex items-center gap-1.5"
-          title="Install TaskFlow on your device">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        <div
+          id="teamInvitesGrid"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        ></div>
+      </section>
+
+      <div
+        class="fade-up flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10"
+      >
+        <div>
+          <h1 class="text-3xl font-bold text-white mb-1">Your Teams</h1>
+          <p class="text-gray-400 text-sm">
+            Select a team to view its Kanban board.
+          </p>
+        </div>
+        <button
+          onclick="openCreateModal()"
+          class="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition shrink-0"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
           </svg>
-          <span class="hidden sm:inline">Install app</span>
+          New Team
         </button>
-        <button onclick="logout()" class="text-gray-400 hover:text-white text-sm transition px-3 py-1.5 rounded-lg hover:bg-white/10">
-          Sign out
+      </div>
+
+      <!-- Teams grid -->
+      <div
+        id="teamsGrid"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+      >
+        <!-- Skeleton cards shown while loading (same shape as real team cards) -->
+        <div
+          class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5"
+        >
+          <div class="flex items-start justify-between mb-4">
+            <div class="skeleton w-11 h-11 rounded-xl"></div>
+            <div class="skeleton w-14 h-5 rounded-full"></div>
+          </div>
+          <div class="skeleton w-2/3 h-4 mb-2"></div>
+          <div class="skeleton w-full h-3 mb-1.5"></div>
+          <div class="skeleton w-4/5 h-3 mb-5"></div>
+          <div class="flex items-center justify-between">
+            <div class="skeleton w-16 h-3"></div>
+            <div class="skeleton w-4 h-4 rounded"></div>
+          </div>
+        </div>
+        <div
+          class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5"
+        >
+          <div class="flex items-start justify-between mb-4">
+            <div class="skeleton w-11 h-11 rounded-xl"></div>
+            <div class="skeleton w-16 h-5 rounded-full"></div>
+          </div>
+          <div class="skeleton w-1/2 h-4 mb-2"></div>
+          <div class="skeleton w-full h-3 mb-1.5"></div>
+          <div class="skeleton w-3/5 h-3 mb-5"></div>
+          <div class="flex items-center justify-between">
+            <div class="skeleton w-20 h-3"></div>
+            <div class="skeleton w-4 h-4 rounded"></div>
+          </div>
+        </div>
+        <div
+          class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5"
+        >
+          <div class="flex items-start justify-between mb-4">
+            <div class="skeleton w-11 h-11 rounded-xl"></div>
+            <div class="skeleton w-12 h-5 rounded-full"></div>
+          </div>
+          <div class="skeleton w-3/4 h-4 mb-2"></div>
+          <div class="skeleton w-full h-3 mb-1.5"></div>
+          <div class="skeleton w-2/3 h-3 mb-5"></div>
+          <div class="flex items-center justify-between">
+            <div class="skeleton w-14 h-3"></div>
+            <div class="skeleton w-4 h-4 rounded"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User feedback inbox (admin only) -->
+      <section
+        id="feedbackAdminSection"
+        class="hidden fade-up mt-14 pt-10 border-t border-white/10"
+      >
+        <div
+          class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6"
+        >
+          <div>
+            <h2 class="text-2xl font-bold text-white mb-1">User feedback</h2>
+            <p class="text-gray-400 text-sm">
+              Bug reports and suggestions submitted from the dashboard.
+            </p>
+          </div>
+          <button
+            type="button"
+            id="feedbackAdminRefreshBtn"
+            onclick="loadAdminFeedback()"
+            class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition shrink-0"
+          >
+            Refresh
+          </button>
+        </div>
+        <form
+          id="feedbackAdminSearchForm"
+          class="flex flex-col sm:flex-row gap-2 mb-4"
+          onsubmit="searchAdminFeedback(event)"
+        >
+          <input
+            type="search"
+            id="feedbackAdminSearchInput"
+            placeholder="Search message, username, or email…"
+            class="flex-1 bg-ink-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
+          />
+          <button
+            type="submit"
+            class="text-sm text-white bg-brand-500 hover:bg-brand-600 px-4 py-2.5 rounded-xl transition shrink-0"
+          >
+            Search
+          </button>
+          <button
+            type="button"
+            id="feedbackAdminSearchClearBtn"
+            onclick="clearAdminFeedbackSearch()"
+            class="hidden text-sm text-gray-300 hover:text-white px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition shrink-0"
+          >
+            Clear
+          </button>
+        </form>
+        <p id="feedbackAdminMeta" class="hidden text-xs text-gray-500 mb-3"></p>
+        <div id="feedbackAdminList" class="space-y-3"></div>
+        <div
+          id="feedbackAdminPager"
+          class="hidden flex items-center justify-center gap-3 mt-6"
+        >
+          <button
+            type="button"
+            id="feedbackAdminPrevBtn"
+            onclick="feedbackAdminGoPage(-1)"
+            class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition disabled:opacity-40 disabled:pointer-events-none"
+          >
+            Previous
+          </button>
+          <span
+            id="feedbackAdminPageLabel"
+            class="text-sm text-gray-400 min-w-[7rem] text-center"
+          ></span>
+          <button
+            type="button"
+            id="feedbackAdminNextBtn"
+            onclick="feedbackAdminGoPage(1)"
+            class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition disabled:opacity-40 disabled:pointer-events-none"
+          >
+            Next
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Profile Modal -->
+    <div
+      id="profileModal"
+      class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeProfileModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto"
+      >
+        <h2 class="text-lg font-semibold text-white mb-1">Profile</h2>
+        <p class="text-gray-500 text-sm mb-5">
+          Update your account and avatar.
+        </p>
+        <div
+          id="profileError"
+          class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
+        ></div>
+        <div
+          id="profileSuccess"
+          class="hidden bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm rounded-lg px-4 py-3 mb-4"
+        ></div>
+
+        <div class="mb-6">
+          <label
+            class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3"
+            >Avatar</label
+          >
+          <div class="flex items-center gap-4 mb-4">
+            <div
+              id="profileAvatarPreview"
+              class="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"
+            ></div>
+            <div>
+              <p class="text-sm text-gray-300">
+                Choose a preset or upload your own
+              </p>
+              <p class="text-xs text-gray-500 mt-0.5">
+                JPEG, PNG, WebP, or GIF — max 2 MB
+              </p>
+            </div>
+          </div>
+          <div
+            id="avatarPresetGrid"
+            class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"
+          ></div>
+          <label
+            class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            Upload custom image
+            <input
+              id="avatarFileInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              class="hidden"
+            />
+          </label>
+          <p
+            id="avatarUploadStatus"
+            class="text-xs text-gray-500 mt-2 hidden"
+          ></p>
+        </div>
+
+        <div class="space-y-4 border-t border-white/10 pt-5">
+          <div>
+            <label
+              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+              >Username</label
+            >
+            <input
+              id="profileUsername"
+              type="text"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+              >Email</label
+            >
+            <input
+              id="profileEmail"
+              type="email"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+            />
+          </div>
+          <div class="border-t border-white/10 pt-4">
+            <p
+              class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3"
+            >
+              Change password
+              <span class="normal-case text-gray-600">(optional)</span>
+            </p>
+            <div class="space-y-3">
+              <input
+                id="profileCurrentPassword"
+                type="password"
+                placeholder="Current password"
+                class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+              />
+              <input
+                id="profileNewPassword"
+                type="password"
+                placeholder="New password (min 8 characters)"
+                class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+              />
+            </div>
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button
+              type="button"
+              onclick="closeProfileModal()"
+              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              id="profileSaveBtn"
+              onclick="saveProfile()"
+              class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Save changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direct messages backdrop -->
+    <div
+      id="dmChatBackdrop"
+      class="hidden fixed inset-0 bg-black/50"
+      aria-hidden="true"
+    ></div>
+
+    <!-- Direct messages panel (full viewport overlay) -->
+    <div
+      id="dmChatPanel"
+      class="hidden fixed inset-0 bg-ink-800 border border-white/10 flex flex-col min-h-0"
+    >
+      <div
+        class="shrink-0 px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-ink-800"
+      >
+        <button
+          type="button"
+          id="dmChatBackBtn"
+          class="hidden text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10"
+          aria-label="Back to conversations"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+        <div id="dmChatHeaderAvatarWrap" class="hidden shrink-0 relative">
+          <button
+            type="button"
+            id="dmChatHeaderAvatarBtn"
+            class="rounded-full overflow-hidden flex items-center justify-center ring-2 ring-transparent hover:ring-brand-500/40 transition focus:outline-none focus:ring-brand-500/50"
+            aria-label="Conversation user"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            <span id="dmChatHeaderAvatar" class="block"></span>
+          </button>
+          <div
+            id="dmChatHeaderAvatarMenu"
+            class="hidden absolute left-0 top-full mt-1 z-[50] min-w-[9rem] py-1 rounded-xl bg-ink-700 border border-white/15 shadow-xl"
+          >
+            <button
+              type="button"
+              data-dm-header-action="block"
+              class="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/10 transition"
+            >
+              Block
+            </button>
+            <button
+              type="button"
+              id="dmChatHeaderIgnoreBtn"
+              data-dm-header-action="ignore"
+              class="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-white/10 transition"
+            >
+              Ignore
+            </button>
+          </div>
+        </div>
+        <div id="dmChatHeaderTitleWrap" class="flex-1 min-w-0">
+          <h2
+            id="dmChatHeaderTitle"
+            class="font-semibold text-sm text-white truncate"
+          >
+            Messages
+          </h2>
+          <p
+            id="dmChatHeaderSubtitle"
+            class="hidden text-xs text-gray-500 truncate"
+          ></p>
+        </div>
+        <div id="dmMessageSearchWrap" class="hidden flex-1 min-w-0">
+          <input
+            type="search"
+            id="dmMessageSearch"
+            placeholder="Search messages…"
+            aria-label="Search messages"
+            class="w-full bg-ink-700 border border-white/10 rounded-lg px-2.5 py-1 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition"
+          />
+        </div>
+        <button
+          type="button"
+          id="dmMessageSearchBtn"
+          class="hidden text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center shrink-0"
+          aria-label="Search messages"
+          title="Search messages"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          id="dmBlockedEmailsBtn"
+          class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 text-xs font-medium shrink-0"
+          title="Blocked emails"
+        >
+          Blocked
+        </button>
+        <button
+          type="button"
+          id="dmChatCloseBtn"
+          class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center shrink-0"
+          aria-label="Close messages"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div
+        id="dmChatListView"
+        class="flex-1 flex flex-col min-h-0 overflow-hidden"
+      >
+        <div
+          id="dmNewConvForm"
+          class="shrink-0 p-4 border-b border-white/10 space-y-3"
+        >
+          <p class="text-xs text-gray-400">
+            Start a chat with a registered user by email, or message yourself.
+          </p>
+          <div class="flex gap-2">
+            <input
+              id="dmNewConvEmail"
+              type="email"
+              placeholder="user@example.com"
+              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition"
+            />
+            <button
+              type="button"
+              id="dmNewConvBtn"
+              class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0"
+            >
+              Start chat
+            </button>
+          </div>
+          <button
+            type="button"
+            id="dmSelfChatBtn"
+            class="text-xs text-brand-500 hover:text-brand-400 transition"
+          >
+            Message yourself (note to self)
+          </button>
+          <p id="dmNewConvError" class="hidden text-xs text-red-400"></p>
+        </div>
+        <div
+          id="dmConversationList"
+          class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0"
+        ></div>
+      </div>
+
+      <div
+        id="dmChatThreadView"
+        class="hidden flex-1 flex flex-col min-h-0 overflow-hidden"
+      >
+        <div
+          id="dmMessagesList"
+          class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
+        ></div>
+        <div
+          id="dmChatComposer"
+          class="px-4 pt-4 pb-4 border-t border-white/10 shrink-0 bg-ink-800"
+        >
+          <div class="flex gap-2">
+            <input
+              id="dmChatInput"
+              type="text"
+              placeholder="Write a message..."
+              data-mention-prefer-above="1"
+              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition"
+            />
+            <button
+              type="button"
+              id="dmChatSendBtn"
+              class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Team Modal -->
+    <div
+      id="createModal"
+      class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeCreateModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto"
+      >
+        <h2 class="text-lg font-semibold text-white mb-1">Create New Team</h2>
+        <p class="text-gray-500 text-sm mb-5">
+          Set your team name, description, and avatar.
+        </p>
+        <div
+          id="modalError"
+          class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
+        ></div>
+
+        <div class="mb-6">
+          <label
+            class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3"
+            >Avatar</label
+          >
+          <div class="flex items-center gap-4 mb-4">
+            <div
+              id="createTeamAvatarPreview"
+              class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"
+            ></div>
+            <div>
+              <p class="text-sm text-gray-300">
+                Choose a preset or upload your own
+              </p>
+              <p class="text-xs text-gray-500 mt-0.5">
+                JPEG, PNG, WebP, or GIF — max 2 MB
+              </p>
+            </div>
+          </div>
+          <div
+            id="createTeamAvatarPresetGrid"
+            class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"
+          ></div>
+          <label
+            id="createTeamAvatarUploadLabel"
+            class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            Upload custom image
+            <input
+              id="createTeamAvatarFile"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              class="hidden"
+            />
+          </label>
+          <p
+            id="createTeamAvatarUploadGuestNote"
+            class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed"
+          >
+            Custom team images are only available with a registered account.
+            Choose a preset above.
+          </p>
+        </div>
+
+        <div class="space-y-4 border-t border-white/10 pt-5">
+          <div>
+            <label
+              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+              >Team name</label
+            >
+            <input
+              id="teamName"
+              type="text"
+              placeholder="e.g. Engineering"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+              >Description
+              <span class="normal-case text-gray-600">(optional)</span></label
+            >
+            <input
+              id="teamDesc"
+              type="text"
+              placeholder="What does this team work on?"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+            />
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button
+              type="button"
+              onclick="closeCreateModal()"
+              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              id="createTeamBtn"
+              onclick="createTeam()"
+              class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Create Team
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/pwa-install.js"></script>
+    <script src="/avatar-utils.js"></script>
+    <script src="/message-format.js"></script>
+    <script src="/api.js"></script>
+    <script src="/message-batch.js"></script>
+    <!-- Confirm Modal (DM delete, etc.) -->
+    <div
+      id="confirmModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeConfirmModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up"
+      >
+        <h2
+          id="confirmTitle"
+          class="text-base font-semibold text-white mb-2"
+        ></h2>
+        <p
+          id="confirmMessage"
+          class="text-sm text-gray-400 leading-relaxed mb-6"
+        ></p>
+        <div class="flex gap-3">
+          <button
+            type="button"
+            onclick="closeConfirmModal()"
+            class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="confirmActionBtn"
+            onclick="runConfirmAction()"
+            class="flex-1 text-white font-medium py-2.5 rounded-xl transition text-sm"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DM blocked emails list -->
+    <div
+      id="dmBlockedEmailsModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        data-dm-close-blocked-modal
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up max-h-[calc(100vh-3rem)] flex flex-col"
+      >
+        <h2 class="text-base font-semibold text-white mb-1">Blocked emails</h2>
+        <p class="text-sm text-gray-500 mb-4">
+          Conversations with these emails are hidden from your list. Removing an
+          email shows the conversation again.
+        </p>
+        <div class="flex gap-2 mb-4 shrink-0">
+          <input
+            id="dmBlockedEmailAddInput"
+            type="email"
+            placeholder="email@example.com"
+            class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition"
+          />
+          <button
+            type="button"
+            id="dmBlockedEmailAddBtn"
+            class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0"
+          >
+            Add
+          </button>
+        </div>
+        <p
+          id="dmBlockedEmailAddError"
+          class="hidden text-xs text-red-400 mb-3 shrink-0"
+        ></p>
+        <ul
+          id="dmBlockedEmailsList"
+          class="flex-1 overflow-y-auto space-y-2 min-h-0 max-h-[min(24rem,50vh)] text-sm text-gray-400"
+        ></ul>
+        <button
+          type="button"
+          data-dm-close-blocked-modal
+          class="mt-4 w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm shrink-0"
+        >
+          Close
         </button>
       </div>
     </div>
-  </nav>
 
-  <!-- Main -->
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-
-    <!-- Team Invites (shown when user has pending invites) -->
-    <section id="teamInvitesSection" class="hidden fade-up mb-12">
-      <div class="flex items-end justify-between gap-4 mb-6">
-        <div>
-          <div class="flex items-center gap-2.5 mb-1">
-            <h2 class="text-2xl font-bold text-white">Team Invites</h2>
-            <span id="teamInvitesCount" class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30"></span>
-          </div>
-          <p class="text-gray-400 text-sm">You've been invited to join these teams. Accept to get access, or decline to dismiss.</p>
+    <!-- DM start chat blocked email -->
+    <div
+      id="dmBlockedEmailStartModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        data-dm-close-blocked-start-modal
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up"
+      >
+        <h2 class="text-base font-semibold text-white mb-2">Email blocked</h2>
+        <p
+          id="dmBlockedEmailStartMessage"
+          class="text-sm text-gray-400 leading-relaxed mb-6"
+        ></p>
+        <div class="flex gap-3">
+          <button
+            type="button"
+            data-dm-close-blocked-start-modal
+            class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="dmBlockedEmailUnblockBtn"
+            class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+          >
+            Unblock
+          </button>
         </div>
       </div>
-      <div id="teamInvitesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    </section>
+    </div>
 
-    <div class="fade-up flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-      <div>
-        <h1 class="text-3xl font-bold text-white mb-1">Your Teams</h1>
-        <p class="text-gray-400 text-sm">Select a team to view its Kanban board.</p>
+    <!-- Guest account notice (first dashboard visit per guest session) -->
+    <div
+      id="guestNoticeModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 overflow-y-auto"
+    >
+      <div class="modal-overlay absolute inset-0 bg-black/60"></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto"
+      >
+        <h2 class="text-lg font-semibold text-white mb-2">
+          Shared guest account
+        </h2>
+        <div
+          class="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4"
+        >
+          <p class="text-sm text-amber-200/90 leading-relaxed">
+            You are using a
+            <strong class="text-amber-100 font-medium"
+              >public guest account</strong
+            >
+            shared with anyone who chooses “Continue as guest.” Other guests can
+            view, change, or remove teams, tasks, comments, and chat content you
+            create. In particular, another guest may
+            <strong class="text-amber-100 font-medium"
+              >delete tasks you added</strong
+            >
+            or even
+            <strong class="text-amber-100 font-medium"
+              >delete entire teams</strong
+            >
+            you set up.
+          </p>
+        </div>
+        <p class="text-sm text-gray-400 leading-relaxed mb-4">
+          For private workspaces and full collaboration features, create a free
+          registered account.
+        </p>
+        <div class="mb-5">
+          <p
+            class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2"
+          >
+            With a registered account you get
+          </p>
+          <ul
+            id="guestNoticeFeaturesList"
+            class="text-sm text-gray-300 space-y-2 list-disc list-inside marker:text-brand-500/80"
+          ></ul>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a
+            id="guestNoticeRegisterBtn"
+            href="/register"
+            class="flex-1 text-center bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-medium py-2.5 rounded-xl transition text-sm"
+            >Create account</a
+          >
+          <button
+            type="button"
+            onclick="dismissGuestNotice()"
+            class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+          >
+            I understand
+          </button>
+        </div>
       </div>
-      <button onclick="openCreateModal()"
-        class="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    </div>
+
+    <!-- Feedback / bug report -->
+    <div
+      id="feedbackModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeFeedbackModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up"
+      >
+        <h2 class="text-base font-semibold text-white mb-1">Send feedback</h2>
+        <p class="text-sm text-gray-500 mb-4">
+          Report a bug or share a suggestion. We read every submission.
+        </p>
+        <div
+          id="feedbackGuestNotice"
+          class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4"
+        >
+          <p class="text-sm text-amber-200/90 leading-relaxed">
+            You are using a
+            <strong class="text-amber-100 font-medium">guest account</strong>
+            with no personal email on file, so we cannot reply if we need
+            follow-up. Please be as specific as possible in your message. Image
+            uploads are not allowed (they can be abused). For a private
+            workspace and full features, create a free account.
+          </p>
+        </div>
+        <div
+          id="feedbackError"
+          class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
+        ></div>
+        <label id="feedbackHpWrap" class="feedback-hp" aria-hidden="true">
+          <span>Company</span>
+          <input
+            type="text"
+            id="feedbackHp"
+            name="tf_hp"
+            tabindex="-1"
+            autocomplete="off"
+          />
+        </label>
+        <div class="mb-4">
+          <label
+            class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2"
+            >Type</label
+          >
+          <select
+            id="feedbackCategory"
+            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-500 transition"
+          >
+            <option value="feedback">Feedback / suggestion</option>
+            <option value="bug">Bug report</option>
+          </select>
+        </div>
+        <div class="mb-5">
+          <label
+            class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2"
+            >Message</label
+          >
+          <textarea
+            id="feedbackMessage"
+            rows="4"
+            placeholder="Describe what happened or what you'd like to see…"
+            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition resize-y min-h-[6rem]"
+          ></textarea>
+        </div>
+        <div id="feedbackCaptchaWrap" class="hidden mb-4 flex justify-center">
+          <div id="feedbackTurnstile"></div>
+        </div>
+        <div class="flex gap-3">
+          <button
+            type="button"
+            onclick="closeFeedbackModal()"
+            class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="feedbackSubmitBtn"
+            onclick="submitFeedback()"
+            class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div
+      id="alertModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeAlertModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up"
+      >
+        <h2 id="alertTitle" class="text-base font-semibold text-white mb-2">
+          Something went wrong
+        </h2>
+        <p
+          id="alertMessage"
+          class="text-sm text-gray-400 leading-relaxed mb-6"
+        ></p>
+        <button
+          type="button"
+          onclick="closeAlertModal()"
+          class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+
+    <!-- Feedback FAB (bottom-right; all users) -->
+    <div id="feedbackFabWrap" class="fixed">
+      <button
+        type="button"
+        id="feedbackFab"
+        onclick="openFeedbackModal()"
+        class="relative w-12 h-12 rounded-full bg-ink-700 hover:bg-ink-600 border border-white/15 text-gray-300 hover:text-white shadow-lg flex items-center justify-center transition hover:scale-105"
+        title="Send feedback or report a bug"
+        aria-label="Send feedback"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+          />
         </svg>
-        New Team
       </button>
     </div>
 
-    <!-- Teams grid -->
-    <div id="teamsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Skeleton cards shown while loading (same shape as real team cards) -->
-      <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-        <div class="flex items-start justify-between mb-4">
-          <div class="skeleton w-11 h-11 rounded-xl"></div>
-          <div class="skeleton w-14 h-5 rounded-full"></div>
-        </div>
-        <div class="skeleton w-2/3 h-4 mb-2"></div>
-        <div class="skeleton w-full h-3 mb-1.5"></div>
-        <div class="skeleton w-4/5 h-3 mb-5"></div>
-        <div class="flex items-center justify-between">
-          <div class="skeleton w-16 h-3"></div>
-          <div class="skeleton w-4 h-4 rounded"></div>
-        </div>
-      </div>
-      <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-        <div class="flex items-start justify-between mb-4">
-          <div class="skeleton w-11 h-11 rounded-xl"></div>
-          <div class="skeleton w-16 h-5 rounded-full"></div>
-        </div>
-        <div class="skeleton w-1/2 h-4 mb-2"></div>
-        <div class="skeleton w-full h-3 mb-1.5"></div>
-        <div class="skeleton w-3/5 h-3 mb-5"></div>
-        <div class="flex items-center justify-between">
-          <div class="skeleton w-20 h-3"></div>
-          <div class="skeleton w-4 h-4 rounded"></div>
-        </div>
-      </div>
-      <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-        <div class="flex items-start justify-between mb-4">
-          <div class="skeleton w-11 h-11 rounded-xl"></div>
-          <div class="skeleton w-12 h-5 rounded-full"></div>
-        </div>
-        <div class="skeleton w-3/4 h-4 mb-2"></div>
-        <div class="skeleton w-full h-3 mb-1.5"></div>
-        <div class="skeleton w-2/3 h-3 mb-5"></div>
-        <div class="flex items-center justify-between">
-          <div class="skeleton w-14 h-3"></div>
-          <div class="skeleton w-4 h-4 rounded"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- User feedback inbox (admin only) -->
-    <section id="feedbackAdminSection" class="hidden fade-up mt-14 pt-10 border-t border-white/10">
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-        <div>
-          <h2 class="text-2xl font-bold text-white mb-1">User feedback</h2>
-          <p class="text-gray-400 text-sm">Bug reports and suggestions submitted from the dashboard.</p>
-        </div>
-        <button type="button" id="feedbackAdminRefreshBtn" onclick="loadAdminFeedback()"
-          class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition shrink-0">
-          Refresh
-        </button>
-      </div>
-      <form id="feedbackAdminSearchForm" class="flex flex-col sm:flex-row gap-2 mb-4" onsubmit="searchAdminFeedback(event)">
-        <input type="search" id="feedbackAdminSearchInput" placeholder="Search message, username, or email…"
-          class="flex-1 bg-ink-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition" />
-        <button type="submit"
-          class="text-sm text-white bg-brand-500 hover:bg-brand-600 px-4 py-2.5 rounded-xl transition shrink-0">Search</button>
-        <button type="button" id="feedbackAdminSearchClearBtn" onclick="clearAdminFeedbackSearch()"
-          class="hidden text-sm text-gray-300 hover:text-white px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition shrink-0">
-          Clear
-        </button>
-      </form>
-      <p id="feedbackAdminMeta" class="hidden text-xs text-gray-500 mb-3"></p>
-      <div id="feedbackAdminList" class="space-y-3"></div>
-      <div id="feedbackAdminPager" class="hidden flex items-center justify-center gap-3 mt-6">
-        <button type="button" id="feedbackAdminPrevBtn" onclick="feedbackAdminGoPage(-1)"
-          class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition disabled:opacity-40 disabled:pointer-events-none">
-          Previous
-        </button>
-        <span id="feedbackAdminPageLabel" class="text-sm text-gray-400 min-w-[7rem] text-center"></span>
-        <button type="button" id="feedbackAdminNextBtn" onclick="feedbackAdminGoPage(1)"
-          class="text-sm text-gray-300 hover:text-white px-4 py-2 rounded-xl border border-white/10 hover:bg-white/5 transition disabled:opacity-40 disabled:pointer-events-none">
-          Next
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <!-- Profile Modal -->
-  <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeProfileModal()"></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
-      <h2 class="text-lg font-semibold text-white mb-1">Profile</h2>
-      <p class="text-gray-500 text-sm mb-5">Update your account and avatar.</p>
-      <div id="profileError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
-      <div id="profileSuccess" class="hidden bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
-
-      <div class="mb-6">
-        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
-        <div class="flex items-center gap-4 mb-4">
-          <div id="profileAvatarPreview" class="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"></div>
-          <div>
-            <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
-            <p class="text-xs text-gray-500 mt-0.5">JPEG, PNG, WebP, or GIF — max 2 MB</p>
-          </div>
-        </div>
-        <div id="avatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
-        <label class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          Upload custom image
-          <input id="avatarFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
-        </label>
-        <p id="avatarUploadStatus" class="text-xs text-gray-500 mt-2 hidden"></p>
-      </div>
-
-      <div class="space-y-4 border-t border-white/10 pt-5">
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Username</label>
-          <input id="profileUsername" type="text"
-            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-        </div>
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Email</label>
-          <input id="profileEmail" type="email"
-            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-        </div>
-        <div class="border-t border-white/10 pt-4">
-          <p class="text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Change password <span class="normal-case text-gray-600">(optional)</span></p>
-          <div class="space-y-3">
-            <input id="profileCurrentPassword" type="password" placeholder="Current password"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-            <input id="profileNewPassword" type="password" placeholder="New password (min 8 characters)"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-          </div>
-        </div>
-        <div class="flex gap-3 pt-2">
-          <button type="button" onclick="closeProfileModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
-          <button type="button" id="profileSaveBtn" onclick="saveProfile()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Save changes</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Direct messages backdrop -->
-  <div id="dmChatBackdrop" class="hidden fixed inset-0 bg-black/50" aria-hidden="true"></div>
-
-  <!-- Direct messages panel (full viewport overlay) -->
-  <div id="dmChatPanel" class="hidden fixed inset-0 bg-ink-800 border border-white/10 flex flex-col min-h-0">
-    <div class="shrink-0 px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-ink-800">
-      <button type="button" id="dmChatBackBtn" class="hidden text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10" aria-label="Back to conversations">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-      </button>
-      <div id="dmChatHeaderAvatarWrap" class="hidden shrink-0 relative">
-        <button type="button" id="dmChatHeaderAvatarBtn" class="rounded-full overflow-hidden flex items-center justify-center ring-2 ring-transparent hover:ring-brand-500/40 transition focus:outline-none focus:ring-brand-500/50" aria-label="Conversation user" aria-haspopup="true" aria-expanded="false">
-          <span id="dmChatHeaderAvatar" class="block"></span>
-        </button>
-        <div id="dmChatHeaderAvatarMenu" class="hidden absolute left-0 top-full mt-1 z-[50] min-w-[9rem] py-1 rounded-xl bg-ink-700 border border-white/15 shadow-xl">
-          <button type="button" data-dm-header-action="block" class="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/10 transition">Block</button>
-          <button type="button" id="dmChatHeaderIgnoreBtn" data-dm-header-action="ignore" class="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-white/10 transition">Ignore</button>
-        </div>
-      </div>
-      <div id="dmChatHeaderTitleWrap" class="flex-1 min-w-0">
-        <h2 id="dmChatHeaderTitle" class="font-semibold text-sm text-white truncate">Messages</h2>
-        <p id="dmChatHeaderSubtitle" class="hidden text-xs text-gray-500 truncate"></p>
-      </div>
-      <div id="dmMessageSearchWrap" class="hidden flex-1 min-w-0">
-        <input type="search" id="dmMessageSearch" placeholder="Search messages…" aria-label="Search messages"
-          class="w-full bg-ink-700 border border-white/10 rounded-lg px-2.5 py-1 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition" />
-      </div>
-      <button type="button" id="dmMessageSearchBtn" class="hidden text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center shrink-0" aria-label="Search messages" title="Search messages">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-      </button>
-      <button type="button" id="dmBlockedEmailsBtn" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 text-xs font-medium shrink-0" title="Blocked emails">Blocked</button>
-      <button type="button" id="dmChatCloseBtn" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center shrink-0" aria-label="Close messages">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+    <!-- Messages FAB (bottom-left; same placement as team chat on board) -->
+    <div
+      id="dmChatFabWrap"
+      class="hidden fixed"
+      style="bottom: 1rem; left: 1rem"
+    >
+      <button
+        type="button"
+        id="dmChatFab"
+        class="relative w-12 h-12 rounded-full bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25 flex items-center justify-center transition hover:scale-105"
+        aria-label="Open messages"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+          />
+        </svg>
+        <span
+          id="dmUnreadBadge"
+          class="hidden absolute flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1 pointer-events-none"
+          aria-hidden="true"
+        ></span>
       </button>
     </div>
 
-    <div id="dmChatListView" class="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div id="dmNewConvForm" class="shrink-0 p-4 border-b border-white/10 space-y-3">
-        <p class="text-xs text-gray-400">Start a chat with a registered user by email, or message yourself.</p>
-        <div class="flex gap-2">
-          <input id="dmNewConvEmail" type="email" placeholder="user@example.com"
-            class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
-          <button type="button" id="dmNewConvBtn" class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Start chat</button>
-        </div>
-        <button type="button" id="dmSelfChatBtn" class="text-xs text-brand-500 hover:text-brand-400 transition">Message yourself (note to self)</button>
-        <p id="dmNewConvError" class="hidden text-xs text-red-400"></p>
-      </div>
-      <div id="dmConversationList" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0"></div>
-    </div>
+    <div
+      id="dmReactionFloatLayer"
+      class="fixed inset-0 pointer-events-none"
+      aria-hidden="true"
+    ></div>
 
-    <div id="dmChatThreadView" class="hidden flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div id="dmMessagesList" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"></div>
-      <div id="dmChatComposer" class="px-4 pt-4 pb-4 border-t border-white/10 shrink-0 bg-ink-800">
-        <div class="flex gap-2">
-          <input id="dmChatInput" type="text" placeholder="Write a message..." data-mention-prefer-above="1"
-            class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
-          <button type="button" id="dmChatSendBtn" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
-        </div>
-      </div>
-    </div>
-  </div>
+    <script src="/direct-chat.js"></script>
+    <script>
+      let confirmCallback = null;
 
-  <!-- Create Team Modal -->
-  <div id="createModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeCreateModal()"></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
-      <h2 class="text-lg font-semibold text-white mb-1">Create New Team</h2>
-      <p class="text-gray-500 text-sm mb-5">Set your team name, description, and avatar.</p>
-      <div id="modalError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
-
-      <div class="mb-6">
-        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
-        <div class="flex items-center gap-4 mb-4">
-          <div id="createTeamAvatarPreview" class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"></div>
-          <div>
-            <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
-            <p class="text-xs text-gray-500 mt-0.5">JPEG, PNG, WebP, or GIF — max 2 MB</p>
-          </div>
-        </div>
-        <div id="createTeamAvatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
-        <label id="createTeamAvatarUploadLabel" class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          Upload custom image
-          <input id="createTeamAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
-        </label>
-        <p id="createTeamAvatarUploadGuestNote" class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed">Custom team images are only available with a registered account. Choose a preset above.</p>
-      </div>
-
-      <div class="space-y-4 border-t border-white/10 pt-5">
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Team name</label>
-          <input id="teamName" type="text" placeholder="e.g. Engineering"
-            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-        </div>
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
-          <input id="teamDesc" type="text" placeholder="What does this team work on?"
-            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-        </div>
-        <div class="flex gap-3 pt-2">
-          <button type="button" onclick="closeCreateModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
-          <button type="button" id="createTeamBtn" onclick="createTeam()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Create Team</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="/pwa-install.js"></script>
-  <script src="/avatar-utils.js"></script>
-  <script src="/message-format.js"></script>
-  <script src="/api.js"></script>
-  <script src="/message-batch.js"></script>
-  <!-- Confirm Modal (DM delete, etc.) -->
-  <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeConfirmModal()"></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
-      <h2 id="confirmTitle" class="text-base font-semibold text-white mb-2"></h2>
-      <p id="confirmMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
-      <div class="flex gap-3">
-        <button type="button" onclick="closeConfirmModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
-        <button type="button" id="confirmActionBtn" onclick="runConfirmAction()" class="flex-1 text-white font-medium py-2.5 rounded-xl transition text-sm">Confirm</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- DM blocked emails list -->
-  <div id="dmBlockedEmailsModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" data-dm-close-blocked-modal></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up max-h-[calc(100vh-3rem)] flex flex-col">
-      <h2 class="text-base font-semibold text-white mb-1">Blocked emails</h2>
-      <p class="text-sm text-gray-500 mb-4">Conversations with these emails are hidden from your list. Removing an email shows the conversation again.</p>
-      <div class="flex gap-2 mb-4 shrink-0">
-        <input id="dmBlockedEmailAddInput" type="email" placeholder="email@example.com"
-          class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
-        <button type="button" id="dmBlockedEmailAddBtn" class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Add</button>
-      </div>
-      <p id="dmBlockedEmailAddError" class="hidden text-xs text-red-400 mb-3 shrink-0"></p>
-      <ul id="dmBlockedEmailsList" class="flex-1 overflow-y-auto space-y-2 min-h-0 max-h-[min(24rem,50vh)] text-sm text-gray-400"></ul>
-      <button type="button" data-dm-close-blocked-modal class="mt-4 w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm shrink-0">Close</button>
-    </div>
-  </div>
-
-  <!-- DM start chat blocked email -->
-  <div id="dmBlockedEmailStartModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" data-dm-close-blocked-start-modal></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
-      <h2 class="text-base font-semibold text-white mb-2">Email blocked</h2>
-      <p id="dmBlockedEmailStartMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
-      <div class="flex gap-3">
-        <button type="button" data-dm-close-blocked-start-modal class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
-        <button type="button" id="dmBlockedEmailUnblockBtn" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Unblock</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Guest account notice (first dashboard visit per guest session) -->
-  <div id="guestNoticeModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60"></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
-      <h2 class="text-lg font-semibold text-white mb-2">Shared guest account</h2>
-      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4">
-        <p class="text-sm text-amber-200/90 leading-relaxed">
-          You are using a <strong class="text-amber-100 font-medium">public guest account</strong> shared with anyone who chooses “Continue as guest.”
-          Other guests can view, change, or remove teams, tasks, comments, and chat content you create.
-          In particular, another guest may <strong class="text-amber-100 font-medium">delete tasks you added</strong> or even <strong class="text-amber-100 font-medium">delete entire teams</strong> you set up.
-        </p>
-      </div>
-      <p class="text-sm text-gray-400 leading-relaxed mb-4">
-        For private workspaces and full collaboration features, create a free registered account.
-      </p>
-      <div class="mb-5">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">With a registered account you get</p>
-        <ul id="guestNoticeFeaturesList" class="text-sm text-gray-300 space-y-2 list-disc list-inside marker:text-brand-500/80"></ul>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <a id="guestNoticeRegisterBtn" href="/register" class="flex-1 text-center bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-medium py-2.5 rounded-xl transition text-sm">Create account</a>
-        <button type="button" onclick="dismissGuestNotice()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">I understand</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Feedback / bug report -->
-  <div id="feedbackModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeFeedbackModal()"></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
-      <h2 class="text-base font-semibold text-white mb-1">Send feedback</h2>
-      <p class="text-sm text-gray-500 mb-4">Report a bug or share a suggestion. We read every submission.</p>
-      <div id="feedbackGuestNotice" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4">
-        <p class="text-sm text-amber-200/90 leading-relaxed">
-          You are using a <strong class="text-amber-100 font-medium">guest account</strong> with no personal email on file,
-          so we cannot reply if we need follow-up. Please be as specific as possible in your message.
-          Image uploads are not allowed (they can be abused). For a private workspace and full features,
-          <a href="/register" class="text-brand-500 hover:text-brand-400 font-medium">create a free account</a>.
-        </p>
-      </div>
-      <div id="feedbackError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
-      <label id="feedbackHpWrap" class="feedback-hp" aria-hidden="true">
-        <span>Company</span>
-        <input type="text" id="feedbackHp" name="tf_hp" tabindex="-1" autocomplete="off" />
-      </label>
-      <div class="mb-4">
-        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Type</label>
-        <select id="feedbackCategory" class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-500 transition">
-          <option value="feedback">Feedback / suggestion</option>
-          <option value="bug">Bug report</option>
-        </select>
-      </div>
-      <div class="mb-5">
-        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Message</label>
-        <textarea id="feedbackMessage" rows="4" placeholder="Describe what happened or what you'd like to see…"
-          class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition resize-y min-h-[6rem]"></textarea>
-      </div>
-      <div id="feedbackCaptchaWrap" class="hidden mb-4 flex justify-center">
-        <div id="feedbackTurnstile"></div>
-      </div>
-      <div class="flex gap-3">
-        <button type="button" onclick="closeFeedbackModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
-        <button type="button" id="feedbackSubmitBtn" onclick="submitFeedback()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Submit</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Alert Modal -->
-  <div id="alertModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeAlertModal()"></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
-      <h2 id="alertTitle" class="text-base font-semibold text-white mb-2">Something went wrong</h2>
-      <p id="alertMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
-      <button type="button" onclick="closeAlertModal()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
-    </div>
-  </div>
-
-  <!-- Feedback FAB (bottom-right; all users) -->
-  <div id="feedbackFabWrap" class="fixed">
-    <button type="button" id="feedbackFab" onclick="openFeedbackModal()"
-      class="relative w-12 h-12 rounded-full bg-ink-700 hover:bg-ink-600 border border-white/15 text-gray-300 hover:text-white shadow-lg flex items-center justify-center transition hover:scale-105"
-      title="Send feedback or report a bug" aria-label="Send feedback">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-      </svg>
-    </button>
-  </div>
-
-  <!-- Messages FAB (bottom-left; same placement as team chat on board) -->
-  <div id="dmChatFabWrap" class="hidden fixed" style="bottom: 1rem; left: 1rem;">
-    <button type="button" id="dmChatFab"
-      class="relative w-12 h-12 rounded-full bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25 flex items-center justify-center transition hover:scale-105"
-      aria-label="Open messages">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-      <span id="dmUnreadBadge" class="hidden absolute flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1 pointer-events-none" aria-hidden="true"></span>
-    </button>
-  </div>
-
-  <div id="dmReactionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
-
-  <script src="/direct-chat.js"></script>
-  <script>
-    let confirmCallback = null;
-
-    function showConfirm({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm }) {
-      document.getElementById('confirmTitle').textContent = title;
-      document.getElementById('confirmMessage').textContent = message;
-      const btn = document.getElementById('confirmActionBtn');
-      btn.textContent = confirmLabel;
-      btn.className = danger
-        ? 'flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-xl transition text-sm'
-        : 'flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm';
-      confirmCallback = onConfirm;
-      document.getElementById('confirmModal').classList.remove('hidden');
-    }
-
-    function closeConfirmModal() {
-      document.getElementById('confirmModal').classList.add('hidden');
-      confirmCallback = null;
-    }
-
-    function runConfirmAction() {
-      const cb = confirmCallback;
-      closeConfirmModal();
-      if (cb) cb();
-    }
-
-    function showAlert(message, title = 'Something went wrong') {
-      document.getElementById('alertTitle').textContent = title;
-      document.getElementById('alertMessage').textContent = message;
-      document.getElementById('alertModal').classList.remove('hidden');
-    }
-
-    function closeAlertModal() {
-      document.getElementById('alertModal').classList.add('hidden');
-    }
-
-    let currentUser = null;
-    let avatarPresets = [];
-    let selectedPresetId = null;
-    let profileSaving = false;
-    let createTeamDraft = { presetId: null, avatar_url: null, pendingFile: null };
-    let createTeamSaving = false;
-    let teamsList = [];
-    let teamInvitesList = [];
-    let onlineTeamIds = new Set();
-    let teamOnlinePollInterval = null;
-    const TEAM_ONLINE_POLL_MS = 4000;
-    const FEEDBACK_ADMIN_EMAIL = 'jestley.charles@gmail.com';
-    let registeredFeaturesCache = null;
-
-    function isFeedbackAdmin() {
-      return String(currentUser?.email || '').trim().toLowerCase() === FEEDBACK_ADMIN_EMAIL;
-    }
-
-    function parseFeaturesMarkdown(text) {
-      return String(text || '')
-        .split('\n')
-        .map((line) => line.match(/^\s*-\s+\*\*(.+?)\*\*\s*[—–-]\s*(.+)$/) || line.match(/^\s*-\s+(.+)$/))
-        .filter(Boolean)
-        .map((m) => (m[2]
-          ? `<span class="text-white font-medium">${escHtml(m[1])}</span><span class="text-gray-400"> — ${escHtml(m[2])}</span>`
-          : escHtml(m[1])));
-    }
-
-    async function loadRegisteredFeatures() {
-      if (registeredFeaturesCache) return registeredFeaturesCache;
-      try {
-        const r = await fetch('/features.md', { cache: 'no-store' });
-        if (!r.ok) return [];
-        const text = await r.text();
-        registeredFeaturesCache = parseFeaturesMarkdown(text);
-        return registeredFeaturesCache;
-      } catch {
-        return [];
-      }
-    }
-
-    async function renderGuestNoticeFeatures() {
-      const list = document.getElementById('guestNoticeFeaturesList');
-      const items = await loadRegisteredFeatures();
-      if (!items.length) {
-        list.innerHTML = '<li class="text-gray-500 list-none -ml-0">Sign up to unlock private workspaces and collaboration tools.</li>';
-        return;
-      }
-      list.innerHTML = items.map((html) => `<li>${html}</li>`).join('');
-    }
-
-    function applyGuestNoticeActions() {
-      const isGuest = !!currentUser?.is_guest;
-      const registerBtn = document.getElementById('guestNoticeRegisterBtn');
-      const dismissBtn = document.querySelector('#guestNoticeModal button[onclick="dismissGuestNotice()"]');
-      if (registerBtn) registerBtn.classList.toggle('hidden', isGuest);
-      if (dismissBtn) dismissBtn.classList.toggle('w-full', isGuest);
-    }
-
-    function updateFeedbackFabPosition() {
-      const dmVisible = !document.getElementById('dmChatFabWrap')?.classList.contains('hidden');
-      document.body.classList.toggle('dashboard-has-dm-fab', dmVisible);
-    }
-    window.updateFeedbackFabPosition = updateFeedbackFabPosition;
-
-    function applyGuestTeamAvatarUploadUi() {
-      const guest = !!currentUser?.is_guest;
-      const label = document.getElementById('createTeamAvatarUploadLabel');
-      const note = document.getElementById('createTeamAvatarUploadGuestNote');
-      const input = document.getElementById('createTeamAvatarFile');
-      const hint = document.querySelector('#createModal .flex.items-center.gap-4.mb-4 .text-sm.text-gray-300');
-      if (label) label.classList.toggle('hidden', guest);
-      if (note) note.classList.toggle('hidden', !guest);
-      if (input && guest) input.value = '';
-      if (hint) hint.textContent = guest ? 'Choose a preset avatar' : 'Choose a preset or upload your own';
-    }
-
-    async function maybeShowGuestNotice() {
-      if (!currentUser?.is_guest || hasGuestDashboardNoticeDismissed()) return;
-      await renderGuestNoticeFeatures();
-      applyGuestNoticeActions();
-      document.getElementById('guestNoticeModal').classList.remove('hidden');
-    }
-
-    function dismissGuestNotice() {
-      setGuestDashboardNoticeDismissed();
-      document.getElementById('guestNoticeModal').classList.add('hidden');
-    }
-
-    let feedbackCaptchaConfig = { guestCaptchaRequired: false, turnstileSiteKey: null };
-    let feedbackCaptchaToken = null;
-    let feedbackTurnstileWidgetId = null;
-    let feedbackTurnstileScriptPromise = null;
-
-    async function loadFeedbackCaptchaConfig() {
-      const r = await apiFetch('/api/feedback/captcha-config');
-      if (!r.ok) return;
-      const data = await parseJsonResponse(r);
-      feedbackCaptchaConfig = {
-        guestCaptchaRequired: !!data.guestCaptchaRequired,
-        turnstileSiteKey: data.turnstileSiteKey || null,
-      };
-    }
-
-    function loadTurnstileScript() {
-      if (window.turnstile) return Promise.resolve();
-      if (feedbackTurnstileScriptPromise) return feedbackTurnstileScriptPromise;
-      feedbackTurnstileScriptPromise = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-        s.async = true;
-        s.defer = true;
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Could not load verification'));
-        document.head.appendChild(s);
-      });
-      return feedbackTurnstileScriptPromise;
-    }
-
-    function resetFeedbackTurnstile() {
-      feedbackCaptchaToken = null;
-      if (feedbackTurnstileWidgetId != null && window.turnstile) {
-        try { turnstile.remove(feedbackTurnstileWidgetId); } catch (_) { /* ignore */ }
-        feedbackTurnstileWidgetId = null;
-      }
-      document.getElementById('feedbackTurnstile').innerHTML = '';
-    }
-
-    async function mountFeedbackTurnstile() {
-      const wrap = document.getElementById('feedbackCaptchaWrap');
-      const needsCaptcha = !!currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired;
-      wrap.classList.toggle('hidden', !needsCaptcha);
-      resetFeedbackTurnstile();
-      if (!needsCaptcha) return;
-      try {
-        await loadTurnstileScript();
-        feedbackTurnstileWidgetId = turnstile.render('#feedbackTurnstile', {
-          sitekey: feedbackCaptchaConfig.turnstileSiteKey,
-          theme: 'dark',
-          callback: (token) => { feedbackCaptchaToken = token; },
-          'expired-callback': () => { feedbackCaptchaToken = null; },
-          'error-callback': () => { feedbackCaptchaToken = null; },
-        });
-      } catch {
-        document.getElementById('feedbackError').textContent = 'Could not load verification. Refresh and try again.';
-        document.getElementById('feedbackError').classList.remove('hidden');
-      }
-    }
-
-    async function openFeedbackModal() {
-      document.getElementById('feedbackError').classList.add('hidden');
-      document.getElementById('feedbackMessage').value = '';
-      const hp = document.getElementById('feedbackHp');
-      if (hp) hp.value = '';
-      document.getElementById('feedbackCategory').value = 'feedback';
-      document.getElementById('feedbackGuestNotice')?.classList.toggle('hidden', !currentUser?.is_guest);
-      document.getElementById('feedbackModal').classList.remove('hidden');
-      await mountFeedbackTurnstile();
-      setTimeout(() => document.getElementById('feedbackMessage')?.focus(), 50);
-    }
-
-    function closeFeedbackModal() {
-      document.getElementById('feedbackModal').classList.add('hidden');
-      resetFeedbackTurnstile();
-      document.getElementById('feedbackCaptchaWrap').classList.add('hidden');
-    }
-
-    async function submitFeedback() {
-      const message = document.getElementById('feedbackMessage').value.trim();
-      const category = document.getElementById('feedbackCategory').value;
-      const errEl = document.getElementById('feedbackError');
-      const btn = document.getElementById('feedbackSubmitBtn');
-      errEl.classList.add('hidden');
-      if (message.length < 5) {
-        errEl.textContent = 'Please enter at least 5 characters.';
-        errEl.classList.remove('hidden');
-        return;
-      }
-      if (currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired && !feedbackCaptchaToken) {
-        errEl.textContent = 'Please complete the verification check below.';
-        errEl.classList.remove('hidden');
-        return;
-      }
-      btn.disabled = true;
-      btn.textContent = 'Sending…';
-      const body = {
+      function showConfirm({
+        title,
         message,
-        category,
-        tf_hp: document.getElementById('feedbackHp')?.value || '',
+        confirmLabel = "Confirm",
+        danger = false,
+        onConfirm,
+      }) {
+        document.getElementById("confirmTitle").textContent = title;
+        document.getElementById("confirmMessage").textContent = message;
+        const btn = document.getElementById("confirmActionBtn");
+        btn.textContent = confirmLabel;
+        btn.className = danger
+          ? "flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+          : "flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm";
+        confirmCallback = onConfirm;
+        document.getElementById("confirmModal").classList.remove("hidden");
+      }
+
+      function closeConfirmModal() {
+        document.getElementById("confirmModal").classList.add("hidden");
+        confirmCallback = null;
+      }
+
+      function runConfirmAction() {
+        const cb = confirmCallback;
+        closeConfirmModal();
+        if (cb) cb();
+      }
+
+      function showAlert(message, title = "Something went wrong") {
+        document.getElementById("alertTitle").textContent = title;
+        document.getElementById("alertMessage").textContent = message;
+        document.getElementById("alertModal").classList.remove("hidden");
+      }
+
+      function closeAlertModal() {
+        document.getElementById("alertModal").classList.add("hidden");
+      }
+
+      let currentUser = null;
+      let avatarPresets = [];
+      let selectedPresetId = null;
+      let profileSaving = false;
+      let createTeamDraft = {
+        presetId: null,
+        avatar_url: null,
+        pendingFile: null,
       };
-      if (currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired) {
-        body.captchaToken = feedbackCaptchaToken;
-      }
-      const r = await apiFetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await parseJsonResponse(r);
-      btn.disabled = false;
-      btn.textContent = 'Submit';
-      if (!r.ok) {
-        errEl.textContent = data.error || 'Could not send feedback';
-        errEl.classList.remove('hidden');
-        return;
-      }
-      closeFeedbackModal();
-      resetFeedbackTurnstile();
-      showAlert('Thank you — your feedback has been submitted.', 'Received');
-      if (isFeedbackAdmin()) loadAdminFeedback();
-    }
+      let createTeamSaving = false;
+      let teamsList = [];
+      let teamInvitesList = [];
+      let onlineTeamIds = new Set();
+      let teamOnlinePollInterval = null;
+      const TEAM_ONLINE_POLL_MS = 4000;
+      const FEEDBACK_ADMIN_EMAIL = "jestley.charles@gmail.com";
+      let registeredFeaturesCache = null;
 
-    function formatFeedbackDate(iso) {
-      try {
-        return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-      } catch {
-        return iso || '';
+      function isFeedbackAdmin() {
+        return (
+          String(currentUser?.email || "")
+            .trim()
+            .toLowerCase() === FEEDBACK_ADMIN_EMAIL
+        );
       }
-    }
 
-    let feedbackAdminPage = 1;
-    let feedbackAdminQuery = '';
+      function parseFeaturesMarkdown(text) {
+        const raw = String(text || "");
+        const sectionMatch = raw.match(
+          /##\s*Registration benefits\s*\n([\s\S]*?)(?=\n##\s|\n---\s*$|$)/i,
+        );
+        const section = sectionMatch ? sectionMatch[1] : raw;
+        return section
+          .split("\n")
+          .map(
+            (line) =>
+              line.match(/^\s*-\s+\*\*(.+?)\*\*\s*[—–-]\s*(.+)$/) ||
+              line.match(/^\s*-\s+(.+)$/),
+          )
+          .filter(Boolean)
+          .map((m) =>
+            m[2]
+              ? `<span class="text-white font-medium">${escHtml(m[1])}</span><span class="text-gray-400"> — ${escHtml(m[2])}</span>`
+              : escHtml(m[1]),
+          );
+      }
 
-    function renderFeedbackAdminItem(row) {
-      const isBug = row.category === 'bug';
-      const badge = isBug
-        ? '<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">Bug</span>'
-        : '<span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">Feedback</span>';
-      const who = escHtml(row.username || 'Unknown') + (row.user_email ? ` <span class="text-gray-500">(${escHtml(row.user_email)})</span>` : '');
-      return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-4">
+      async function loadRegisteredFeatures() {
+        if (registeredFeaturesCache) return registeredFeaturesCache;
+        try {
+          const r = await fetch("/features.md", { cache: "no-store" });
+          if (!r.ok) return [];
+          const text = await r.text();
+          registeredFeaturesCache = parseFeaturesMarkdown(text);
+          return registeredFeaturesCache;
+        } catch {
+          return [];
+        }
+      }
+
+      async function renderGuestNoticeFeatures() {
+        const list = document.getElementById("guestNoticeFeaturesList");
+        const items = await loadRegisteredFeatures();
+        if (!items.length) {
+          list.innerHTML =
+            '<li class="text-gray-500 list-none -ml-0">Sign up to unlock private workspaces and collaboration tools.</li>';
+          return;
+        }
+        list.innerHTML = items.map((html) => `<li>${html}</li>`).join("");
+      }
+
+      function applyGuestNoticeActions() {
+        const isGuest = !!currentUser?.is_guest;
+        const registerBtn = document.getElementById("guestNoticeRegisterBtn");
+        const dismissBtn = document.querySelector(
+          '#guestNoticeModal button[onclick="dismissGuestNotice()"]',
+        );
+        if (registerBtn) registerBtn.classList.toggle("hidden", isGuest);
+        if (dismissBtn) dismissBtn.classList.toggle("w-full", isGuest);
+      }
+
+      function updateFeedbackFabPosition() {
+        const dmVisible = !document
+          .getElementById("dmChatFabWrap")
+          ?.classList.contains("hidden");
+        document.body.classList.toggle("dashboard-has-dm-fab", dmVisible);
+      }
+      window.updateFeedbackFabPosition = updateFeedbackFabPosition;
+
+      function applyGuestTeamAvatarUploadUi() {
+        const guest = !!currentUser?.is_guest;
+        const label = document.getElementById("createTeamAvatarUploadLabel");
+        const note = document.getElementById("createTeamAvatarUploadGuestNote");
+        const input = document.getElementById("createTeamAvatarFile");
+        const hint = document.querySelector(
+          "#createModal .flex.items-center.gap-4.mb-4 .text-sm.text-gray-300",
+        );
+        if (label) label.classList.toggle("hidden", guest);
+        if (note) note.classList.toggle("hidden", !guest);
+        if (input && guest) input.value = "";
+        if (hint)
+          hint.textContent = guest
+            ? "Choose a preset avatar"
+            : "Choose a preset or upload your own";
+      }
+
+      async function maybeShowGuestNotice() {
+        if (!currentUser?.is_guest || hasGuestDashboardNoticeDismissed())
+          return;
+        await renderGuestNoticeFeatures();
+        applyGuestNoticeActions();
+        document.getElementById("guestNoticeModal").classList.remove("hidden");
+      }
+
+      function dismissGuestNotice() {
+        setGuestDashboardNoticeDismissed();
+        document.getElementById("guestNoticeModal").classList.add("hidden");
+      }
+
+      let feedbackCaptchaConfig = {
+        guestCaptchaRequired: false,
+        turnstileSiteKey: null,
+      };
+      let feedbackCaptchaToken = null;
+      let feedbackTurnstileWidgetId = null;
+      let feedbackTurnstileScriptPromise = null;
+
+      async function loadFeedbackCaptchaConfig() {
+        const r = await apiFetch("/api/feedback/captcha-config");
+        if (!r.ok) return;
+        const data = await parseJsonResponse(r);
+        feedbackCaptchaConfig = {
+          guestCaptchaRequired: !!data.guestCaptchaRequired,
+          turnstileSiteKey: data.turnstileSiteKey || null,
+        };
+      }
+
+      function loadTurnstileScript() {
+        if (window.turnstile) return Promise.resolve();
+        if (feedbackTurnstileScriptPromise)
+          return feedbackTurnstileScriptPromise;
+        feedbackTurnstileScriptPromise = new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src =
+            "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+          s.async = true;
+          s.defer = true;
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error("Could not load verification"));
+          document.head.appendChild(s);
+        });
+        return feedbackTurnstileScriptPromise;
+      }
+
+      function resetFeedbackTurnstile() {
+        feedbackCaptchaToken = null;
+        if (feedbackTurnstileWidgetId != null && window.turnstile) {
+          try {
+            turnstile.remove(feedbackTurnstileWidgetId);
+          } catch (_) {
+            /* ignore */
+          }
+          feedbackTurnstileWidgetId = null;
+        }
+        document.getElementById("feedbackTurnstile").innerHTML = "";
+      }
+
+      async function mountFeedbackTurnstile() {
+        const wrap = document.getElementById("feedbackCaptchaWrap");
+        const needsCaptcha =
+          !!currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired;
+        wrap.classList.toggle("hidden", !needsCaptcha);
+        resetFeedbackTurnstile();
+        if (!needsCaptcha) return;
+        try {
+          await loadTurnstileScript();
+          feedbackTurnstileWidgetId = turnstile.render("#feedbackTurnstile", {
+            sitekey: feedbackCaptchaConfig.turnstileSiteKey,
+            theme: "dark",
+            callback: (token) => {
+              feedbackCaptchaToken = token;
+            },
+            "expired-callback": () => {
+              feedbackCaptchaToken = null;
+            },
+            "error-callback": () => {
+              feedbackCaptchaToken = null;
+            },
+          });
+        } catch {
+          document.getElementById("feedbackError").textContent =
+            "Could not load verification. Refresh and try again.";
+          document.getElementById("feedbackError").classList.remove("hidden");
+        }
+      }
+
+      async function openFeedbackModal() {
+        document.getElementById("feedbackError").classList.add("hidden");
+        document.getElementById("feedbackMessage").value = "";
+        const hp = document.getElementById("feedbackHp");
+        if (hp) hp.value = "";
+        document.getElementById("feedbackCategory").value = "feedback";
+        document
+          .getElementById("feedbackGuestNotice")
+          ?.classList.toggle("hidden", !currentUser?.is_guest);
+        document.getElementById("feedbackModal").classList.remove("hidden");
+        await mountFeedbackTurnstile();
+        setTimeout(
+          () => document.getElementById("feedbackMessage")?.focus(),
+          50,
+        );
+      }
+
+      function closeFeedbackModal() {
+        document.getElementById("feedbackModal").classList.add("hidden");
+        resetFeedbackTurnstile();
+        document.getElementById("feedbackCaptchaWrap").classList.add("hidden");
+      }
+
+      async function submitFeedback() {
+        const message = document.getElementById("feedbackMessage").value.trim();
+        const category = document.getElementById("feedbackCategory").value;
+        const errEl = document.getElementById("feedbackError");
+        const btn = document.getElementById("feedbackSubmitBtn");
+        errEl.classList.add("hidden");
+        if (message.length < 5) {
+          errEl.textContent = "Please enter at least 5 characters.";
+          errEl.classList.remove("hidden");
+          return;
+        }
+        if (
+          currentUser?.is_guest &&
+          feedbackCaptchaConfig.guestCaptchaRequired &&
+          !feedbackCaptchaToken
+        ) {
+          errEl.textContent = "Please complete the verification check below.";
+          errEl.classList.remove("hidden");
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "Sending…";
+        const body = {
+          message,
+          category,
+          tf_hp: document.getElementById("feedbackHp")?.value || "",
+        };
+        if (
+          currentUser?.is_guest &&
+          feedbackCaptchaConfig.guestCaptchaRequired
+        ) {
+          body.captchaToken = feedbackCaptchaToken;
+        }
+        const r = await apiFetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await parseJsonResponse(r);
+        btn.disabled = false;
+        btn.textContent = "Submit";
+        if (!r.ok) {
+          errEl.textContent = data.error || "Could not send feedback";
+          errEl.classList.remove("hidden");
+          return;
+        }
+        closeFeedbackModal();
+        resetFeedbackTurnstile();
+        showAlert("Thank you — your feedback has been submitted.", "Received");
+        if (isFeedbackAdmin()) loadAdminFeedback();
+      }
+
+      function formatFeedbackDate(iso) {
+        try {
+          return new Date(iso).toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+        } catch {
+          return iso || "";
+        }
+      }
+
+      let feedbackAdminPage = 1;
+      let feedbackAdminQuery = "";
+
+      function renderFeedbackAdminItem(row) {
+        const isBug = row.category === "bug";
+        const badge = isBug
+          ? '<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">Bug</span>'
+          : '<span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">Feedback</span>';
+        const who =
+          escHtml(row.username || "Unknown") +
+          (row.user_email
+            ? ` <span class="text-gray-500">(${escHtml(row.user_email)})</span>`
+            : "");
+        return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-4">
         <div class="flex flex-wrap items-center gap-2 mb-2">${badge}<span class="text-xs text-gray-500">${escHtml(formatFeedbackDate(row.created_at))}</span></div>
         <p class="text-xs text-gray-400 mb-2">${who}</p>
         <p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escHtml(row.message)}</p>
       </article>`;
-    }
-
-    function updateFeedbackAdminPager(payload) {
-      const pager = document.getElementById('feedbackAdminPager');
-      const meta = document.getElementById('feedbackAdminMeta');
-      const prevBtn = document.getElementById('feedbackAdminPrevBtn');
-      const nextBtn = document.getElementById('feedbackAdminNextBtn');
-      const pageLabel = document.getElementById('feedbackAdminPageLabel');
-      const showPager = payload.total > 0 && (payload.hasPrev || payload.hasNext || payload.totalPages > 1);
-      pager.classList.toggle('hidden', !showPager);
-      prevBtn.disabled = !payload.hasPrev;
-      nextBtn.disabled = !payload.hasNext;
-      pageLabel.textContent = `Page ${payload.page} of ${payload.totalPages}`;
-      meta.classList.toggle('hidden', payload.total === 0);
-      const qNote = feedbackAdminQuery ? ` matching "${feedbackAdminQuery}"` : '';
-      meta.textContent = payload.total === 0
-        ? (feedbackAdminQuery ? 'No results for this search.' : '')
-        : `${payload.total} submission${payload.total === 1 ? '' : 's'}${qNote} - 20 per page`;
-    }
-
-    function searchAdminFeedback(e) {
-      e.preventDefault();
-      feedbackAdminQuery = document.getElementById('feedbackAdminSearchInput').value.trim();
-      feedbackAdminPage = 1;
-      document.getElementById('feedbackAdminSearchClearBtn').classList.toggle('hidden', !feedbackAdminQuery);
-      loadAdminFeedback();
-    }
-
-    function clearAdminFeedbackSearch() {
-      feedbackAdminQuery = '';
-      feedbackAdminPage = 1;
-      document.getElementById('feedbackAdminSearchInput').value = '';
-      document.getElementById('feedbackAdminSearchClearBtn').classList.add('hidden');
-      loadAdminFeedback();
-    }
-
-    function feedbackAdminGoPage(delta) {
-      feedbackAdminPage = Math.max(1, feedbackAdminPage + delta);
-      loadAdminFeedback();
-    }
-
-    async function loadAdminFeedback() {
-      if (!isFeedbackAdmin()) return;
-      const list = document.getElementById('feedbackAdminList');
-      list.innerHTML = '<p class="text-sm text-gray-500">Loading…</p>';
-      const params = new URLSearchParams({ page: String(feedbackAdminPage) });
-      if (feedbackAdminQuery) params.set('q', feedbackAdminQuery);
-      const r = await apiFetch(`/api/feedback?${params}`);
-      const payload = await parseJsonResponse(r);
-      if (!r.ok) {
-        document.getElementById('feedbackAdminPager').classList.add('hidden');
-        document.getElementById('feedbackAdminMeta').classList.add('hidden');
-        list.innerHTML = `<p class="text-sm text-red-400">${escHtml(payload?.error || 'Could not load feedback')}</p>`;
-        return;
       }
-      const rows = payload.items || [];
-      feedbackAdminPage = payload.page || 1;
-      updateFeedbackAdminPager(payload);
-      if (!rows.length) {
-        list.innerHTML = `<p class="text-sm text-gray-500 text-center py-8">${feedbackAdminQuery ? 'No matching submissions.' : 'No submissions yet.'}</p>`;
-        return;
+
+      function updateFeedbackAdminPager(payload) {
+        const pager = document.getElementById("feedbackAdminPager");
+        const meta = document.getElementById("feedbackAdminMeta");
+        const prevBtn = document.getElementById("feedbackAdminPrevBtn");
+        const nextBtn = document.getElementById("feedbackAdminNextBtn");
+        const pageLabel = document.getElementById("feedbackAdminPageLabel");
+        const showPager =
+          payload.total > 0 &&
+          (payload.hasPrev || payload.hasNext || payload.totalPages > 1);
+        pager.classList.toggle("hidden", !showPager);
+        prevBtn.disabled = !payload.hasPrev;
+        nextBtn.disabled = !payload.hasNext;
+        pageLabel.textContent = `Page ${payload.page} of ${payload.totalPages}`;
+        meta.classList.toggle("hidden", payload.total === 0);
+        const qNote = feedbackAdminQuery
+          ? ` matching "${feedbackAdminQuery}"`
+          : "";
+        meta.textContent =
+          payload.total === 0
+            ? feedbackAdminQuery
+              ? "No results for this search."
+              : ""
+            : `${payload.total} submission${payload.total === 1 ? "" : "s"}${qNote} - 20 per page`;
       }
-      list.innerHTML = rows.map(renderFeedbackAdminItem).join('');
-    }
 
-    function renderNavUser() {
-      const isGuest = currentUser.is_guest;
-      document.getElementById('profileBtn').classList.toggle('hidden', isGuest);
-      document.getElementById('guestBadge').classList.toggle('hidden', !isGuest);
-      if (isGuest) {
-        applyAvatarToElement(document.getElementById('guestAvatarCircle'), currentUser);
-        document.getElementById('guestUsernameDisplay').textContent = currentUser.username;
-        return;
-      }
-      applyAvatarToElement(document.getElementById('avatarCircle'), currentUser);
-      document.getElementById('usernameDisplay').textContent = currentUser.username;
-    }
-
-    function matchPresetId(url) {
-      if (!url) return null;
-      const found = avatarPresets.find((p) => p.url === url || url.endsWith(p.url));
-      return found?.id || null;
-    }
-
-    async function loadAvatarPresets() {
-      const r = await apiFetch('/api/profile/avatars');
-      if (r.ok) avatarPresets = await parseJsonResponse(r);
-    }
-
-    function renderAvatarPresetGrid() {
-      const grid = document.getElementById('avatarPresetGrid');
-      const activeId = selectedPresetId || matchPresetId(currentUser?.avatar_url);
-      grid.innerHTML = avatarPresets.map((p) => `
-        <button type="button" onclick="selectAvatarPreset('${p.id}')"
-          class="avatar-preset-btn w-10 h-10 rounded-full overflow-hidden p-0 border border-white/10 ${activeId === p.id ? 'selected' : ''}"
-          title="${escHtml(p.label)}">
-          <img src="${escHtml(p.url)}" alt="" class="w-full h-full object-cover" />
-        </button>`).join('');
-    }
-
-    function updateProfileAvatarPreview() {
-      applyAvatarToElement(document.getElementById('profileAvatarPreview'), currentUser);
-    }
-
-    function hideProfileMessages() {
-      document.getElementById('profileError').classList.add('hidden');
-      document.getElementById('profileSuccess').classList.add('hidden');
-    }
-
-    function showProfileError(msg) {
-      const el = document.getElementById('profileError');
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      document.getElementById('profileSuccess').classList.add('hidden');
-    }
-
-    function showProfileSuccess(msg) {
-      const el = document.getElementById('profileSuccess');
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      document.getElementById('profileError').classList.add('hidden');
-    }
-
-    async function openProfileModal() {
-      if (currentUser?.is_guest) return;
-      hideProfileMessages();
-      document.getElementById('profileUsername').value = currentUser.username;
-      document.getElementById('profileEmail').value = currentUser.email;
-      document.getElementById('profileCurrentPassword').value = '';
-      document.getElementById('profileNewPassword').value = '';
-      document.getElementById('avatarUploadStatus').classList.add('hidden');
-      selectedPresetId = matchPresetId(currentUser.avatar_url);
-      if (!avatarPresets.length) await loadAvatarPresets();
-      renderAvatarPresetGrid();
-      updateProfileAvatarPreview();
-      document.getElementById('profileModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('profileUsername').focus(), 50);
-    }
-
-    function closeProfileModal() {
-      document.getElementById('profileModal').classList.add('hidden');
-      hideProfileMessages();
-    }
-
-    async function selectAvatarPreset(presetId) {
-      hideProfileMessages();
-      const status = document.getElementById('avatarUploadStatus');
-      status.textContent = 'Saving avatar…';
-      status.classList.remove('hidden');
-      const r = await apiFetch('/api/profile/avatar/preset', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preset: presetId }),
-      });
-      const d = await parseJsonResponse(r);
-      status.classList.add('hidden');
-      if (d.error) return showProfileError(d.error);
-      currentUser = d.user;
-      selectedPresetId = presetId;
-      renderNavUser();
-      DirectChat.onUserUpdated(currentUser);
-      renderAvatarPresetGrid();
-      updateProfileAvatarPreview();
-      showProfileSuccess('Avatar updated.');
-    }
-
-    document.getElementById('avatarFileInput')?.addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      e.target.value = '';
-      if (!file) return;
-      hideProfileMessages();
-      const status = document.getElementById('avatarUploadStatus');
-      status.textContent = 'Uploading…';
-      status.classList.remove('hidden');
-      const form = new FormData();
-      form.append('avatar', file);
-      const r = await apiFetch('/api/profile/avatar/upload', { method: 'POST', body: form });
-      const d = await parseJsonResponse(r);
-      status.classList.add('hidden');
-      if (d.error) return showProfileError(d.error);
-      currentUser = d.user;
-      selectedPresetId = null;
-      renderNavUser();
-      DirectChat.onUserUpdated(currentUser);
-      renderAvatarPresetGrid();
-      updateProfileAvatarPreview();
-      showProfileSuccess('Custom avatar uploaded.');
-    });
-
-    async function saveProfile() {
-      if (profileSaving || currentUser?.is_guest) return;
-      hideProfileMessages();
-      const username = document.getElementById('profileUsername').value.trim();
-      const email = document.getElementById('profileEmail').value.trim();
-      const current_password = document.getElementById('profileCurrentPassword').value;
-      const new_password = document.getElementById('profileNewPassword').value;
-      const btn = document.getElementById('profileSaveBtn');
-      profileSaving = true;
-      btn.disabled = true;
-      btn.textContent = 'Saving…';
-      const body = { username, email };
-      if (new_password) {
-        if (new_password.length < 8) return showProfileError('New password must be at least 8 characters');
-        body.current_password = current_password;
-        body.new_password = new_password;
-      }
-      const r = await apiFetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const d = await parseJsonResponse(r);
-      profileSaving = false;
-      btn.disabled = false;
-      btn.textContent = 'Save changes';
-      if (d.error) return showProfileError(d.error);
-      currentUser = d.user;
-      renderNavUser();
-      DirectChat.onUserUpdated(currentUser);
-      document.getElementById('profileCurrentPassword').value = '';
-      document.getElementById('profileNewPassword').value = '';
-      showProfileSuccess('Profile saved.');
-      setTimeout(closeProfileModal, 1200);
-    }
-
-    async function init() {
-      const r = await apiFetch('/api/me');
-      const meData = await parseJsonResponse(r);
-      if (!r.ok) {
-        if (isApiUnauthorizedUpdate(r, meData)) return;
-        if (r.status === 401) return (window.location = '/login');
-        return;
-      }
-      currentUser = meData;
-      if (currentUser.error) return;
-      await loadFeedbackCaptchaConfig();
-      renderNavUser();
-      if (!currentUser.is_guest) {
-        document.getElementById('profileBtn').onclick = openProfileModal;
-        loadAvatarPresets();
-        DirectChat.init(currentUser, { showConfirm, showAlert });
-      }
-      updateFeedbackFabPosition();
-      applyGuestTeamAvatarUploadUi();
-      loadTeams();
-      loadTeamInvites();
-      if (isFeedbackAdmin()) {
-        document.getElementById('feedbackAdminSection').classList.remove('hidden');
+      function searchAdminFeedback(e) {
+        e.preventDefault();
+        feedbackAdminQuery = document
+          .getElementById("feedbackAdminSearchInput")
+          .value.trim();
+        feedbackAdminPage = 1;
+        document
+          .getElementById("feedbackAdminSearchClearBtn")
+          .classList.toggle("hidden", !feedbackAdminQuery);
         loadAdminFeedback();
       }
-      maybeShowGuestNotice();
-    }
 
-    async function loadTeamInvites() {
-      const r = await apiFetch('/api/team-invites');
-      if (!r.ok) return;
-      const invites = await parseJsonResponse(r);
-      if (!Array.isArray(invites)) return;
-      teamInvitesList = invites;
-      renderTeamInvitesSection();
-    }
-
-    function renderTeamInvitesSection() {
-      const section = document.getElementById('teamInvitesSection');
-      const grid = document.getElementById('teamInvitesGrid');
-      const countEl = document.getElementById('teamInvitesCount');
-
-      if (!teamInvitesList.length) {
-        section.classList.add('hidden');
-        grid.innerHTML = '';
-        return;
+      function clearAdminFeedbackSearch() {
+        feedbackAdminQuery = "";
+        feedbackAdminPage = 1;
+        document.getElementById("feedbackAdminSearchInput").value = "";
+        document
+          .getElementById("feedbackAdminSearchClearBtn")
+          .classList.add("hidden");
+        loadAdminFeedback();
       }
 
-      section.classList.remove('hidden');
-      countEl.textContent = teamInvitesList.length;
+      function feedbackAdminGoPage(delta) {
+        feedbackAdminPage = Math.max(1, feedbackAdminPage + delta);
+        loadAdminFeedback();
+      }
 
-      grid.innerHTML = teamInvitesList.map((invite, i) => {
-        const team = invite.team || {};
-        const inviter = invite.invited_by;
-        const invitedByLine = inviter?.username
-          ? `<p class="text-xs text-amber-400/90 mt-2">Invited by ${escHtml(inviter.username)}${inviter.email ? ` (${escHtml(inviter.email)})` : ''}</p>`
-          : '';
-        return `<div class="invite-card bg-ink-800 border border-amber-500/20 rounded-2xl p-5 fade-up" style="animation-delay:${i * 0.07}s">
+      async function loadAdminFeedback() {
+        if (!isFeedbackAdmin()) return;
+        const list = document.getElementById("feedbackAdminList");
+        list.innerHTML = '<p class="text-sm text-gray-500">Loading…</p>';
+        const params = new URLSearchParams({ page: String(feedbackAdminPage) });
+        if (feedbackAdminQuery) params.set("q", feedbackAdminQuery);
+        const r = await apiFetch(`/api/feedback?${params}`);
+        const payload = await parseJsonResponse(r);
+        if (!r.ok) {
+          document.getElementById("feedbackAdminPager").classList.add("hidden");
+          document.getElementById("feedbackAdminMeta").classList.add("hidden");
+          list.innerHTML = `<p class="text-sm text-red-400">${escHtml(payload?.error || "Could not load feedback")}</p>`;
+          return;
+        }
+        const rows = payload.items || [];
+        feedbackAdminPage = payload.page || 1;
+        updateFeedbackAdminPager(payload);
+        if (!rows.length) {
+          list.innerHTML = `<p class="text-sm text-gray-500 text-center py-8">${feedbackAdminQuery ? "No matching submissions." : "No submissions yet."}</p>`;
+          return;
+        }
+        list.innerHTML = rows.map(renderFeedbackAdminItem).join("");
+      }
+
+      function renderNavUser() {
+        const isGuest = currentUser.is_guest;
+        document
+          .getElementById("profileBtn")
+          .classList.toggle("hidden", isGuest);
+        document
+          .getElementById("guestBadge")
+          .classList.toggle("hidden", !isGuest);
+        if (isGuest) {
+          applyAvatarToElement(
+            document.getElementById("guestAvatarCircle"),
+            currentUser,
+          );
+          document.getElementById("guestUsernameDisplay").textContent =
+            currentUser.username;
+          return;
+        }
+        applyAvatarToElement(
+          document.getElementById("avatarCircle"),
+          currentUser,
+        );
+        document.getElementById("usernameDisplay").textContent =
+          currentUser.username;
+      }
+
+      function matchPresetId(url) {
+        if (!url) return null;
+        const found = avatarPresets.find(
+          (p) => p.url === url || url.endsWith(p.url),
+        );
+        return found?.id || null;
+      }
+
+      async function loadAvatarPresets() {
+        const r = await apiFetch("/api/profile/avatars");
+        if (r.ok) avatarPresets = await parseJsonResponse(r);
+      }
+
+      function renderAvatarPresetGrid() {
+        const grid = document.getElementById("avatarPresetGrid");
+        const activeId =
+          selectedPresetId || matchPresetId(currentUser?.avatar_url);
+        grid.innerHTML = avatarPresets
+          .map(
+            (p) => `
+        <button type="button" onclick="selectAvatarPreset('${p.id}')"
+          class="avatar-preset-btn w-10 h-10 rounded-full overflow-hidden p-0 border border-white/10 ${activeId === p.id ? "selected" : ""}"
+          title="${escHtml(p.label)}">
+          <img src="${escHtml(p.url)}" alt="" class="w-full h-full object-cover" />
+        </button>`,
+          )
+          .join("");
+      }
+
+      function updateProfileAvatarPreview() {
+        applyAvatarToElement(
+          document.getElementById("profileAvatarPreview"),
+          currentUser,
+        );
+      }
+
+      function hideProfileMessages() {
+        document.getElementById("profileError").classList.add("hidden");
+        document.getElementById("profileSuccess").classList.add("hidden");
+      }
+
+      function showProfileError(msg) {
+        const el = document.getElementById("profileError");
+        el.textContent = msg;
+        el.classList.remove("hidden");
+        document.getElementById("profileSuccess").classList.add("hidden");
+      }
+
+      function showProfileSuccess(msg) {
+        const el = document.getElementById("profileSuccess");
+        el.textContent = msg;
+        el.classList.remove("hidden");
+        document.getElementById("profileError").classList.add("hidden");
+      }
+
+      async function openProfileModal() {
+        if (currentUser?.is_guest) return;
+        hideProfileMessages();
+        document.getElementById("profileUsername").value = currentUser.username;
+        document.getElementById("profileEmail").value = currentUser.email;
+        document.getElementById("profileCurrentPassword").value = "";
+        document.getElementById("profileNewPassword").value = "";
+        document.getElementById("avatarUploadStatus").classList.add("hidden");
+        selectedPresetId = matchPresetId(currentUser.avatar_url);
+        if (!avatarPresets.length) await loadAvatarPresets();
+        renderAvatarPresetGrid();
+        updateProfileAvatarPreview();
+        document.getElementById("profileModal").classList.remove("hidden");
+        setTimeout(
+          () => document.getElementById("profileUsername").focus(),
+          50,
+        );
+      }
+
+      function closeProfileModal() {
+        document.getElementById("profileModal").classList.add("hidden");
+        hideProfileMessages();
+      }
+
+      async function selectAvatarPreset(presetId) {
+        hideProfileMessages();
+        const status = document.getElementById("avatarUploadStatus");
+        status.textContent = "Saving avatar…";
+        status.classList.remove("hidden");
+        const r = await apiFetch("/api/profile/avatar/preset", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preset: presetId }),
+        });
+        const d = await parseJsonResponse(r);
+        status.classList.add("hidden");
+        if (d.error) return showProfileError(d.error);
+        currentUser = d.user;
+        selectedPresetId = presetId;
+        renderNavUser();
+        DirectChat.onUserUpdated(currentUser);
+        renderAvatarPresetGrid();
+        updateProfileAvatarPreview();
+        showProfileSuccess("Avatar updated.");
+      }
+
+      document
+        .getElementById("avatarFileInput")
+        ?.addEventListener("change", async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          hideProfileMessages();
+          const status = document.getElementById("avatarUploadStatus");
+          status.textContent = "Uploading…";
+          status.classList.remove("hidden");
+          const form = new FormData();
+          form.append("avatar", file);
+          const r = await apiFetch("/api/profile/avatar/upload", {
+            method: "POST",
+            body: form,
+          });
+          const d = await parseJsonResponse(r);
+          status.classList.add("hidden");
+          if (d.error) return showProfileError(d.error);
+          currentUser = d.user;
+          selectedPresetId = null;
+          renderNavUser();
+          DirectChat.onUserUpdated(currentUser);
+          renderAvatarPresetGrid();
+          updateProfileAvatarPreview();
+          showProfileSuccess("Custom avatar uploaded.");
+        });
+
+      async function saveProfile() {
+        if (profileSaving || currentUser?.is_guest) return;
+        hideProfileMessages();
+        const username = document
+          .getElementById("profileUsername")
+          .value.trim();
+        const email = document.getElementById("profileEmail").value.trim();
+        const current_password = document.getElementById(
+          "profileCurrentPassword",
+        ).value;
+        const new_password =
+          document.getElementById("profileNewPassword").value;
+        const btn = document.getElementById("profileSaveBtn");
+        profileSaving = true;
+        btn.disabled = true;
+        btn.textContent = "Saving…";
+        const body = { username, email };
+        if (new_password) {
+          if (new_password.length < 8)
+            return showProfileError(
+              "New password must be at least 8 characters",
+            );
+          body.current_password = current_password;
+          body.new_password = new_password;
+        }
+        const r = await apiFetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const d = await parseJsonResponse(r);
+        profileSaving = false;
+        btn.disabled = false;
+        btn.textContent = "Save changes";
+        if (d.error) return showProfileError(d.error);
+        currentUser = d.user;
+        renderNavUser();
+        DirectChat.onUserUpdated(currentUser);
+        document.getElementById("profileCurrentPassword").value = "";
+        document.getElementById("profileNewPassword").value = "";
+        showProfileSuccess("Profile saved.");
+        setTimeout(closeProfileModal, 1200);
+      }
+
+      async function init() {
+        const r = await apiFetch("/api/me");
+        const meData = await parseJsonResponse(r);
+        if (!r.ok) {
+          if (isApiUnauthorizedUpdate(r, meData)) return;
+          if (r.status === 401) return (window.location = "/login");
+          return;
+        }
+        currentUser = meData;
+        if (currentUser.error) return;
+        await loadFeedbackCaptchaConfig();
+        renderNavUser();
+        if (!currentUser.is_guest) {
+          document.getElementById("profileBtn").onclick = openProfileModal;
+          loadAvatarPresets();
+          DirectChat.init(currentUser, { showConfirm, showAlert });
+        }
+        updateFeedbackFabPosition();
+        applyGuestTeamAvatarUploadUi();
+        loadTeams();
+        loadTeamInvites();
+        if (isFeedbackAdmin()) {
+          document
+            .getElementById("feedbackAdminSection")
+            .classList.remove("hidden");
+          loadAdminFeedback();
+        }
+        maybeShowGuestNotice();
+      }
+
+      async function loadTeamInvites() {
+        const r = await apiFetch("/api/team-invites");
+        if (!r.ok) return;
+        const invites = await parseJsonResponse(r);
+        if (!Array.isArray(invites)) return;
+        teamInvitesList = invites;
+        renderTeamInvitesSection();
+      }
+
+      function renderTeamInvitesSection() {
+        const section = document.getElementById("teamInvitesSection");
+        const grid = document.getElementById("teamInvitesGrid");
+        const countEl = document.getElementById("teamInvitesCount");
+
+        if (!teamInvitesList.length) {
+          section.classList.add("hidden");
+          grid.innerHTML = "";
+          return;
+        }
+
+        section.classList.remove("hidden");
+        countEl.textContent = teamInvitesList.length;
+
+        grid.innerHTML = teamInvitesList
+          .map((invite, i) => {
+            const team = invite.team || {};
+            const inviter = invite.invited_by;
+            const invitedByLine = inviter?.username
+              ? `<p class="text-xs text-amber-400/90 mt-2">Invited by ${escHtml(inviter.username)}${inviter.email ? ` (${escHtml(inviter.email)})` : ""}</p>`
+              : "";
+            return `<div class="invite-card bg-ink-800 border border-amber-500/20 rounded-2xl p-5 fade-up" style="animation-delay:${i * 0.07}s">
           <div class="flex items-start gap-3 mb-4">
-            ${teamAvatarHtml(team, 'w-11 h-11 text-sm')}
+            ${teamAvatarHtml(team, "w-11 h-11 text-sm")}
             <div class="flex-1 min-w-0">
-              <h3 class="text-white font-semibold truncate">${escHtml(team.name || 'Team')}</h3>
-              <p class="text-gray-500 text-sm line-clamp-3 mt-1">${escHtml(team.description || 'No description')}</p>
+              <h3 class="text-white font-semibold truncate">${escHtml(team.name || "Team")}</h3>
+              <p class="text-gray-500 text-sm line-clamp-3 mt-1">${escHtml(team.description || "No description")}</p>
               ${invitedByLine}
             </div>
           </div>
@@ -1188,52 +2066,75 @@
             </button>
           </div>
         </div>`;
-      }).join('');
-    }
-
-    async function acceptTeamInvite(inviteId) {
-      const card = document.querySelector(`.invite-card button[onclick="acceptTeamInvite('${inviteId}')"]`)?.closest('.invite-card');
-      if (card) {
-        card.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+          })
+          .join("");
       }
-      const r = await apiFetch(`/api/team-invites/${inviteId}/accept`, { method: 'POST' });
-      const d = await parseJsonResponse(r);
-      if (!r.ok) {
-        if (card) card.querySelectorAll('button').forEach((b) => { b.disabled = false; });
-        return showAlert(d.error || 'Failed to accept invite');
-      }
-      await loadTeamInvites();
-      showTeamsLoading();
-      await loadTeams();
-    }
 
-    async function declineTeamInvite(inviteId) {
-      const card = document.querySelector(`.invite-card button[onclick="declineTeamInvite('${inviteId}')"]`)?.closest('.invite-card');
-      if (card) {
-        card.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      async function acceptTeamInvite(inviteId) {
+        const card = document
+          .querySelector(
+            `.invite-card button[onclick="acceptTeamInvite('${inviteId}')"]`,
+          )
+          ?.closest(".invite-card");
+        if (card) {
+          card.querySelectorAll("button").forEach((b) => {
+            b.disabled = true;
+          });
+        }
+        const r = await apiFetch(`/api/team-invites/${inviteId}/accept`, {
+          method: "POST",
+        });
+        const d = await parseJsonResponse(r);
+        if (!r.ok) {
+          if (card)
+            card.querySelectorAll("button").forEach((b) => {
+              b.disabled = false;
+            });
+          return showAlert(d.error || "Failed to accept invite");
+        }
+        await loadTeamInvites();
+        showTeamsLoading();
+        await loadTeams();
       }
-      const r = await apiFetch(`/api/team-invites/${inviteId}/decline`, { method: 'POST' });
-      const d = await parseJsonResponse(r);
-      if (!r.ok) {
-        if (card) card.querySelectorAll('button').forEach((b) => { b.disabled = false; });
-        return showAlert(d.error || 'Failed to decline invite');
+
+      async function declineTeamInvite(inviteId) {
+        const card = document
+          .querySelector(
+            `.invite-card button[onclick="declineTeamInvite('${inviteId}')"]`,
+          )
+          ?.closest(".invite-card");
+        if (card) {
+          card.querySelectorAll("button").forEach((b) => {
+            b.disabled = true;
+          });
+        }
+        const r = await apiFetch(`/api/team-invites/${inviteId}/decline`, {
+          method: "POST",
+        });
+        const d = await parseJsonResponse(r);
+        if (!r.ok) {
+          if (card)
+            card.querySelectorAll("button").forEach((b) => {
+              b.disabled = false;
+            });
+          return showAlert(d.error || "Failed to decline invite");
+        }
+        await loadTeamInvites();
       }
-      await loadTeamInvites();
-    }
 
-    function isTeamOnline(teamId) {
-      return onlineTeamIds.has(String(teamId));
-    }
+      function isTeamOnline(teamId) {
+        return onlineTeamIds.has(String(teamId));
+      }
 
-    function teamAvatarWithPresenceHtml(team) {
-      const online = isTeamOnline(team.id);
-      return `<div class="relative shrink-0" title="${online ? 'Someone is online on this board' : escHtml(team.name)}">
-          ${teamAvatarHtml(team, 'w-11 h-11 text-sm')}
-          ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Someone is online"></span>' : ''}
+      function teamAvatarWithPresenceHtml(team) {
+        const online = isTeamOnline(team.id);
+        return `<div class="relative shrink-0" title="${online ? "Someone is online on this board" : escHtml(team.name)}">
+          ${teamAvatarHtml(team, "w-11 h-11 text-sm")}
+          ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Someone is online"></span>' : ""}
         </div>`;
-    }
+      }
 
-    const TEAMS_GRID_SKELETON_HTML = `
+      const TEAMS_GRID_SKELETON_HTML = `
       <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
         <div class="flex items-start justify-between mb-4">
           <div class="skeleton w-11 h-11 rounded-xl"></div>
@@ -1274,18 +2175,19 @@
         </div>
       </div>`;
 
-    function showTeamsLoading() {
-      stopTeamOnlinePoll();
-      document.getElementById('teamsGrid').innerHTML = TEAMS_GRID_SKELETON_HTML;
-    }
-
-    function renderTeamsGrid() {
-      const grid = document.getElementById('teamsGrid');
-      grid.innerHTML = '';
-
-      if (!teamsList.length) {
+      function showTeamsLoading() {
         stopTeamOnlinePoll();
-        grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+        document.getElementById("teamsGrid").innerHTML =
+          TEAMS_GRID_SKELETON_HTML;
+      }
+
+      function renderTeamsGrid() {
+        const grid = document.getElementById("teamsGrid");
+        grid.innerHTML = "";
+
+        if (!teamsList.length) {
+          stopTeamOnlinePoll();
+          grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
           <div class="w-16 h-16 bg-ink-800 border border-white/10 rounded-2xl flex items-center justify-center mb-4">
             <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1295,22 +2197,23 @@
           <p class="text-gray-500 text-sm mb-5">Create your first team to start managing tasks.</p>
           <button onclick="openCreateModal()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">Create a Team</button>
         </div>`;
-        return;
-      }
+          return;
+        }
 
-      teamsList.forEach((team, i) => {
-        const card = document.createElement('div');
-        card.className = 'team-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-2xl p-5 cursor-pointer transition-all hover:bg-ink-700 fade-up';
-        card.style.animationDelay = `${i * 0.07}s`;
-        card.dataset.teamId = team.id;
-        card.onclick = () => window.location = `/board/${team.id}`;
-        card.innerHTML = `
+        teamsList.forEach((team, i) => {
+          const card = document.createElement("div");
+          card.className =
+            "team-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-2xl p-5 cursor-pointer transition-all hover:bg-ink-700 fade-up";
+          card.style.animationDelay = `${i * 0.07}s`;
+          card.dataset.teamId = team.id;
+          card.onclick = () => (window.location = `/board/${team.id}`);
+          card.innerHTML = `
           <div class="flex items-start justify-between mb-4">
             ${teamAvatarWithPresenceHtml(team)}
-            <span class="text-xs px-2.5 py-1 rounded-full border ${team.role === 'owner' ? 'border-brand-500/40 text-brand-500 bg-brand-500/10' : 'border-white/10 text-gray-400 bg-white/5'}">${team.role}</span>
+            <span class="text-xs px-2.5 py-1 rounded-full border ${team.role === "owner" ? "border-brand-500/40 text-brand-500 bg-brand-500/10" : "border-white/10 text-gray-400 bg-white/5"}">${team.role}</span>
           </div>
           <h3 class="text-white font-semibold mb-1">${escHtml(team.name)}</h3>
-          <p class="text-gray-500 text-sm mb-4 line-clamp-2">${escHtml(team.description || 'No description')}</p>
+          <p class="text-gray-500 text-sm mb-4 line-clamp-2">${escHtml(team.description || "No description")}</p>
           <div class="flex items-center justify-between">
             <div class="flex flex-col gap-0.5">
               <span class="text-gray-600 text-xs">${new Date(team.created_at).toLocaleDateString()}</span>
@@ -1320,221 +2223,245 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>`;
-        grid.appendChild(card);
-      });
-    }
+          grid.appendChild(card);
+        });
+      }
 
-    function updateTeamOnlineIndicators() {
-      document.querySelectorAll('.team-card[data-team-id]').forEach((card) => {
-        const teamId = card.dataset.teamId;
-        const team = teamsList.find((t) => String(t.id) === String(teamId));
-        if (!team) return;
-        const avatarWrap = card.querySelector('.relative.shrink-0');
-        if (!avatarWrap) return;
-        avatarWrap.outerHTML = teamAvatarWithPresenceHtml(team);
-      });
-    }
+      function updateTeamOnlineIndicators() {
+        document
+          .querySelectorAll(".team-card[data-team-id]")
+          .forEach((card) => {
+            const teamId = card.dataset.teamId;
+            const team = teamsList.find((t) => String(t.id) === String(teamId));
+            if (!team) return;
+            const avatarWrap = card.querySelector(".relative.shrink-0");
+            if (!avatarWrap) return;
+            avatarWrap.outerHTML = teamAvatarWithPresenceHtml(team);
+          });
+      }
 
-    async function fetchTeamOnlineStatus() {
-      const r = await apiFetch('/api/teams/online');
-      if (!r.ok) return;
-      const ids = await parseJsonResponse(r);
-      if (!Array.isArray(ids)) return;
-      const next = new Set(ids.map(String));
-      const changed = next.size !== onlineTeamIds.size
-        || [...next].some((id) => !onlineTeamIds.has(id))
-        || [...onlineTeamIds].some((id) => !next.has(id));
-      onlineTeamIds = next;
-      if (changed && teamsList.length) updateTeamOnlineIndicators();
-    }
+      async function fetchTeamOnlineStatus() {
+        const r = await apiFetch("/api/teams/online");
+        if (!r.ok) return;
+        const ids = await parseJsonResponse(r);
+        if (!Array.isArray(ids)) return;
+        const next = new Set(ids.map(String));
+        const changed =
+          next.size !== onlineTeamIds.size ||
+          [...next].some((id) => !onlineTeamIds.has(id)) ||
+          [...onlineTeamIds].some((id) => !next.has(id));
+        onlineTeamIds = next;
+        if (changed && teamsList.length) updateTeamOnlineIndicators();
+      }
 
-    function stopTeamOnlinePoll() {
-      clearInterval(teamOnlinePollInterval);
-      teamOnlinePollInterval = null;
-    }
+      function stopTeamOnlinePoll() {
+        clearInterval(teamOnlinePollInterval);
+        teamOnlinePollInterval = null;
+      }
 
-    function startTeamOnlinePoll() {
-      stopTeamOnlinePoll();
-      if (!teamsList.length) return;
-      fetchTeamOnlineStatus();
-      teamOnlinePollInterval = setInterval(fetchTeamOnlineStatus, TEAM_ONLINE_POLL_MS);
-    }
+      function startTeamOnlinePoll() {
+        stopTeamOnlinePoll();
+        if (!teamsList.length) return;
+        fetchTeamOnlineStatus();
+        teamOnlinePollInterval = setInterval(
+          fetchTeamOnlineStatus,
+          TEAM_ONLINE_POLL_MS,
+        );
+      }
 
-    async function loadTeams() {
-      const r = await apiFetch('/api/teams');
-      if (!r.ok) return;
-      const teams = await parseJsonResponse(r);
-      if (!Array.isArray(teams)) return;
-      teamsList = teams;
-      await fetchTeamOnlineStatus();
-      renderTeamsGrid();
-      startTeamOnlinePoll();
-    }
+      async function loadTeams() {
+        const r = await apiFetch("/api/teams");
+        if (!r.ok) return;
+        const teams = await parseJsonResponse(r);
+        if (!Array.isArray(teams)) return;
+        teamsList = teams;
+        await fetchTeamOnlineStatus();
+        renderTeamsGrid();
+        startTeamOnlinePoll();
+      }
 
-    function resetCreateTeamDraft() {
-      const defaultPreset = avatarPresets[0];
-      createTeamDraft = {
-        presetId: defaultPreset?.id || null,
-        avatar_url: defaultPreset?.url || null,
-        pendingFile: null,
-      };
-    }
+      function resetCreateTeamDraft() {
+        const defaultPreset = avatarPresets[0];
+        createTeamDraft = {
+          presetId: defaultPreset?.id || null,
+          avatar_url: defaultPreset?.url || null,
+          pendingFile: null,
+        };
+      }
 
-    function renderCreateTeamAvatarPresetGrid() {
-      const grid = document.getElementById('createTeamAvatarPresetGrid');
-      const activeId = createTeamDraft.pendingFile ? null : createTeamDraft.presetId;
-      grid.innerHTML = avatarPresets.map((p) => `
+      function renderCreateTeamAvatarPresetGrid() {
+        const grid = document.getElementById("createTeamAvatarPresetGrid");
+        const activeId = createTeamDraft.pendingFile
+          ? null
+          : createTeamDraft.presetId;
+        grid.innerHTML = avatarPresets
+          .map(
+            (p) => `
         <button type="button" onclick="selectCreateTeamPreset('${p.id}')"
-          class="avatar-preset-btn w-10 h-10 rounded-xl overflow-hidden p-0 border border-white/10 ${activeId === p.id ? 'selected' : ''}"
+          class="avatar-preset-btn w-10 h-10 rounded-xl overflow-hidden p-0 border border-white/10 ${activeId === p.id ? "selected" : ""}"
           title="${escHtml(p.label)}">
           <img src="${escHtml(p.url)}" alt="" class="w-full h-full object-cover" />
-        </button>`).join('');
-    }
-
-    function updateCreateTeamPreview() {
-      const el = document.getElementById('createTeamAvatarPreview');
-      const name = document.getElementById('teamName').value.trim() || 'Team';
-      if (createTeamDraft.pendingFile) {
-        el.innerHTML = '';
-        el.style.background = '';
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(createTeamDraft.pendingFile);
-        img.alt = '';
-        img.className = 'w-full h-full object-cover';
-        el.appendChild(img);
-        return;
-      }
-      applyTeamAvatarToElement(el, {
-        name,
-        avatar_color: '#4f6ef7',
-        avatar_url: createTeamDraft.avatar_url,
-      });
-    }
-
-    async function openCreateModal() {
-      document.getElementById('modalError').classList.add('hidden');
-      document.getElementById('teamName').value = '';
-      document.getElementById('teamDesc').value = '';
-      document.getElementById('createTeamAvatarFile').value = '';
-      if (!avatarPresets.length) await loadAvatarPresets();
-      resetCreateTeamDraft();
-      renderCreateTeamAvatarPresetGrid();
-      updateCreateTeamPreview();
-      applyGuestTeamAvatarUploadUi();
-      document.getElementById('createModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('teamName').focus(), 50);
-    }
-
-    function closeCreateModal() {
-      document.getElementById('createModal').classList.add('hidden');
-      document.getElementById('teamName').value = '';
-      document.getElementById('teamDesc').value = '';
-      document.getElementById('modalError').classList.add('hidden');
-    }
-
-    function selectCreateTeamPreset(presetId) {
-      const preset = avatarPresets.find((p) => p.id === presetId);
-      if (!preset) return;
-      createTeamDraft.presetId = presetId;
-      createTeamDraft.avatar_url = preset.url;
-      createTeamDraft.pendingFile = null;
-      renderCreateTeamAvatarPresetGrid();
-      updateCreateTeamPreview();
-    }
-
-    async function createTeam() {
-      if (createTeamSaving) return;
-      const name = document.getElementById('teamName').value.trim();
-      if (!name) {
-        const el = document.getElementById('modalError');
-        el.textContent = 'Team name is required';
-        el.classList.remove('hidden');
-        return;
-      }
-      const desc = document.getElementById('teamDesc').value.trim();
-      const body = { name, description: desc };
-      if (!createTeamDraft.pendingFile && createTeamDraft.avatar_url) {
-        body.avatar_url = createTeamDraft.avatar_url;
+        </button>`,
+          )
+          .join("");
       }
 
-      const btn = document.getElementById('createTeamBtn');
-      createTeamSaving = true;
-      btn.disabled = true;
-      btn.textContent = 'Creating…';
-
-      const r = await apiFetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const d = await parseJsonResponse(r);
-      if (d.error) {
-        createTeamSaving = false;
-        btn.disabled = false;
-        btn.textContent = 'Create Team';
-        const el = document.getElementById('modalError');
-        el.textContent = d.error;
-        el.classList.remove('hidden');
-        return;
-      }
-
-      if (createTeamDraft.pendingFile && !currentUser?.is_guest) {
-        const form = new FormData();
-        form.append('avatar', createTeamDraft.pendingFile);
-        const upR = await apiFetch(`/api/teams/${d.id}/avatar/upload`, { method: 'POST', body: form });
-        const upD = await parseJsonResponse(upR);
-        if (!upR.ok) {
-          createTeamSaving = false;
-          btn.disabled = false;
-          btn.textContent = 'Create Team';
-          const el = document.getElementById('modalError');
-          el.textContent = upD.error || 'Team created but avatar upload failed';
-          el.classList.remove('hidden');
-          closeCreateModal();
-          showTeamsLoading();
-          await loadTeams();
+      function updateCreateTeamPreview() {
+        const el = document.getElementById("createTeamAvatarPreview");
+        const name = document.getElementById("teamName").value.trim() || "Team";
+        if (createTeamDraft.pendingFile) {
+          el.innerHTML = "";
+          el.style.background = "";
+          const img = document.createElement("img");
+          img.src = URL.createObjectURL(createTeamDraft.pendingFile);
+          img.alt = "";
+          img.className = "w-full h-full object-cover";
+          el.appendChild(img);
           return;
         }
+        applyTeamAvatarToElement(el, {
+          name,
+          avatar_color: "#4f6ef7",
+          avatar_url: createTeamDraft.avatar_url,
+        });
       }
 
-      createTeamSaving = false;
-      btn.disabled = false;
-      btn.textContent = 'Create Team';
-      closeCreateModal();
-      showTeamsLoading();
-      await loadTeams();
-    }
+      async function openCreateModal() {
+        document.getElementById("modalError").classList.add("hidden");
+        document.getElementById("teamName").value = "";
+        document.getElementById("teamDesc").value = "";
+        document.getElementById("createTeamAvatarFile").value = "";
+        if (!avatarPresets.length) await loadAvatarPresets();
+        resetCreateTeamDraft();
+        renderCreateTeamAvatarPresetGrid();
+        updateCreateTeamPreview();
+        applyGuestTeamAvatarUploadUi();
+        document.getElementById("createModal").classList.remove("hidden");
+        setTimeout(() => document.getElementById("teamName").focus(), 50);
+      }
 
-    document.getElementById('createTeamAvatarFile')?.addEventListener('change', (e) => {
-      const file = e.target.files?.[0];
-      e.target.value = '';
-      if (!file) return;
-      createTeamDraft.pendingFile = file;
-      createTeamDraft.presetId = null;
-      renderCreateTeamAvatarPresetGrid();
-      updateCreateTeamPreview();
-    });
+      function closeCreateModal() {
+        document.getElementById("createModal").classList.add("hidden");
+        document.getElementById("teamName").value = "";
+        document.getElementById("teamDesc").value = "";
+        document.getElementById("modalError").classList.add("hidden");
+      }
 
-    document.getElementById('teamName')?.addEventListener('input', () => {
-      if (!document.getElementById('createModal').classList.contains('hidden')) {
+      function selectCreateTeamPreset(presetId) {
+        const preset = avatarPresets.find((p) => p.id === presetId);
+        if (!preset) return;
+        createTeamDraft.presetId = presetId;
+        createTeamDraft.avatar_url = preset.url;
+        createTeamDraft.pendingFile = null;
+        renderCreateTeamAvatarPresetGrid();
         updateCreateTeamPreview();
       }
-    });
 
-    async function logout() {
-      DirectChat.leaveAppPresence?.();
-      clearGuestDashboardNotice();
-      await apiFetch('/api/auth/logout', { method: 'POST' });
-      window.location = '/login';
-    }
+      async function createTeam() {
+        if (createTeamSaving) return;
+        const name = document.getElementById("teamName").value.trim();
+        if (!name) {
+          const el = document.getElementById("modalError");
+          el.textContent = "Team name is required";
+          el.classList.remove("hidden");
+          return;
+        }
+        const desc = document.getElementById("teamDesc").value.trim();
+        const body = { name, description: desc };
+        if (!createTeamDraft.pendingFile && createTeamDraft.avatar_url) {
+          body.avatar_url = createTeamDraft.avatar_url;
+        }
 
-    function escHtml(str) {
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+        const btn = document.getElementById("createTeamBtn");
+        createTeamSaving = true;
+        btn.disabled = true;
+        btn.textContent = "Creating…";
 
-    window.addEventListener('pagehide', stopTeamOnlinePoll);
+        const r = await apiFetch("/api/teams", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const d = await parseJsonResponse(r);
+        if (d.error) {
+          createTeamSaving = false;
+          btn.disabled = false;
+          btn.textContent = "Create Team";
+          const el = document.getElementById("modalError");
+          el.textContent = d.error;
+          el.classList.remove("hidden");
+          return;
+        }
 
-    init();
-  </script>
-</body>
+        if (createTeamDraft.pendingFile && !currentUser?.is_guest) {
+          const form = new FormData();
+          form.append("avatar", createTeamDraft.pendingFile);
+          const upR = await apiFetch(`/api/teams/${d.id}/avatar/upload`, {
+            method: "POST",
+            body: form,
+          });
+          const upD = await parseJsonResponse(upR);
+          if (!upR.ok) {
+            createTeamSaving = false;
+            btn.disabled = false;
+            btn.textContent = "Create Team";
+            const el = document.getElementById("modalError");
+            el.textContent =
+              upD.error || "Team created but avatar upload failed";
+            el.classList.remove("hidden");
+            closeCreateModal();
+            showTeamsLoading();
+            await loadTeams();
+            return;
+          }
+        }
+
+        createTeamSaving = false;
+        btn.disabled = false;
+        btn.textContent = "Create Team";
+        closeCreateModal();
+        showTeamsLoading();
+        await loadTeams();
+      }
+
+      document
+        .getElementById("createTeamAvatarFile")
+        ?.addEventListener("change", (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          createTeamDraft.pendingFile = file;
+          createTeamDraft.presetId = null;
+          renderCreateTeamAvatarPresetGrid();
+          updateCreateTeamPreview();
+        });
+
+      document.getElementById("teamName")?.addEventListener("input", () => {
+        if (
+          !document.getElementById("createModal").classList.contains("hidden")
+        ) {
+          updateCreateTeamPreview();
+        }
+      });
+
+      async function logout() {
+        DirectChat.leaveAppPresence?.();
+        clearGuestDashboardNotice();
+        await apiFetch("/api/auth/logout", { method: "POST" });
+        window.location = "/login";
+      }
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      window.addEventListener("pagehide", stopTeamOnlinePoll);
+
+      init();
+    </script>
+  </body>
 </html>

@@ -1,7 +1,8 @@
 {
   "name": "taskflow",
   "version": "1.0.0",
-  "description": "Team Task Manager",
+  "description": "Real-time team task manager with Kanban boards, chat, and DMs",
+  "license": "Apache-2.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
