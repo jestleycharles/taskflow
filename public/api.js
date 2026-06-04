@@ -227,3 +227,20 @@ function hasGuestDashboardNoticeDismissed() {
 function setGuestDashboardNoticeDismissed() {
   try { sessionStorage.setItem(GUEST_DASHBOARD_NOTICE_KEY, '1'); } catch (_) { /* ignore */ }
 }
+
+/** Blocking modal when the current team was deleted or the user lost access (board page). */
+function showTeamGoneModal() {
+  let modal = document.getElementById('teamGoneModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function isTeamAccessLostResponse(status, data) {
+  if (status === 404) return true;
+  if (status === 403) {
+    const err = String(data?.error || '').toLowerCase();
+    return err.includes('not a member') || err.includes('not found');
+  }
+  return false;
+}

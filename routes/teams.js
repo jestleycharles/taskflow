@@ -7,6 +7,7 @@ const { requireAuth } = require('../middleware/auth');
 const { ping, leave, getOnlineUserIds } = require('../lib/presence');
 const {
   AVATAR_PRESETS,
+  isGuestUser,
   isStorageTeamAvatarUrl,
   randomColor,
 } = require('../lib/user');
@@ -20,6 +21,13 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_AVATAR_BYTES },
 });
+
+async function isTeamOwnerGuest(teamId) {
+  const { data: team } = await supabaseAdmin.from('teams').select('created_by').eq('id', teamId).single();
+  if (!team?.created_by) return false;
+  const { data: owner } = await supabaseAdmin.from('users').select('email').eq('id', team.created_by).single();
+  return isGuestUser(owner);
+}
 
 async function assertTeamMember(teamId, userId) {
   const { data } = await supabaseAdmin
@@ -401,6 +409,9 @@ router.post(
     if (!await assertTeamOwner(id, userId)) {
       return res.status(403).json({ error: 'Only the team owner can change the team avatar' });
     }
+    if (isGuestUser(req.session.user)) {
+      return res.status(403).json({ error: 'Guest accounts cannot upload team images. Choose a preset or create a registered account.' });
+    }
 
     if (!req.file) return res.status(400).json({ error: 'No image file provided' });
     if (!ALLOWED_MIME.has(req.file.mimetype)) {
@@ -452,9 +463,13 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
     .eq('user_id', userId)
     .single();
 
-  if (!membership) return res.status(403).json({ error: 'Not a member' });
+  if (!membership) return res.status(403).json({ error: 'Not a member of this team' });
 
   const { data: team } = await supabaseAdmin.from('teams').select('*').eq('id', id).single();
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  const ownerIsGuest = await isTeamOwnerGuest(id);
+
   const { data: members, error: membersErr } = await supabaseAdmin
     .from('team_members')
     .select('role, custom_role_id, users(id, username, email, avatar_color, avatar_url)')
@@ -490,6 +505,7 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
     roles,
     separate_role_members: !!team.separate_role_members,
     userRole: membership.role,
+    owner_is_guest: ownerIsGuest,
     member_count: memberList.length,
     online_count: getOnlineUserIds(memberIds, id).length,
   });
@@ -588,6 +604,12 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
     .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
   if (!membership || !['owner','admin'].includes(membership.role))
     return res.status(403).json({ error: 'Only owners/admins can invite' });
+
+  if (await isTeamOwnerGuest(id)) {
+    return res.status(403).json({
+      error: 'Teams owned by a guest account cannot send invites. The owner needs a registered account.',
+    });
+  }
 
   const trimmedEmail = String(email || '').trim().toLowerCase();
   if (!trimmedEmail) return res.status(400).json({ error: 'Email is required' });

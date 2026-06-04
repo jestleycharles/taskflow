@@ -237,6 +237,7 @@
     document.body.classList.toggle('dm-panel-open', open);
     $('dmChatBackdrop')?.classList.toggle('hidden', !open);
     $('dmChatFabWrap')?.classList.toggle('hidden', open);
+    window.updateFeedbackFabPosition?.();
   }
 
   function convUnreadCount(conv) {
@@ -268,10 +269,12 @@
 
   function showFab() {
     $('dmChatFabWrap')?.classList.remove('hidden');
+    window.updateFeedbackFabPosition?.();
   }
 
   function hideFab() {
     $('dmChatFabWrap')?.classList.add('hidden');
+    window.updateFeedbackFabPosition?.();
   }
 
   function showConversationListLoading() {

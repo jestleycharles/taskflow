@@ -129,10 +129,17 @@
       pointer-events: auto;
     }
     #dmReactionFloatLayer { z-index: 200; }
+    main {
+      padding-bottom: 5rem;
+    }
     #feedbackFabWrap {
       bottom: 1rem;
-      right: 1rem;
+      left: 1rem;
+      right: auto;
       z-index: 25;
+    }
+    body.dashboard-has-dm-fab #feedbackFabWrap {
+      bottom: calc(1rem + 3rem + 0.75rem);
     }
   </style>
 </head>
@@ -400,11 +407,12 @@
           </div>
         </div>
         <div id="createTeamAvatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
-        <label class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition">
+        <label id="createTeamAvatarUploadLabel" class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           Upload custom image
           <input id="createTeamAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
         </label>
+        <p id="createTeamAvatarUploadGuestNote" class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed">Custom team images are only available with a registered account. Choose a preset above.</p>
       </div>
 
       <div class="space-y-4 border-t border-white/10 pt-5">
@@ -494,7 +502,7 @@
         <ul id="guestNoticeFeaturesList" class="text-sm text-gray-300 space-y-2 list-disc list-inside marker:text-brand-500/80"></ul>
       </div>
       <div class="flex flex-col sm:flex-row gap-3">
-        <a href="/register" class="flex-1 text-center bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-medium py-2.5 rounded-xl transition text-sm">Create account</a>
+        <a id="guestNoticeRegisterBtn" href="/register" class="flex-1 text-center bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 font-medium py-2.5 rounded-xl transition text-sm">Create account</a>
         <button type="button" onclick="dismissGuestNotice()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">I understand</button>
       </div>
     </div>
@@ -506,6 +514,14 @@
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
       <h2 class="text-base font-semibold text-white mb-1">Send feedback</h2>
       <p class="text-sm text-gray-500 mb-4">Report a bug or share a suggestion. We read every submission.</p>
+      <div id="feedbackGuestNotice" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4">
+        <p class="text-sm text-amber-200/90 leading-relaxed">
+          You are using a <strong class="text-amber-100 font-medium">guest account</strong> with no personal email on file,
+          so we cannot reply if we need follow-up. Please be as specific as possible in your message.
+          Image uploads are not allowed (they can be abused). For a private workspace and full features,
+          <a href="/register" class="text-brand-500 hover:text-brand-400 font-medium">create a free account</a>.
+        </p>
+      </div>
       <div id="feedbackError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
       <div class="mb-4">
         <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Type</label>
@@ -539,9 +555,9 @@
   <!-- Feedback FAB (bottom-right; all users) -->
   <div id="feedbackFabWrap" class="fixed">
     <button type="button" id="feedbackFab" onclick="openFeedbackModal()"
-      class="w-12 h-12 rounded-full bg-ink-700 hover:bg-ink-600 border border-white/15 text-gray-300 hover:text-white shadow-lg flex items-center justify-center transition hover:scale-105"
+      class="relative w-12 h-12 rounded-full bg-ink-700 hover:bg-ink-600 border border-white/15 text-gray-300 hover:text-white shadow-lg flex items-center justify-center transition hover:scale-105"
       title="Send feedback or report a bug" aria-label="Send feedback">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
       </svg>
     </button>
@@ -649,9 +665,36 @@
       list.innerHTML = items.map((html) => `<li>${html}</li>`).join('');
     }
 
+    function applyGuestNoticeActions() {
+      const isGuest = !!currentUser?.is_guest;
+      const registerBtn = document.getElementById('guestNoticeRegisterBtn');
+      const dismissBtn = document.querySelector('#guestNoticeModal button[onclick="dismissGuestNotice()"]');
+      if (registerBtn) registerBtn.classList.toggle('hidden', isGuest);
+      if (dismissBtn) dismissBtn.classList.toggle('w-full', isGuest);
+    }
+
+    function updateFeedbackFabPosition() {
+      const dmVisible = !document.getElementById('dmChatFabWrap')?.classList.contains('hidden');
+      document.body.classList.toggle('dashboard-has-dm-fab', dmVisible);
+    }
+    window.updateFeedbackFabPosition = updateFeedbackFabPosition;
+
+    function applyGuestTeamAvatarUploadUi() {
+      const guest = !!currentUser?.is_guest;
+      const label = document.getElementById('createTeamAvatarUploadLabel');
+      const note = document.getElementById('createTeamAvatarUploadGuestNote');
+      const input = document.getElementById('createTeamAvatarFile');
+      const hint = document.querySelector('#createModal .flex.items-center.gap-4.mb-4 .text-sm.text-gray-300');
+      if (label) label.classList.toggle('hidden', guest);
+      if (note) note.classList.toggle('hidden', !guest);
+      if (input && guest) input.value = '';
+      if (hint) hint.textContent = guest ? 'Choose a preset avatar' : 'Choose a preset or upload your own';
+    }
+
     async function maybeShowGuestNotice() {
       if (!currentUser?.is_guest || hasGuestDashboardNoticeDismissed()) return;
       await renderGuestNoticeFeatures();
+      applyGuestNoticeActions();
       document.getElementById('guestNoticeModal').classList.remove('hidden');
     }
 
@@ -664,6 +707,7 @@
       document.getElementById('feedbackError').classList.add('hidden');
       document.getElementById('feedbackMessage').value = '';
       document.getElementById('feedbackCategory').value = 'feedback';
+      document.getElementById('feedbackGuestNotice')?.classList.toggle('hidden', !currentUser?.is_guest);
       document.getElementById('feedbackModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('feedbackMessage')?.focus(), 50);
     }
@@ -915,6 +959,8 @@
         loadAvatarPresets();
         DirectChat.init(currentUser, { showConfirm, showAlert });
       }
+      updateFeedbackFabPosition();
+      applyGuestTeamAvatarUploadUi();
       loadTeams();
       loadTeamInvites();
       if (isFeedbackAdmin()) {
@@ -1170,7 +1216,7 @@
       const activeId = createTeamDraft.pendingFile ? null : createTeamDraft.presetId;
       grid.innerHTML = avatarPresets.map((p) => `
         <button type="button" onclick="selectCreateTeamPreset('${p.id}')"
-          class="avatar-preset-btn w-10 h-10 rounded-full overflow-hidden p-0 border border-white/10 ${activeId === p.id ? 'selected' : ''}"
+          class="avatar-preset-btn w-10 h-10 rounded-xl overflow-hidden p-0 border border-white/10 ${activeId === p.id ? 'selected' : ''}"
           title="${escHtml(p.label)}">
           <img src="${escHtml(p.url)}" alt="" class="w-full h-full object-cover" />
         </button>`).join('');
@@ -1205,6 +1251,7 @@
       resetCreateTeamDraft();
       renderCreateTeamAvatarPresetGrid();
       updateCreateTeamPreview();
+      applyGuestTeamAvatarUploadUi();
       document.getElementById('createModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('teamName').focus(), 50);
     }
@@ -1262,7 +1309,7 @@
         return;
       }
 
-      if (createTeamDraft.pendingFile) {
+      if (createTeamDraft.pendingFile && !currentUser?.is_guest) {
         const form = new FormData();
         form.append('avatar', createTeamDraft.pendingFile);
         const upR = await apiFetch(`/api/teams/${d.id}/avatar/upload`, { method: 'POST', body: form });

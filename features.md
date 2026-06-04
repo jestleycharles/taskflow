@@ -11,5 +11,7 @@ Features available when you sign up for a personal TaskFlow account (not shared 
 - **@mentions** — Mention teammates in task comments and team chat so they are highlighted in the thread.
 - **Full task editing** — Edit task title and description and delete tasks from the task panel (guests have limited editing).
 - **Team invites by email** — Receive invitations at your personal email and accept or decline them on the dashboard.
+- **Team avatar upload** — Upload a custom image for your team (guest accounts can only choose preset avatars).
+- **Invite teammates from the board** — Send email invitations to add members (not available when the team owner uses a guest account).
 - **OAuth sign-in** — Sign in with Google or GitHub in addition to email and password.
 - **Manage your own messages** — Edit or delete messages you sent in team chat and direct messages.
