@@ -297,10 +297,10 @@
       z-index: 2;
     }
     #chatFabWrap {
-      z-index: 25;
+      z-index: 20;
     }
     #boardZoomWrap {
-      z-index: 25;
+      z-index: 20;
     }
     #boardZoomInner {
       transform-origin: 0 0;
@@ -366,7 +366,8 @@
       pointer-events: none;
     }
     #activityPanel:not(.hidden),
-    #teamPanel:not(.hidden) {
+    #teamPanel:not(.hidden),
+    #settingsPanel:not(.hidden) {
       position: relative;
       z-index: 35;
     }
@@ -377,12 +378,33 @@
       max-height: 100%;
     }
     #activityList,
-    #memberList,
-    #settingsPanelBody {
+    #memberList {
       flex: 1 1 0;
       min-height: 0;
     }
-    #settingsMemberList,
+    #settingsPanelBody {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #settingsDangerZone {
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    }
+    #dangerZoneContent {
+      max-height: min(70vh, calc(100dvh - var(--nav-h) - 12rem));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #dangerZoneToggleBtn.danger-zone-open {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #d1d5db;
+    }
+    #dangerZoneToggleBtn.danger-zone-open:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
     #teamRolesList,
     #dmBlockedEmailsList {
       scrollbar-width: thin;
@@ -631,14 +653,12 @@
           Manage columns
         </button>
       </div>
-      <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
-        <p class="text-xs text-gray-400 mb-3 shrink-0">Team members</p>
-        <div id="settingsMemberList" class="flex-1 overflow-y-auto space-y-2 min-h-0 mb-4"></div>
-        <div id="settingsDangerZone" class="border-t border-white/10 pt-4 shrink-0">
+      <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 p-4">
+        <div id="settingsDangerZone" class="mt-auto shrink-0 border-t border-white/10 pt-4">
           <button type="button" id="dangerZoneToggleBtn" onclick="toggleSettingsDangerZone()" aria-expanded="false" aria-controls="dangerZoneContent"
             class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
-            Danger zone
-            <svg id="dangerZoneChevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            <span id="dangerZoneToggleLabel">Danger zone</span>
+            <svg id="dangerZoneChevron" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
           </button>
           <div id="dangerZoneContent" class="hidden mt-3 space-y-4 rounded-xl border border-red-500/25 bg-red-500/5 p-3">
             <div id="transferOwnershipSection" class="hidden space-y-2">
@@ -1450,7 +1470,6 @@
       renderMemberAvatars(teamData.members);
       renderMemberList(teamData.members);
       populateAssigneeDropdowns(teamData.members);
-      if (teamData.userRole === 'owner') renderSettingsMemberList(teamData.members);
       applyMembershipActionsUi();
       if (!document.getElementById('teamRolesModal').classList.contains('hidden')) {
         syncSeparateRoleToggleUi();
@@ -1968,7 +1987,6 @@
         return;
       }
       await loadTeam();
-      renderSettingsMemberList(teamData.members);
       if (tasks.length) renderBoard();
     }
 
@@ -2054,7 +2072,6 @@
       populateAssigneeDropdowns(teamData.members);
       if (teamData.userRole === 'owner') {
         document.getElementById('settingsNavBtn').classList.remove('hidden');
-        renderSettingsMemberList(teamData.members);
       } else {
         document.getElementById('settingsNavBtn').classList.add('hidden');
       }
@@ -2112,11 +2129,17 @@
     }
 
     function renderMemberList(members) {
-      document.getElementById('memberList').innerHTML = renderMemberSectionsHtml(membersWithPending(members), {
-        showAssign: canAssignTeamRoles(),
-        showRemove: false,
-        showPermissionRole: !canAssignTeamRoles(),
-      });
+      const isOwner = teamData?.userRole === 'owner';
+      const assignHint = isOwner && canAssignTeamRoles()
+        ? '<p class="text-xs text-gray-500 mb-3 shrink-0">Assign a display role to each member (owner cannot be changed). Pending invites cannot be assigned roles until they accept.</p>'
+        : '';
+      document.getElementById('memberList').innerHTML =
+        assignHint +
+        renderMemberSectionsHtml(membersWithPending(members), {
+          showAssign: canAssignTeamRoles(),
+          showRemove: isOwner,
+          showPermissionRole: !canAssignTeamRoles(),
+        });
       if (teamData?.userRole !== 'owner') {
         document.getElementById('inviteSection').classList.add('hidden');
       } else {
@@ -4031,7 +4054,6 @@
       closeAllSidePanels();
       document.getElementById('settingsPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
-      renderSettingsMemberList(teamData.members);
     }
     function closeSettingsPanel() {
       document.getElementById('settingsPanel').classList.add('hidden');
@@ -4042,11 +4064,14 @@
     function setSettingsDangerZoneOpen(open) {
       const content = document.getElementById('dangerZoneContent');
       const btn = document.getElementById('dangerZoneToggleBtn');
+      const label = document.getElementById('dangerZoneToggleLabel');
       const chevron = document.getElementById('dangerZoneChevron');
       if (!content || !btn) return;
       content.classList.toggle('hidden', !open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      chevron?.classList.toggle('rotate-180', open);
+      btn.classList.toggle('danger-zone-open', open);
+      if (label) label.textContent = open ? 'Close danger zone' : 'Danger zone';
+      chevron?.classList.toggle('hidden', open);
     }
 
     function toggleSettingsDangerZone() {
@@ -4225,18 +4250,6 @@
 
     document.getElementById('editTeamName')?.addEventListener('input', updateEditTeamPreview);
 
-    function renderSettingsMemberList(members) {
-      const assignHint = canAssignTeamRoles()
-        ? '<p class="text-xs text-gray-500 mb-3">Assign a display role to each member (owner cannot be changed). Pending invites cannot be assigned roles until they accept.</p>'
-        : '';
-      document.getElementById('settingsMemberList').innerHTML =
-        assignHint + renderMemberSectionsHtml(membersWithPending(members), {
-          showAssign: canAssignTeamRoles(),
-          showRemove: true,
-          showPermissionRole: !canAssignTeamRoles(),
-        });
-    }
-
     function cancelInvite(userId, username) {
       const name = username || teamData?.pending_invites?.find((p) => String(p.id) === String(userId))?.username;
       if (!name) return;
@@ -4257,7 +4270,6 @@
         return;
       }
       await loadTeam();
-      renderSettingsMemberList(teamData.members);
     }
 
     function removeMember(userId, username) {
@@ -4280,7 +4292,6 @@
         return;
       }
       await loadTeam();
-      renderSettingsMemberList(teamData.members);
     }
 
     function isRegisteredMemberEmail(email) {
@@ -4775,7 +4786,7 @@
       if (from && !to) closeMentionRolePopover();
     });
 
-    document.getElementById('settingsMemberList').addEventListener('click', (e) => {
+    document.getElementById('memberList').addEventListener('click', (e) => {
       const cancelBtn = e.target.closest('.cancel-invite-btn');
       if (cancelBtn) {
         cancelInvite(cancelBtn.dataset.userId, cancelBtn.dataset.username);
@@ -4787,12 +4798,6 @@
     });
 
     document.getElementById('memberList').addEventListener('change', (e) => {
-      const sel = e.target.closest('.assign-role-select');
-      if (!sel) return;
-      assignMemberCustomRole(sel.dataset.userId, sel.value || null);
-    });
-
-    document.getElementById('settingsMemberList').addEventListener('change', (e) => {
       const sel = e.target.closest('.assign-role-select');
       if (!sel) return;
       assignMemberCustomRole(sel.dataset.userId, sel.value || null);
