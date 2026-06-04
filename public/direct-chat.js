@@ -106,16 +106,18 @@
     return conv.other_user?.email || '';
   }
 
+  const dmMessageFormat = typeof window !== 'undefined' ? window.MessageFormat : null;
+
   function formatDmBodyHtml(content) {
-    const text = global.MessageFormat
-      ? global.MessageFormat.applyTextEmojis(String(content ?? ''))
+    const text = dmMessageFormat
+      ? dmMessageFormat.applyTextEmojis(String(content ?? ''))
       : String(content ?? '');
     return escHtml(text).replace(/\n/g, '<br>');
   }
 
   function prepareOutgoingDmMessage(content) {
     const trimmed = String(content || '').trim();
-    return global.MessageFormat ? global.MessageFormat.applyTextEmojis(trimmed) : trimmed;
+    return dmMessageFormat ? dmMessageFormat.applyTextEmojis(trimmed) : trimmed;
   }
 
   function previewText(conv) {
@@ -124,7 +126,7 @@
     if (lm.deleted) return 'Message deleted';
     const prefix = lm.is_mine ? 'You: ' : '';
     const raw = lm.content || '';
-    const text = (global.MessageFormat ? global.MessageFormat.applyTextEmojis(raw) : raw).replace(/\s+/g, ' ').trim();
+    const text = (dmMessageFormat ? dmMessageFormat.applyTextEmojis(raw) : raw).replace(/\s+/g, ' ').trim();
     const clipped = text.length > 60 ? `${text.slice(0, 60)}…` : text;
     return prefix + clipped;
   }

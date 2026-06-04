@@ -947,12 +947,55 @@
       return `<span class="${cls}"${style}>${crown}${escHtml(user.username)}</span>`;
     }
 
+    const GUEST_EMAIL = 'guest@taskflow.app';
+
+    function isGuestAuthor(userId) {
+      const member = getTeamMember(userId);
+      return (member?.email || '').toLowerCase() === GUEST_EMAIL;
+    }
+
     function formatMessageBodyHtml(content) {
       return MessageFormat.formatMessageContentHtml(content, teamData, escHtml);
     }
 
+    function formatCommentBodyHtml(comment) {
+      const content = comment?.content;
+      if (isGuestAuthor(comment?.user_id)) {
+        const text = MessageFormat.applyTextEmojis(String(content ?? ''));
+        return escHtml(text).replace(/\n/g, '<br>');
+      }
+      return formatMessageBodyHtml(content);
+    }
+
     function messageMentionsCurrentUser(content) {
       return MessageFormat.messageMentionsUserId(content, currentUser?.id, teamData);
+    }
+
+    function showGuestMentionAlert() {
+      showAlert('Guest accounts cannot use the mention feature.', 'Mentions unavailable');
+    }
+
+    function initGuestCommentMentionGuard() {
+      const input = document.getElementById('commentInput');
+      if (!input || input.dataset.guestMentionGuard) return;
+      input.dataset.guestMentionGuard = '1';
+      input.addEventListener('keydown', (e) => {
+        if (!isGuest() || e.key !== '@' || e.ctrlKey || e.metaKey || e.altKey) return;
+        e.preventDefault();
+        showGuestMentionAlert();
+      });
+      input.addEventListener('input', () => {
+        if (!isGuest()) return;
+        const caret = input.selectionStart ?? input.value.length;
+        const before = input.value.slice(0, caret);
+        const at = before.lastIndexOf('@');
+        if (at === -1) return;
+        const between = before.slice(at + 1);
+        if (/\s/.test(between)) return;
+        input.value = input.value.slice(0, at) + input.value.slice(caret);
+        input.setSelectionRange(at, at);
+        showGuestMentionAlert();
+      });
     }
 
     function prepareOutgoingMessage(content) {
@@ -1961,16 +2004,17 @@
           <span class="text-gray-600 ml-1.5">${timeAgo(c.created_at)}</span>
         </div>`;
       }
-      const mentionedYou = messageMentionsCurrentUser(c.content);
+      const mentionedYou = !isGuestAuthor(c.user_id) && messageMentionsCurrentUser(c.content);
       const mentionRowClass = mentionedYou ? ' msg-mentioned-you' : '';
-      return `<div class="flex gap-3${mentionRowClass}" data-comment-id="${c.id}">
+      const guestNoMentions = isGuestAuthor(c.user_id) ? ' data-guest-no-mentions="1"' : '';
+      return `<div class="flex gap-3${mentionRowClass}" data-comment-id="${c.id}"${guestNoMentions}>
           ${userAvatarHtml(c.user, 'w-7 h-7')}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-xs font-medium">${memberNameHtml(c.user, c.user_id, 'text-xs')}</span>
               <span class="text-xs text-gray-600">${timeAgo(c.created_at)}</span>
             </div>
-            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(c.content)}</p>
+            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatCommentBodyHtml(c)}</p>
             ${renderReactionsBar('comment', c.id, c.reactions || [])}
           </div>
         </div>`;
@@ -3203,6 +3247,8 @@
     function onMentionRolePointerDown(e) {
       const el = e.target.closest('.mention-role');
       if (!el || e.button !== 0) return;
+      const commentRow = el.closest('[data-comment-id]');
+      if (commentRow?.dataset.guestNoMentions === '1') return;
       clearMentionRolePress();
       mentionRolePress = {
         el,
@@ -3247,6 +3293,7 @@
       if (!(e.target instanceof Element)) return;
       const el = e.target.closest('.mention-role');
       if (!el) return;
+      if (el.closest('[data-guest-no-mentions="1"]')) return;
       showMentionRolePopover(el);
     });
 
@@ -3291,6 +3338,8 @@
     });
 
     renderTeamRoleColorSwatches(ROLE_PRESET_COLORS[0]);
+
+    initGuestCommentMentionGuard();
 
     init();
   </script>
