@@ -31,22 +31,56 @@ async function assertTeamMember(teamId, userId) {
   return !!data;
 }
 
+function isTeamInvitesUnavailable(error) {
+  if (!error) return false;
+  const msg = String(error.message || '').toLowerCase();
+  const code = String(error.code || '');
+  return (
+    code === '42P01' ||
+    code === 'PGRST205' ||
+    (msg.includes('team_invites') &&
+      (msg.includes('does not exist') ||
+        msg.includes('schema cache') ||
+        msg.includes('could not find') ||
+        msg.includes('relation')))
+  );
+}
+
+/** Pending invites for a team (no embedded users join — team_invites has two FKs to users). */
 async function loadTeamPendingInvites(teamId) {
-  const { data, error } = await supabaseAdmin
+  const { data: rows, error } = await supabaseAdmin
     .from('team_invites')
-    .select('id, user_id, invited_by, created_at, users(id, username, email, avatar_color, avatar_url)')
+    .select('id, user_id, invited_by, created_at')
     .eq('team_id', teamId);
-  if (error) throw error;
-  return (data || []).map((row) => ({
-    id: row.users?.id || row.user_id,
-    invite_id: row.id,
-    username: row.users?.username,
-    email: row.users?.email,
-    avatar_color: row.users?.avatar_color,
-    avatar_url: row.users?.avatar_url,
-    invited_by: row.invited_by,
-    pending: true,
-  }));
+
+  if (error) {
+    if (isTeamInvitesUnavailable(error)) return [];
+    throw error;
+  }
+  if (!rows?.length) return [];
+
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const { data: users, error: usersErr } = await supabaseAdmin
+    .from('users')
+    .select('id, username, email, avatar_color, avatar_url')
+    .in('id', userIds);
+
+  if (usersErr) throw usersErr;
+
+  const userById = new Map((users || []).map((u) => [u.id, u]));
+  return rows.map((row) => {
+    const u = userById.get(row.user_id) || {};
+    return {
+      id: u.id || row.user_id,
+      invite_id: row.id,
+      username: u.username,
+      email: u.email,
+      avatar_color: u.avatar_color,
+      avatar_url: u.avatar_url,
+      invited_by: row.invited_by,
+      pending: true,
+    };
+  });
 }
 
 async function assertTeamOwner(teamId, userId) {
@@ -432,7 +466,7 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
   }
 
   const memberList = attachCustomRoles(
-    members.map((m) => ({ ...m.users, role: m.role, custom_role_id: m.custom_role_id })),
+    (members || []).map((m) => ({ ...m.users, role: m.role, custom_role_id: m.custom_role_id })),
     roles
   );
   const memberIds = memberList.map((m) => m.id);
@@ -466,7 +500,10 @@ router.get('/api/team-invites', requireAuth, async (req, res) => {
     .select('id, team_id, created_at, teams(id, name, description, avatar_color, avatar_url)')
     .eq('user_id', userId);
 
-  if (error) return sendError(res, 500, error, 'load');
+  if (error) {
+    if (isTeamInvitesUnavailable(error)) return res.json([]);
+    return sendError(res, 500, error, 'load');
+  }
 
   const invites = (data || []).map((row) => ({
     id: row.id,
@@ -554,12 +591,18 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
     .single();
   if (existingMember) return res.status(400).json({ error: 'User is already a member' });
 
-  const { data: existingInvite } = await supabaseAdmin
+  const { data: existingInvite, error: existingInviteErr } = await supabaseAdmin
     .from('team_invites')
     .select('id')
     .eq('team_id', id)
     .eq('user_id', invitee.id)
-    .single();
+    .maybeSingle();
+  if (existingInviteErr) {
+    if (isTeamInvitesUnavailable(existingInviteErr)) {
+      return res.status(503).json({ error: 'Team invites are not set up yet. Run migrations/001_team_invites.sql in Supabase.' });
+    }
+    return sendError(res, 500, existingInviteErr, 'load');
+  }
   if (existingInvite) return res.status(400).json({ error: 'Invitation already sent' });
 
   const { data: invite, error } = await supabaseAdmin
@@ -568,7 +611,12 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
     .select('id')
     .single();
 
-  if (error) return sendError(res, 400, error, 'save');
+  if (error) {
+    if (isTeamInvitesUnavailable(error)) {
+      return res.status(503).json({ error: 'Team invites are not set up yet. Run migrations/001_team_invites.sql in Supabase.' });
+    }
+    return sendError(res, 400, error, 'save');
+  }
 
   await logActivity(id, userId, 'member_invited', `Invited ${invitee.username} to the team (pending)`);
   res.json({ success: true, user: invitee, invite_id: invite.id, pending: true });
@@ -584,13 +632,19 @@ router.delete('/api/teams/:id/invites/:uid', requireAuth, async (req, res) => {
   if (!membership || membership.role !== 'owner')
     return res.status(403).json({ error: 'Only the team owner can cancel invites' });
 
-  const { data: invite } = await supabaseAdmin
+  const { data: invite, error: inviteErr } = await supabaseAdmin
     .from('team_invites')
-    .select('id, users(username)')
+    .select('id, user_id')
     .eq('team_id', id)
     .eq('user_id', uid)
     .single();
 
+  if (inviteErr) {
+    if (isTeamInvitesUnavailable(inviteErr)) {
+      return res.status(503).json({ error: 'Team invites are not set up yet. Run migrations/001_team_invites.sql in Supabase.' });
+    }
+    return sendError(res, 500, inviteErr, 'load');
+  }
   if (!invite) return res.status(404).json({ error: 'Pending invite not found' });
 
   const { error } = await supabaseAdmin
@@ -601,7 +655,13 @@ router.delete('/api/teams/:id/invites/:uid', requireAuth, async (req, res) => {
 
   if (error) return sendError(res, 500, error, 'load');
 
-  const username = invite.users?.username || 'A user';
+  let username = 'A user';
+  const { data: invitee } = await supabaseAdmin
+    .from('users')
+    .select('username')
+    .eq('id', invite.user_id)
+    .single();
+  if (invitee?.username) username = invitee.username;
   await logActivity(id, userId, 'invite_cancelled', `Cancelled invite for ${username}`);
   res.json({ success: true });
 });
