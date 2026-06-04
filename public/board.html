@@ -276,24 +276,44 @@
     }
     #boardContainer {
       padding-bottom: 5rem;
-      cursor: grab;
+      touch-action: pan-x pan-y;
     }
     #boardContainer.board-panning {
       cursor: grabbing;
       user-select: none;
+      touch-action: none;
     }
     #boardContainer.board-panning .task-card {
       pointer-events: none;
     }
     .drop-zone {
-      overflow-y: auto;
       padding-bottom: 4.5rem;
     }
     @media (min-width: 768px) {
+      #boardContainer {
+        overflow: auto;
+      }
+      #kanbanBoard {
+        height: auto;
+        min-height: calc(100vh - var(--nav-h) - 3rem);
+        align-items: stretch;
+      }
       .kanban-col {
         flex: 0 0 280px;
         max-width: 280px;
         min-width: 220px;
+        min-height: calc(100vh - var(--nav-h) - 3rem);
+      }
+      .drop-zone {
+        overflow-y: visible;
+        flex: 1 1 auto;
+        min-height: 60px;
+      }
+    }
+    @media (max-width: 767px) {
+      .drop-zone {
+        overflow-y: auto;
+        min-height: 0;
       }
     }
     @media (max-width: 767px) {
@@ -394,7 +414,7 @@
     </div>
 
     <div id="boardContainer" class="flex-1 overflow-x-auto p-4 sm:p-6">
-      <div class="flex gap-4 h-full min-h-[calc(100vh-3.5rem-2rem)]" style="min-width: 700px;">
+      <div id="kanbanBoard" class="flex gap-4 h-full min-h-[calc(100vh-3.5rem-2rem)]" style="min-width: 700px;">
 
         <!-- TO DO Column -->
         <div class="kanban-col flex-1 flex flex-col min-w-0" data-status="todo">
@@ -3945,35 +3965,50 @@
     function initBoardPan() {
       const el = document.getElementById('boardContainer');
       if (!el) return;
-      let panning = false;
-      let startX = 0;
-      let scrollLeft = 0;
+      const PAN_THRESHOLD = 6;
+      let pan = null;
+
+      const clearPan = (e) => {
+        if (!pan) return;
+        el.classList.remove('board-panning');
+        if (e) {
+          try { el.releasePointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+        }
+        pan = null;
+      };
 
       el.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         if (e.target.closest('.task-card, button, input, textarea, select, a, label')) return;
-        panning = true;
-        startX = e.clientX;
-        scrollLeft = el.scrollLeft;
+        pan = {
+          pending: true,
+          startX: e.clientX,
+          startY: e.clientY,
+          scrollLeft: el.scrollLeft,
+          pointerId: e.pointerId,
+        };
         el.setPointerCapture(e.pointerId);
-        el.classList.add('board-panning');
       });
-
-      const endPan = (e) => {
-        if (!panning) return;
-        panning = false;
-        el.classList.remove('board-panning');
-        try { el.releasePointerCapture(e.pointerId); } catch (_) { /* ignore */ }
-      };
 
       el.addEventListener('pointermove', (e) => {
-        if (!panning) return;
+        if (!pan || e.pointerId !== pan.pointerId) return;
+        const dx = e.clientX - pan.startX;
+        const dy = e.clientY - pan.startY;
+        if (pan.pending) {
+          if (Math.hypot(dx, dy) < PAN_THRESHOLD) return;
+          if (Math.abs(dx) <= Math.abs(dy)) {
+            clearPan(e);
+            return;
+          }
+          pan.pending = false;
+          el.classList.add('board-panning');
+        }
         e.preventDefault();
-        el.scrollLeft = scrollLeft - (e.clientX - startX);
+        el.scrollLeft = pan.scrollLeft - dx;
       });
 
-      el.addEventListener('pointerup', endPan);
-      el.addEventListener('pointercancel', endPan);
+      el.addEventListener('pointerup', clearPan);
+      el.addEventListener('pointercancel', clearPan);
     }
 
     initBoardPan();
