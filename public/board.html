@@ -94,6 +94,15 @@
     .team-role-row.drag-over { outline: 1px dashed rgba(79, 110, 247, 0.55); }
     .column-mgmt-row.dragging { opacity: 0.45; }
     .column-mgmt-row.drag-over { outline: 1px dashed rgba(79, 110, 247, 0.55); }
+    .optional-drawer-btn.drawer-open {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.15);
+      color: #d1d5db;
+    }
+    .optional-drawer-btn.drawer-open:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
     .task-card-cover {
       height: 5.5rem;
       margin: -0.875rem -0.875rem 0.625rem;
@@ -888,39 +897,50 @@
         </div>
         <input id="taskTitle" type="text" placeholder="Task title"
           class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm" />
-        <textarea id="taskDesc" placeholder="Description (optional)" rows="2"
-          class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm resize-none"></textarea>
-        <div id="addTaskAttachmentsBlock" class="hidden space-y-2 border border-white/10 rounded-xl p-3 bg-ink-700/40">
-          <label class="block text-gray-500 text-xs">Attachments</label>
-          <input id="addTaskAttachmentFiles" type="file" multiple class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-500 file:text-white file:text-xs" />
-          <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-            <input id="addTaskCoverToggle" type="checkbox" class="rounded border-white/20" />
-            Use first image attachment as cover
-          </label>
-          <label class="block text-gray-500 text-xs mt-2">Cover image (optional)</label>
-          <input id="addTaskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-gray-300 file:text-xs" />
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-gray-500 text-xs mb-1.5">Priority</label>
-            <select id="taskPriority" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm">
-              <option value="urgent">🔴 Urgent</option>
-              <option value="high">🟠 High</option>
-              <option value="medium" selected>🟡 Medium</option>
-              <option value="low">🟢 Low</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-gray-500 text-xs mb-1.5">Due Date</label>
-            <input id="taskDue" type="date"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm" />
-          </div>
-        </div>
+
+        <!-- Optional details drawer -->
         <div>
-          <label class="block text-gray-500 text-xs mb-1.5">Assign to</label>
-          <select id="taskAssignee" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm">
-            <option value="">Unassigned</option>
-          </select>
+          <button type="button" id="addTaskOptionalToggleBtn" onclick="toggleAddTaskOptional()" aria-expanded="false" aria-controls="addTaskOptionalContent"
+            class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+            <span id="addTaskOptionalLabel">Add details</span>
+            <svg id="addTaskOptionalChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div id="addTaskOptionalContent" class="hidden mt-3 space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <textarea id="taskDesc" placeholder="Description (optional)" rows="2"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm resize-none"></textarea>
+            <div id="addTaskAttachmentsBlock" class="hidden space-y-2 border border-white/10 rounded-xl p-3 bg-ink-700/40">
+              <label class="block text-gray-500 text-xs">Attachments</label>
+              <input id="addTaskAttachmentFiles" type="file" multiple class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-500 file:text-white file:text-xs" />
+              <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                <input id="addTaskCoverToggle" type="checkbox" class="rounded border-white/20" />
+                Use first image attachment as cover
+              </label>
+              <label class="block text-gray-500 text-xs mt-2">Cover image (optional)</label>
+              <input id="addTaskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-gray-300 file:text-xs" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-gray-500 text-xs mb-1.5">Priority</label>
+                <select id="taskPriority" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm">
+                  <option value="urgent">🔴 Urgent</option>
+                  <option value="high">🟠 High</option>
+                  <option value="medium" selected>🟡 Medium</option>
+                  <option value="low">🟢 Low</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-gray-500 text-xs mb-1.5">Due Date</label>
+                <input id="taskDue" type="date"
+                  class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-gray-500 text-xs mb-1.5">Assign to</label>
+              <select id="taskAssignee" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm">
+                <option value="">Unassigned</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="flex gap-3 pt-2">
           <button onclick="closeAddTask()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
@@ -965,64 +985,84 @@
       <div id="taskModalTabContent" class="flex-1 flex flex-col min-h-0 overflow-hidden">
         <!-- Details tab -->
         <div id="tab-details" class="flex-1 overflow-y-auto min-h-0 p-6 space-y-4">
+          <!-- Description (below title) -->
           <div class="flex items-start justify-between gap-2">
             <div id="taskDetailDescArea" class="flex-1 min-w-0 text-gray-400 text-sm leading-relaxed"></div>
             <button id="taskEditDescBtn" type="button" onclick="startEditTask('description')" class="hidden shrink-0 text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition" title="Edit description">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
             </button>
           </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Status</label>
-              <select id="detailStatus" onchange="updateTaskField('status', this.value)"
-                class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition"></select>
-            </div>
-            <div>
-              <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Priority</label>
-              <select id="detailPriority" onchange="updateTaskField('priority', this.value)"
-                class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition">
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Due Date</label>
-              <input id="detailDue" type="date" onchange="updateTaskField('due_date', this.value)"
-                class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition" />
-            </div>
-            <div>
-              <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Assignee</label>
-              <select id="detailAssignee" onchange="updateTaskField('assigned_to', this.value || null)"
-                class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition">
-                <option value="">Unassigned</option>
-              </select>
-            </div>
+
+          <!-- Cover image (below description) -->
+          <div id="taskDetailCoverBlock" class="hidden">
+            <div id="taskDetailCoverPreviewInline" class="rounded-xl overflow-hidden bg-ink-700 border border-white/10 max-h-48 cursor-pointer mb-1" title="Preview cover"></div>
           </div>
-          <div id="taskAttachmentsSection" class="hidden border-t border-white/10 pt-4 space-y-3">
-            <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Attachments</label>
-            <div id="taskAttachmentsList" class="space-y-2 text-sm"></div>
-            <div id="taskAttachmentsUploadBlock" class="hidden space-y-2">
-              <input id="taskAttachmentFile" type="file" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-500 file:text-white file:text-xs" />
-              <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-                <input id="taskAttachmentAsCover" type="checkbox" class="rounded border-white/20" />
-                Also use as cover image (images only)
-              </label>
-            </div>
-            <div id="taskCoverBlock" class="hidden space-y-2 border-t border-white/10 pt-3">
-              <label class="block text-gray-500 text-xs uppercase tracking-wider">Cover image</label>
-              <div id="taskCoverPreview" class="rounded-xl overflow-hidden bg-ink-700 border border-white/10 max-h-32 cursor-pointer" title="Preview cover"></div>
-              <p id="taskCoverGuestNote" class="hidden text-xs text-gray-500">View only — guest accounts cannot upload files.</p>
-              <div id="taskCoverManageRow" class="flex flex-wrap gap-2">
-                <label class="inline-flex items-center gap-2 text-xs text-brand-500 hover:text-brand-400 cursor-pointer">
-                  <input id="taskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
-                  Upload cover
-                </label>
-                <button type="button" id="taskCoverClearBtn" onclick="clearTaskCover()" class="text-xs text-gray-500 hover:text-red-400 transition">Remove cover</button>
+
+          <!-- Status (always visible) -->
+          <div>
+            <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Status</label>
+            <select id="detailStatus" onchange="updateTaskField('status', this.value)"
+              class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition"></select>
+          </div>
+
+          <!-- Optional details drawer -->
+          <div>
+            <button type="button" id="taskDetailsOptionalToggleBtn" onclick="toggleTaskDetailsOptional()" aria-expanded="false" aria-controls="taskDetailsOptionalContent"
+              class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+              <span id="taskDetailsOptionalLabel">Details</span>
+              <svg id="taskDetailsOptionalChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div id="taskDetailsOptionalContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Priority</label>
+                  <select id="detailPriority" onchange="updateTaskField('priority', this.value)"
+                    class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition">
+                    <option value="urgent">Urgent</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Due Date</label>
+                  <input id="detailDue" type="date" onchange="updateTaskField('due_date', this.value)"
+                    class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition" />
+                </div>
+                <div class="col-span-2">
+                  <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Assignee</label>
+                  <select id="detailAssignee" onchange="updateTaskField('assigned_to', this.value || null)"
+                    class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition">
+                    <option value="">Unassigned</option>
+                  </select>
+                </div>
+              </div>
+              <div id="taskAttachmentsSection" class="hidden border-t border-white/10 pt-4 space-y-3">
+                <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Attachments</label>
+                <div id="taskAttachmentsList" class="space-y-2 text-sm"></div>
+                <div id="taskAttachmentsUploadBlock" class="hidden space-y-2">
+                  <input id="taskAttachmentFile" type="file" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-500 file:text-white file:text-xs" />
+                  <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                    <input id="taskAttachmentAsCover" type="checkbox" class="rounded border-white/20" />
+                    Also use as cover image (images only)
+                  </label>
+                </div>
+                <div id="taskCoverBlock" class="hidden space-y-2 border-t border-white/10 pt-3">
+                  <label class="block text-gray-500 text-xs uppercase tracking-wider">Cover image</label>
+                  <div id="taskCoverPreview" class="rounded-xl overflow-hidden bg-ink-700 border border-white/10 max-h-32 cursor-pointer" title="Preview cover"></div>
+                  <p id="taskCoverGuestNote" class="hidden text-xs text-gray-500">View only — guest accounts cannot upload files.</p>
+                  <div id="taskCoverManageRow" class="flex flex-wrap gap-2">
+                    <label class="inline-flex items-center gap-2 text-xs text-brand-500 hover:text-brand-400 cursor-pointer">
+                      <input id="taskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                      Upload cover
+                    </label>
+                    <button type="button" id="taskCoverClearBtn" onclick="clearTaskCover()" class="text-xs text-gray-500 hover:text-red-400 transition">Remove cover</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+
           <div>
             <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Created by</label>
             <p id="detailCreator" class="text-sm text-gray-300"></p>
@@ -2540,6 +2580,7 @@
       addTaskShowColumnPicker = false;
       addTaskStatusTarget = status || getTeamColumns()[0]?.slug || 'todo';
       syncAddTaskModalUi();
+      resetAddTaskOptionalDrawer();
       document.getElementById('addTaskModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('taskTitle').focus(), 50);
     }
@@ -2550,6 +2591,7 @@
       const sel = document.getElementById('addTaskColumnSelect');
       if (sel) sel.value = addTaskStatusTarget;
       syncAddTaskModalUi();
+      resetAddTaskOptionalDrawer();
       document.getElementById('addTaskModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('taskTitle').focus(), 50);
     }
@@ -2717,6 +2759,7 @@
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
+      resetTaskDetailsDrawer();
       document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
@@ -3072,6 +3115,21 @@
       }
       const clearBtn = document.getElementById('taskCoverClearBtn');
       if (clearBtn) clearBtn.classList.toggle('hidden', !hasCover || guest);
+
+      // Sync inline cover preview (above drawer, below description)
+      const inlineCoverBlock = document.getElementById('taskDetailCoverBlock');
+      const inlineCoverPreview = document.getElementById('taskDetailCoverPreviewInline');
+      if (inlineCoverBlock && inlineCoverPreview) {
+        if (hasCover) {
+          inlineCoverPreview.innerHTML = `<img src="${escHtml(task.cover_image_url)}" alt="" class="w-full object-cover max-h-48" data-preview-cover data-url="${escHtml(task.cover_image_url)}" />`;
+          inlineCoverPreview.classList.add('cursor-pointer');
+          inlineCoverBlock.classList.remove('hidden');
+        } else {
+          inlineCoverPreview.innerHTML = '';
+          inlineCoverPreview.classList.remove('cursor-pointer');
+          inlineCoverBlock.classList.add('hidden');
+        }
+      }
     }
 
     async function setCoverFromAttachment(attachmentId) {
@@ -4080,6 +4138,56 @@
       setSettingsDangerZoneOpen(content.classList.contains('hidden'));
     }
 
+    function toggleAddTaskOptional() {
+      const content = document.getElementById('addTaskOptionalContent');
+      const btn = document.getElementById('addTaskOptionalToggleBtn');
+      const label = document.getElementById('addTaskOptionalLabel');
+      const chevron = document.getElementById('addTaskOptionalChevron');
+      if (!content) return;
+      const open = content.classList.contains('hidden');
+      content.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('drawer-open', open);
+      if (label) label.textContent = open ? 'Hide details' : 'Add details';
+      if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+    }
+
+    function resetAddTaskOptionalDrawer() {
+      const content = document.getElementById('addTaskOptionalContent');
+      const btn = document.getElementById('addTaskOptionalToggleBtn');
+      const label = document.getElementById('addTaskOptionalLabel');
+      const chevron = document.getElementById('addTaskOptionalChevron');
+      if (content) content.classList.add('hidden');
+      if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('drawer-open'); }
+      if (label) label.textContent = 'Add details';
+      if (chevron) chevron.style.transform = '';
+    }
+
+    function toggleTaskDetailsOptional() {
+      const content = document.getElementById('taskDetailsOptionalContent');
+      const btn = document.getElementById('taskDetailsOptionalToggleBtn');
+      const label = document.getElementById('taskDetailsOptionalLabel');
+      const chevron = document.getElementById('taskDetailsOptionalChevron');
+      if (!content) return;
+      const open = content.classList.contains('hidden');
+      content.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('drawer-open', open);
+      if (label) label.textContent = open ? 'Hide details' : 'Details';
+      if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+    }
+
+    function resetTaskDetailsDrawer() {
+      const content = document.getElementById('taskDetailsOptionalContent');
+      const btn = document.getElementById('taskDetailsOptionalToggleBtn');
+      const label = document.getElementById('taskDetailsOptionalLabel');
+      const chevron = document.getElementById('taskDetailsOptionalChevron');
+      if (content) content.classList.add('hidden');
+      if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('drawer-open'); }
+      if (label) label.textContent = 'Details';
+      if (chevron) chevron.style.transform = '';
+    }
+
     function applyTeamHeader() {
       if (!teamData) return;
       document.title = `TaskFlow — ${teamData.name}`;
@@ -4680,6 +4788,12 @@
 
     document.getElementById('taskCoverPreview')?.addEventListener('click', (e) => {
       const img = e.target.closest('[data-preview-cover]') || e.target.closest('#taskCoverPreview')?.querySelector('[data-preview-cover]');
+      if (!img?.dataset.url) return;
+      openAttachmentPreview(img.dataset.url, 'Cover image', 'image/jpeg');
+    });
+
+    document.getElementById('taskDetailCoverPreviewInline')?.addEventListener('click', (e) => {
+      const img = e.target.closest('[data-preview-cover]') || e.target.closest('#taskDetailCoverPreviewInline')?.querySelector('[data-preview-cover]');
       if (!img?.dataset.url) return;
       openAttachmentPreview(img.dataset.url, 'Cover image', 'image/jpeg');
     });

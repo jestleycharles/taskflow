@@ -80,6 +80,15 @@
       .modal-overlay {
         backdrop-filter: blur(4px);
       }
+      .optional-drawer-btn.drawer-open {
+        background: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.15);
+        color: #d1d5db;
+      }
+      .optional-drawer-btn.drawer-open:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+      }
 
       /* Shimmer skeleton */
       @keyframes shimmer {
@@ -882,64 +891,7 @@
           class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
         ></div>
 
-        <div class="mb-6">
-          <label
-            class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3"
-            >Avatar</label
-          >
-          <div class="flex items-center gap-4 mb-4">
-            <div
-              id="createTeamAvatarPreview"
-              class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"
-            ></div>
-            <div>
-              <p class="text-sm text-gray-300">
-                Choose a preset or upload your own
-              </p>
-              <p class="text-xs text-gray-500 mt-0.5">
-                JPEG, PNG, WebP, or GIF — max 2 MB
-              </p>
-            </div>
-          </div>
-          <div
-            id="createTeamAvatarPresetGrid"
-            class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"
-          ></div>
-          <label
-            id="createTeamAvatarUploadLabel"
-            class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition"
-          >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            Upload custom image
-            <input
-              id="createTeamAvatarFile"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              class="hidden"
-            />
-          </label>
-          <p
-            id="createTeamAvatarUploadGuestNote"
-            class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed"
-          >
-            Custom team images are only available with a registered account.
-            Choose a preset above.
-          </p>
-        </div>
-
-        <div class="space-y-4 border-t border-white/10 pt-5">
+        <div class="space-y-4">
           <div>
             <label
               class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
@@ -952,18 +904,57 @@
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
             />
           </div>
+
+          <!-- Optional details drawer -->
           <div>
-            <label
-              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
-              >Description
-              <span class="normal-case text-gray-600">(optional)</span></label
-            >
-            <input
-              id="teamDesc"
-              type="text"
-              placeholder="What does this team work on?"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
-            />
+            <button type="button" id="createTeamOptionalToggleBtn" onclick="toggleCreateTeamOptional()" aria-expanded="false" aria-controls="createTeamOptionalContent"
+              class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+              <span id="createTeamOptionalLabel">More options</span>
+              <svg id="createTeamOptionalChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div id="createTeamOptionalContent" class="hidden mt-3 space-y-5 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+
+              <!-- Avatar -->
+              <div>
+                <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
+                <div class="flex items-center gap-4 mb-4">
+                  <div
+                    id="createTeamAvatarPreview"
+                    class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"
+                  ></div>
+                  <div>
+                    <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
+                    <p class="text-xs text-gray-500 mt-0.5">JPEG, PNG, WebP, or GIF — max 2 MB</p>
+                  </div>
+                </div>
+                <div id="createTeamAvatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
+                <label
+                  id="createTeamAvatarUploadLabel"
+                  class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Upload custom image
+                  <input id="createTeamAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                </label>
+                <p id="createTeamAvatarUploadGuestNote" class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed">
+                  Custom team images are only available with a registered account. Choose a preset above.
+                </p>
+              </div>
+
+              <!-- Description -->
+              <div class="border-t border-white/10 pt-4">
+                <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
+                <input
+                  id="teamDesc"
+                  type="text"
+                  placeholder="What does this team work on?"
+                  class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+                />
+              </div>
+
+            </div>
           </div>
           <div>
             <label
@@ -2368,6 +2359,31 @@
         desc.textContent = preset.description + (cols ? ` · ${cols}` : "");
       }
 
+      function toggleCreateTeamOptional() {
+        const content = document.getElementById('createTeamOptionalContent');
+        const btn = document.getElementById('createTeamOptionalToggleBtn');
+        const label = document.getElementById('createTeamOptionalLabel');
+        const chevron = document.getElementById('createTeamOptionalChevron');
+        if (!content) return;
+        const open = content.classList.contains('hidden');
+        content.classList.toggle('hidden', !open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.classList.toggle('drawer-open', open);
+        if (label) label.textContent = open ? 'Fewer options' : 'More options';
+        if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+      }
+
+      function resetCreateTeamOptionalDrawer() {
+        const content = document.getElementById('createTeamOptionalContent');
+        const btn = document.getElementById('createTeamOptionalToggleBtn');
+        const label = document.getElementById('createTeamOptionalLabel');
+        const chevron = document.getElementById('createTeamOptionalChevron');
+        if (content) content.classList.add('hidden');
+        if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('drawer-open'); }
+        if (label) label.textContent = 'More options';
+        if (chevron) chevron.style.transform = '';
+      }
+
       async function openCreateModal() {
         document.getElementById("modalError").classList.add("hidden");
         document.getElementById("teamName").value = "";
@@ -2380,6 +2396,7 @@
         renderCreateTeamAvatarPresetGrid();
         updateCreateTeamPreview();
         applyGuestTeamAvatarUploadUi();
+        resetCreateTeamOptionalDrawer();
         document.getElementById("createModal").classList.remove("hidden");
         setTimeout(() => document.getElementById("teamName").focus(), 50);
       }
@@ -2389,6 +2406,7 @@
         document.getElementById("teamName").value = "";
         document.getElementById("teamDesc").value = "";
         document.getElementById("modalError").classList.add("hidden");
+        resetCreateTeamOptionalDrawer();
       }
 
       function selectCreateTeamPreset(presetId) {
