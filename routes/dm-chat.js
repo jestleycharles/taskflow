@@ -336,12 +336,14 @@ router.post('/api/dm/conversations/:conversationId/messages', requireAuth, async
   if (!raw) return res.status(400).json({ error: 'Message cannot be empty' });
   if (raw.length > 4000) return res.status(400).json({ error: 'Message is too long' });
 
+  const { is_self: isSelfChat } = otherParticipant(conv, userId);
   const guard = await assertCanSendUserMessage(supabaseAdmin, {
     table: 'dm_messages',
     scopeColumn: 'conversation_id',
     scopeId: conversationId,
     userId,
     content: raw,
+    skipSpamGuard: isSelfChat,
   });
   if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
   const content = guard.content;
