@@ -31,6 +31,10 @@ Open [http://localhost:3000](http://localhost:3000).
 | `SESSION_SECRET` | Express session signing |
 | `TURNSTILE_*` | Optional; guest feedback captcha in production |
 
+To become the app admin (Can see user feedbacks):
+
+Edit line 1428 of [/public/dashboard.html](/public/dashboard.html) `FEEDBACK_ADMIN_EMAIL` variable set to your email
+
 ### Database
 
 - Apply [schema.sql](schema.sql) in the Supabase SQL Editor.

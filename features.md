@@ -14,7 +14,6 @@ TaskFlow is a real-time team task manager with Kanban boards, chat, and direct m
 | Role | Description |
 |------|-------------|
 | **Owner** | Created the team. Full team settings, member management, custom roles, and deletion. |
-| **Admin** | Can invite members by email (when the team owner is registered). Cannot change team settings or remove members. |
 | **Member** | Kanban, tasks, chat (if registered), comments, and activity. No team administration. |
 
 ---
@@ -56,13 +55,10 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Logout** — Clear server session.
 - **Profile** — Update username, email, and password (with current-password check for password changes).
 - **User avatar** — Eight preset SVG avatars or upload JPEG/PNG/WebP/GIF (max 2 MB) to Supabase Storage.
-- **Session refresh** — `/api/me` reloads avatar and profile from the database.
 
-### Everyone (signed in)
+### Everyone
 
-- **Health check** — `GET /health` for uptime monitoring.
 - **PWA** — Installable web app (`manifest.webmanifest`, service worker, install prompt).
-- **Responsive UI** — Tailwind-based layout for dashboard, board, login, and register pages.
 
 ---
 
@@ -73,7 +69,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Team list** — View and open teams you belong to; see your role badge (`owner` / `member`).
 - **Create team** — Name, description, and preset team avatar only (no image upload).
 - **Online indicators** — See how many members are online per team (`online_count` / `member_count`).
-- **Feedback** — Submit feedback or bug reports (optional Cloudflare Turnstile in production; rate limits per browser session).
+- **Feedback** — Submit feedback or bug reports
 - **Guest badge** — UI shows you are on the shared guest account.
 
 ### Registered users
@@ -83,7 +79,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Pending team invites** — Accept or decline email-based invitations.
 - **Direct message inbox** — FAB to open DM conversations; start chats by registered user email.
 - **DM online status** — See which DM contacts are online (app-level presence).
-- **Feedback** — Same as guests without captcha when Turnstile is not configured.
+- **Feedback** — Same as guests
 
 ### Feedback admin (registered, configured email only)
 
