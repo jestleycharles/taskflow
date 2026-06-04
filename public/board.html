@@ -268,6 +268,72 @@
     #chatFabWrap {
       z-index: 25;
     }
+    #boardZoomWrap {
+      z-index: 25;
+    }
+    #boardZoomInner {
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    #boardZoomScaler {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .board-zoom-btn {
+      width: 2.5rem;
+      min-height: 2rem;
+      padding: 0 0.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      line-height: 1;
+      color: #e5e7eb;
+      background: rgba(26, 29, 46, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: background 0.15s, color 0.15s;
+      touch-action: manipulation;
+    }
+    .board-zoom-btn:hover:not(:disabled) {
+      background: rgba(37, 40, 64, 0.98);
+      color: #fff;
+    }
+    .board-zoom-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    #boardZoomIn {
+      border-radius: 0.625rem 0.625rem 0 0;
+    }
+    #boardZoomPct {
+      border-radius: 0;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      min-height: 2.25rem;
+    }
+    #boardZoomOut {
+      border-radius: 0 0 0.625rem 0.625rem;
+    }
+    #boardZoomSlider {
+      -webkit-appearance: slider-vertical;
+      appearance: slider-vertical;
+      width: 2.5rem;
+      height: 5.5rem;
+      margin: 0;
+      padding: 0.35rem 0.5rem;
+      background: rgba(26, 29, 46, 0.95);
+      border-left: 1px solid rgba(255, 255, 255, 0.12);
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+      accent-color: #4f6ef7;
+    }
+    #boardZoomSlider::-webkit-slider-thumb {
+      cursor: grab;
+    }
+    #boardContainer.board-zoom-pinching {
+      touch-action: none;
+    }
+    #boardContainer.board-zoom-pinching .task-card {
+      pointer-events: none;
+    }
     #activityPanel:not(.hidden),
     #teamPanel:not(.hidden) {
       position: relative;
@@ -292,6 +358,7 @@
     }
     #boardContainer {
       padding-bottom: 5rem;
+      padding-right: 5rem;
       min-height: 0;
       overscroll-behavior: contain;
     }
@@ -454,8 +521,12 @@
     </div>
 
     <div id="boardContainer" class="flex-1 min-h-0 overflow-x-auto p-4 sm:p-6">
-      <div id="kanbanBoard" class="flex gap-4 h-full min-h-[calc(100vh-7rem-2rem)]">
-        <!-- Columns rendered by renderKanbanBoard() -->
+      <div id="boardZoomScaler">
+        <div id="boardZoomInner">
+          <div id="kanbanBoard" class="flex gap-4 h-full min-h-[calc(100vh-7rem-2rem)]">
+            <!-- Columns rendered by renderKanbanBoard() -->
+          </div>
+        </div>
       </div>
     </div>
 
@@ -546,6 +617,14 @@
       </svg>
       <span id="chatUnreadBadge" class="hidden absolute flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1 pointer-events-none" aria-hidden="true"></span>
     </button>
+  </div>
+
+  <!-- Board zoom (bottom-right; same layer as chat FAB, below toasts) -->
+  <div id="boardZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Board zoom">
+    <button type="button" id="boardZoomIn" class="board-zoom-btn" aria-label="Zoom in">+</button>
+    <input type="range" id="boardZoomSlider" class="max-md:hidden" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom level" />
+    <button type="button" id="boardZoomPct" class="board-zoom-btn" aria-label="Set zoom level">100%</button>
+    <button type="button" id="boardZoomOut" class="board-zoom-btn" aria-label="Zoom out">−</button>
   </div>
 
   <!-- Toast notifications (bottom-right stack) -->
@@ -680,8 +759,13 @@
         </div>
         <div>
           <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Color</label>
-          <input id="columnColorInput" type="color" value="#64748b"
-            class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
+          <div id="columnColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
+          <div class="flex items-center gap-3">
+            <input id="columnColorPicker" type="color" value="#4f6ef7"
+              class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
+            <input id="columnHexInput" type="text" placeholder="#4f6ef7" maxlength="7"
+              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm font-mono uppercase" />
+          </div>
         </div>
         <div class="flex gap-3 pt-1">
           <button type="button" id="columnFormCancelBtn" onclick="resetColumnForm()" class="hidden flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel edit</button>
@@ -1388,6 +1472,21 @@
       renderTeamRoleColorSwatches(normalized);
     }
 
+    function renderColumnColorSwatches(activeHex) {
+      const hex = normalizeRoleHex(activeHex) || ROLE_PRESET_COLORS[0];
+      document.getElementById('columnColorSwatches').innerHTML = ROLE_PRESET_COLORS.map((c) =>
+        `<button type="button" class="role-color-swatch w-8 h-8 rounded-lg border border-white/10 ${c === hex ? 'selected' : ''}" style="background:${c}" data-hex="${c}" title="${c}"></button>`
+      ).join('');
+      document.getElementById('columnColorPicker').value = hex;
+      document.getElementById('columnHexInput').value = hex;
+    }
+
+    function setColumnFormColor(hex) {
+      const normalized = normalizeRoleHex(hex);
+      if (!normalized) return;
+      renderColumnColorSwatches(normalized);
+    }
+
     function resetTeamRoleForm() {
       editingTeamRoleId = null;
       document.getElementById('teamRoleNameInput').value = '';
@@ -1502,7 +1601,7 @@
     function resetColumnForm() {
       editingColumnId = null;
       document.getElementById('columnNameInput').value = '';
-      document.getElementById('columnColorInput').value = '#64748b';
+      renderColumnColorSwatches(ROLE_PRESET_COLORS[0]);
       document.getElementById('columnFormTitle').textContent = 'Add column';
       document.getElementById('columnSaveBtn').textContent = 'Add column';
       document.getElementById('columnFormCancelBtn').classList.add('hidden');
@@ -1604,7 +1703,7 @@
       if (!col) return;
       editingColumnId = columnId;
       document.getElementById('columnNameInput').value = col.name;
-      document.getElementById('columnColorInput').value = col.color_hex || '#64748b';
+      setColumnFormColor(col.color_hex || ROLE_PRESET_COLORS[0]);
       document.getElementById('columnFormTitle').textContent = 'Edit column';
       document.getElementById('columnSaveBtn').textContent = 'Save column';
       document.getElementById('columnFormCancelBtn').classList.remove('hidden');
@@ -1613,7 +1712,7 @@
 
     async function saveColumn() {
       const name = document.getElementById('columnNameInput').value.trim();
-      const color = normalizeRoleHex(document.getElementById('columnColorInput').value) || '#64748b';
+      const color = normalizeRoleHex(document.getElementById('columnHexInput').value) || ROLE_PRESET_COLORS[0];
       if (!name) {
         showColumnMgmtError('Column name is required');
         return;
@@ -2016,6 +2115,7 @@
           </div>
         </div>`;
       }).join('') + '<div class="kanban-pan-spacer hidden md:block" aria-hidden="true"></div>';
+      scheduleBoardZoomRemeasure();
     }
 
     async function loadTasks() {
@@ -2071,6 +2171,7 @@
           zone.appendChild(createTaskCard(task, isNew));
         });
       });
+      scheduleBoardZoomRemeasure();
     }
 
     function getSortedColumnTasks(status) {
@@ -4428,6 +4529,21 @@
 
     renderTeamRoleColorSwatches(ROLE_PRESET_COLORS[0]);
 
+    document.getElementById('columnColorSwatches')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-hex]');
+      if (!btn) return;
+      setColumnFormColor(btn.dataset.hex);
+    });
+    document.getElementById('columnColorPicker')?.addEventListener('input', (e) => {
+      setColumnFormColor(e.target.value);
+    });
+    document.getElementById('columnHexInput')?.addEventListener('input', (e) => {
+      const hex = normalizeRoleHex(e.target.value);
+      if (hex) setColumnFormColor(hex);
+    });
+
+    renderColumnColorSwatches(ROLE_PRESET_COLORS[0]);
+
     chatBatch = MessageBatch.create({
       getMessages: () => chatMessages,
       getSearchText: (m) => {
@@ -4471,6 +4587,169 @@
     });
 
     initGuestCommentMentionGuard();
+
+    const BOARD_ZOOM_MIN = 100;
+    const BOARD_ZOOM_MAX = 500;
+    const BOARD_ZOOM_STEP = 10;
+    let boardZoomPct = BOARD_ZOOM_MIN;
+    let boardZoomBaseW = 0;
+    let boardZoomBaseH = 0;
+    let boardZoomRemeasureRaf = null;
+
+    function clampBoardZoom(pct) {
+      const n = Math.round(Number(pct) / BOARD_ZOOM_STEP) * BOARD_ZOOM_STEP;
+      return Math.min(BOARD_ZOOM_MAX, Math.max(BOARD_ZOOM_MIN, n));
+    }
+
+    function boardZoomScale() {
+      return boardZoomPct / 100;
+    }
+
+    function updateBoardZoomUi() {
+      const pctBtn = document.getElementById('boardZoomPct');
+      const slider = document.getElementById('boardZoomSlider');
+      const zoomIn = document.getElementById('boardZoomIn');
+      const zoomOut = document.getElementById('boardZoomOut');
+      if (pctBtn) pctBtn.textContent = `${boardZoomPct}%`;
+      if (slider) slider.value = String(boardZoomPct);
+      if (zoomIn) zoomIn.disabled = boardZoomPct >= BOARD_ZOOM_MAX;
+      if (zoomOut) zoomOut.disabled = boardZoomPct <= BOARD_ZOOM_MIN;
+    }
+
+    function applyBoardZoomLayout(focalX, focalY) {
+      const container = document.getElementById('boardContainer');
+      const scaler = document.getElementById('boardZoomScaler');
+      const inner = document.getElementById('boardZoomInner');
+      if (!container || !scaler || !inner) return;
+
+      const scale = boardZoomScale();
+      const prevScale = Number(inner.dataset.zoomScale || '1') || 1;
+      const hasFocal = focalX != null && focalY != null;
+      const fx = hasFocal ? focalX : container.clientWidth / 2;
+      const fy = hasFocal ? focalY : container.clientHeight / 2;
+      const contentX = (container.scrollLeft + fx) / prevScale;
+      const contentY = (container.scrollTop + fy) / prevScale;
+
+      inner.style.transform = `scale(${scale})`;
+      inner.dataset.zoomScale = String(scale);
+      scaler.style.width = boardZoomBaseW ? `${boardZoomBaseW * scale}px` : '';
+      scaler.style.height = boardZoomBaseH ? `${boardZoomBaseH * scale}px` : '';
+
+      container.scrollLeft = Math.max(0, contentX * scale - fx);
+      container.scrollTop = Math.max(0, contentY * scale - fy);
+      updateBoardZoomUi();
+    }
+
+    function remeasureBoardZoomBase() {
+      const inner = document.getElementById('boardZoomInner');
+      const board = document.getElementById('kanbanBoard');
+      if (!inner || !board) return;
+      const prevTransform = inner.style.transform;
+      inner.style.transform = 'none';
+      boardZoomBaseW = inner.offsetWidth;
+      boardZoomBaseH = inner.offsetHeight;
+      inner.style.transform = prevTransform;
+      applyBoardZoomLayout();
+    }
+
+    function scheduleBoardZoomRemeasure() {
+      if (boardZoomRemeasureRaf) cancelAnimationFrame(boardZoomRemeasureRaf);
+      boardZoomRemeasureRaf = requestAnimationFrame(() => {
+        boardZoomRemeasureRaf = null;
+        remeasureBoardZoomBase();
+      });
+    }
+
+    function setBoardZoom(pct, focalX, focalY) {
+      boardZoomPct = clampBoardZoom(pct);
+      applyBoardZoomLayout(focalX, focalY);
+    }
+
+    function changeBoardZoom(delta, focalX, focalY) {
+      setBoardZoom(boardZoomPct + delta, focalX, focalY);
+    }
+
+    function promptBoardZoomLevel() {
+      const raw = window.prompt('Zoom level (100–500%)', String(boardZoomPct));
+      if (raw == null) return;
+      const parsed = parseInt(String(raw).replace(/%/g, '').trim(), 10);
+      if (!Number.isFinite(parsed)) return;
+      setBoardZoom(parsed);
+    }
+
+    function initBoardZoom() {
+      const container = document.getElementById('boardContainer');
+      const mobileMq = window.matchMedia('(max-width: 767px)');
+      if (!container) return;
+
+      document.getElementById('boardZoomIn')?.addEventListener('click', () => {
+        changeBoardZoom(BOARD_ZOOM_STEP);
+      });
+      document.getElementById('boardZoomOut')?.addEventListener('click', () => {
+        changeBoardZoom(-BOARD_ZOOM_STEP);
+      });
+      document.getElementById('boardZoomPct')?.addEventListener('click', promptBoardZoomLevel);
+      document.getElementById('boardZoomSlider')?.addEventListener('input', (e) => {
+        setBoardZoom(Number(e.target.value));
+      });
+
+      let pinch = null;
+
+      function pinchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy);
+      }
+
+      function pinchCenter(touches, rect) {
+        const cx = (touches[0].clientX + touches[1].clientX) / 2;
+        const cy = (touches[0].clientY + touches[1].clientY) / 2;
+        return { x: cx - rect.left, y: cy - rect.top };
+      }
+
+      container.addEventListener('touchstart', (e) => {
+        if (!mobileMq.matches || e.touches.length !== 2) return;
+        if (!e.target.closest('.board-pan-surface, #boardContainer, #kanbanBoard')) return;
+        const rect = container.getBoundingClientRect();
+        const center = pinchCenter(e.touches, rect);
+        pinch = {
+          startDist: pinchDistance(e.touches),
+          startPct: boardZoomPct,
+          focalX: center.x,
+          focalY: center.y,
+        };
+        container.classList.add('board-zoom-pinching');
+      }, { passive: true });
+
+      container.addEventListener('touchmove', (e) => {
+        if (!pinch || e.touches.length !== 2) return;
+        e.preventDefault();
+        const rect = container.getBoundingClientRect();
+        const center = pinchCenter(e.touches, rect);
+        const dist = pinchDistance(e.touches);
+        const ratio = dist / pinch.startDist;
+        setBoardZoom(pinch.startPct * ratio, center.x, center.y);
+      }, { passive: false });
+
+      function endPinch() {
+        if (!pinch) return;
+        pinch = null;
+        container.classList.remove('board-zoom-pinching');
+      }
+
+      container.addEventListener('touchend', endPinch);
+      container.addEventListener('touchcancel', endPinch);
+
+      const board = document.getElementById('kanbanBoard');
+      if (board && typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => scheduleBoardZoomRemeasure());
+        ro.observe(board);
+      }
+
+      window.addEventListener('resize', () => scheduleBoardZoomRemeasure());
+      updateBoardZoomUi();
+      scheduleBoardZoomRemeasure();
+    }
 
     function initBoardPan() {
       const el = document.getElementById('boardContainer');
@@ -4543,6 +4822,7 @@
       if (f) onTaskCoverFileSelected(f);
     });
 
+    initBoardZoom();
     initBoardPan();
     init();
   </script>
