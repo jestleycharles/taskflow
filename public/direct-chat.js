@@ -1103,6 +1103,7 @@
     await submitMessageOnce(`dm:${conversationId}`, {
       inputEl: input,
       sendBtnEl: btn,
+      cooldownNoticeEl: $('dmSendCooldown'),
       getContent: () => prepareOutgoingDmMessage(input?.value),
       send: async (content) => {
         const r = await apiFetch(`/api/dm/conversations/${conversationId}/messages`, {
@@ -1112,6 +1113,8 @@
         });
         const msg = await parseJsonResponse(r);
         if (!r.ok) {
+          const limited = messageSendRateLimitResult(r.status, msg);
+          if (limited) return limited;
           showAlert(msg.error || 'Failed to send message');
           return false;
         }

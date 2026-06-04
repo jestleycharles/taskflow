@@ -133,6 +133,84 @@ function conversationListSkeletonHtml(count = 5) {
 }
 
 const messageSendInFlight = new Set();
+const sendCooldownTimers = new Map();
+
+/**
+ * Parse 429 spam-guard responses from chat, comments, and DMs.
+ * @returns {{ error: string, retryAfterMs: number } | null}
+ */
+function parseMessageSendGuardError(status, data) {
+  if (status !== 429) return null;
+  const error = String(data?.error || 'Please slow down before sending again.');
+  let retryAfterMs = Number(data?.retry_after_ms);
+  if (!Number.isFinite(retryAfterMs) || retryAfterMs <= 0) {
+    const match = error.match(/wait\s+(\d+)\s+second/i);
+    retryAfterMs = match ? parseInt(match[1], 10) * 1000 : 5000;
+  }
+  return { error, retryAfterMs: Math.min(Math.max(retryAfterMs, 1000), 120000) };
+}
+
+function clearSendCooldown(key) {
+  const entry = sendCooldownTimers.get(key);
+  if (!entry) return;
+  if (entry.intervalId) clearInterval(entry.intervalId);
+  if (entry.timeoutId) clearTimeout(entry.timeoutId);
+  sendCooldownTimers.delete(key);
+}
+
+/**
+ * Show a countdown on the composer and disable send until the cooldown ends.
+ * @param {string} key — unique per composer (e.g. team-chat:uuid)
+ */
+function applyMessageSendCooldown(key, { retryAfterMs, error, inputEl, sendBtnEl, noticeEl }) {
+  clearSendCooldown(key);
+  const notice = noticeEl || null;
+  const input = inputEl || null;
+  const btn = sendBtnEl || null;
+  let remainingMs = Math.max(1000, retryAfterMs || 5000);
+  const endsAt = Date.now() + remainingMs;
+
+  const syncUi = () => {
+    const sec = Math.max(1, Math.ceil(remainingMs / 1000));
+    if (notice) {
+      notice.textContent = error
+        ? `${error} (${sec}s)`
+        : `Please slow down (${sec}s)`;
+      notice.classList.remove('hidden');
+    }
+    if (input) input.disabled = true;
+    if (btn) btn.disabled = true;
+  };
+
+  syncUi();
+  const intervalId = setInterval(() => {
+    remainingMs = Math.max(0, endsAt - Date.now());
+    if (remainingMs <= 0) {
+      clearSendCooldown(key);
+      if (notice) {
+        notice.textContent = '';
+        notice.classList.add('hidden');
+      }
+      if (input) input.disabled = false;
+      if (btn) btn.disabled = false;
+      return;
+    }
+    syncUi();
+  }, 250);
+
+  const timeoutId = setTimeout(() => {
+    clearInterval(intervalId);
+    sendCooldownTimers.delete(key);
+    if (notice) {
+      notice.textContent = '';
+      notice.classList.add('hidden');
+    }
+    if (input) input.disabled = false;
+    if (btn) btn.disabled = false;
+  }, remainingMs + 50);
+
+  sendCooldownTimers.set(key, { intervalId, timeoutId });
+}
 
 /** Clear a message composer and cancel any in-flight send guard for it. */
 function resetMessageComposer(inputEl, sendBtnEl) {
@@ -153,8 +231,9 @@ function resetMessageComposer(inputEl, sendBtnEl) {
  * Restores the input if `send` returns false or throws (unless the composer was dismissed).
  * @returns {Promise<boolean>} whether a send was attempted and completed successfully
  */
-async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl }) {
+async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl, cooldownNoticeEl }) {
   if (messageSendInFlight.has(key)) return false;
+  if (sendCooldownTimers.has(key)) return false;
   const content = getContent();
   if (!content) return false;
 
@@ -171,8 +250,22 @@ async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl }) 
   if (btn) btn.disabled = true;
 
   let ok = false;
+  let rateLimited = false;
   try {
-    ok = !!(await send(content));
+    const result = await send(content);
+    if (result && typeof result === 'object' && result.rateLimit) {
+      rateLimited = true;
+      applyMessageSendCooldown(key, {
+        retryAfterMs: result.rateLimit.retryAfterMs,
+        error: result.rateLimit.error,
+        inputEl: input,
+        sendBtnEl: btn,
+        noticeEl: cooldownNoticeEl,
+      });
+      ok = false;
+    } else {
+      ok = result === true || result?.ok === true;
+    }
   } catch (err) {
     const dismissed = input?.dataset.sendComposerDismissed === '1';
     if (input && !input.value && !dismissed) input.value = input.dataset.sendGuardSnapshot || '';
@@ -180,25 +273,36 @@ async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl }) 
   } finally {
     messageSendInFlight.delete(key);
     const dismissed = input?.dataset.sendComposerDismissed === '1';
-    if (!ok && input && !input.value && !dismissed) {
+    if (!ok && !rateLimited && input && !input.value && !dismissed) {
       input.value = input.dataset.sendGuardSnapshot || '';
     } else if (input && (ok || dismissed)) {
       input.value = '';
     }
-    if (input) {
+    if (input && !rateLimited) {
       delete input.dataset.sendGuardSnapshot;
       delete input.dataset.sendGuardKey;
       delete input.dataset.sendComposerDismissed;
-      input.disabled = false;
+      if (!sendCooldownTimers.has(key)) input.disabled = false;
     }
-    if (btn) btn.disabled = false;
+    if (btn && !rateLimited && !sendCooldownTimers.has(key)) btn.disabled = false;
   }
   return ok;
 }
 
+/** Use in message send handlers when POST returns 429. */
+function messageSendRateLimitResult(status, data) {
+  const parsed = parseMessageSendGuardError(status, data);
+  if (!parsed) return false;
+  return { ok: false, rateLimit: parsed };
+}
+
 /** Mark composer dismissed so failed sends do not restore text after the panel closes. */
 function dismissMessageComposer(inputEl, sendBtnEl) {
-  if (inputEl) inputEl.dataset.sendComposerDismissed = '1';
+  if (inputEl) {
+    const key = inputEl.dataset.sendGuardKey;
+    if (key) clearSendCooldown(key);
+    inputEl.dataset.sendComposerDismissed = '1';
+  }
   resetMessageComposer(inputEl, sendBtnEl);
 }
 

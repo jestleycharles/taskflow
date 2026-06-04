@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { isGuestUser } = require('../lib/user');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
 const { assertCanSendUserMessage } = require('../lib/message-send-guard');
+const { canBypassSpamGuard } = require('../lib/spam-guard-override');
 
 const router = express.Router();
 
@@ -117,8 +118,14 @@ router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     scopeId: teamId,
     userId,
     content: raw,
+    skipSpamGuard: canBypassSpamGuard(req.session.user),
   });
-  if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+  if (!guard.ok) {
+    return res.status(guard.status).json({
+      error: guard.error,
+      retry_after_ms: guard.retry_after_ms,
+    });
+  }
   const content = guard.content;
 
   const { data, error } = await supabaseAdmin

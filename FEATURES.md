@@ -114,7 +114,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 
 - **Join via invite** — Accept invite from dashboard; decline to dismiss.
 - **Board access** — Full Kanban participation (see Tasks).
-- **No administration** — No team settings or invites unless promoted (admin/owner).
+- **No administration** — No team settings or invites unless you are the team owner.
 
 ### All signed-in members
 
@@ -134,6 +134,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Task detail panel** — Status, priority, due date, assignee, creator, and comments tab.
 - **Update task fields** — Change status, priority, due date, and assignee via the detail panel.
 - **Limited title/description** — Cannot edit title or description or delete tasks (buttons hidden; API still allows member updates if called directly).
+- **Task attachments (read-only)** — View and preview image/PDF attachments on tasks; cannot upload files or change cover images.
 - **Task comments** — Read and post comments; cannot use @mentions (keyboard and paste blocked).
 - **View reactions** — See emoji reactions on comments; cannot add reactions.
 - **Unread comment badges** — Per-task unread counts and read-state tracking.
@@ -179,7 +180,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 
 ## Security & abuse prevention
 
-- **Message send guard** — Cooldown, duplicate, near-duplicate, and burst detection for chat, DMs, and comments.
+- **Message send guard** — Cooldown, duplicate, near-duplicate, and burst detection for chat, DMs, and comments; composers show a live countdown when rate-limited. The configured feedback admin email bypasses these guards.
 - **Feedback honeypot** — Hidden field bot trap on feedback form.
 - **Guest feedback limits** — Per-session hourly/daily caps and cooldown (server-side).
 - **Turnstile** — Cloudflare captcha for guest feedback when keys are configured.

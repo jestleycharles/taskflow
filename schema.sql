@@ -55,7 +55,8 @@ CREATE INDEX IF NOT EXISTS team_roles_team_id_idx ON team_roles (team_id, sort_o
 CREATE TABLE IF NOT EXISTS team_members (
   team_id UUID NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  -- owner | member only (legacy admin rows: UPDATE team_members SET role = 'member' WHERE role = 'admin'; then alter CHECK)
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'member')),
   custom_role_id UUID REFERENCES team_roles (id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (team_id, user_id)

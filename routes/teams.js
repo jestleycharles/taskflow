@@ -621,8 +621,8 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
 
   const { data: membership } = await supabaseAdmin
     .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
-  if (!membership || !['owner','admin'].includes(membership.role))
-    return res.status(403).json({ error: 'Only owners/admins can invite' });
+  if (!membership || membership.role !== 'owner')
+    return res.status(403).json({ error: 'Only the team owner can invite' });
 
   if (await isTeamOwnerGuest(id)) {
     return res.status(403).json({

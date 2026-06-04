@@ -69,7 +69,6 @@
     }));
     const permRoles = [
       { key: 'owner', label: 'owner', members: members.filter((m) => m.role === 'owner') },
-      { key: 'admin', label: 'admin', members: members.filter((m) => m.role === 'admin') },
       { key: 'member', label: 'member', members: members.filter((m) => m.role === 'member') },
     ];
     return { users, roles, permRoles };
@@ -127,7 +126,7 @@
           type: 'perm-role',
           permKey: pr.key,
           roleName: pr.label,
-          color: pr.key === 'owner' ? '#f59e0b' : pr.key === 'admin' ? '#4f6ef7' : '#9ca3af',
+          color: pr.key === 'owner' ? '#f59e0b' : '#9ca3af',
           members: pr.members,
           token: content.slice(atIndex + 1, atIndex + 1 + pr.label.length),
           display: pr.label,
@@ -264,7 +263,6 @@
 
     const permLabels = [
       { key: 'owner', label: 'owner', color: '#f59e0b' },
-      { key: 'admin', label: 'admin', color: '#4f6ef7' },
       { key: 'member', label: 'member', color: '#9ca3af' },
     ];
     for (const pr of permLabels) {

@@ -103,6 +103,34 @@
     }
     .task-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .task-attachment-meta { color: #9ca3af; font-size: 0.7rem; }
+    .attachment-preview-thumb {
+      max-height: 4rem;
+      width: auto;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .attachment-preview-thumb:hover { border-color: rgba(79, 110, 247, 0.6); }
+    #attachmentPreviewBody iframe {
+      width: 100%;
+      height: min(70vh, 720px);
+      border: 0;
+      border-radius: 0.75rem;
+      background: #0f1117;
+    }
+    #attachmentPreviewBody img {
+      max-width: 100%;
+      max-height: min(70vh, 720px);
+      margin: 0 auto;
+      display: block;
+      border-radius: 0.75rem;
+    }
+    .send-cooldown-notice {
+      font-size: 0.75rem;
+      color: #fbbf24;
+      margin-top: 0.5rem;
+      line-height: 1.35;
+    }
 
     /* Team chat */
     #chatFab {
@@ -515,6 +543,7 @@
             class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
           <button id="chatSendBtn" type="button" onclick="submitChatMessage()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
         </div>
+        <p id="chatSendCooldown" class="send-cooldown-notice hidden" role="status" aria-live="polite"></p>
         <p id="chatGuestNotice" class="hidden text-sm text-gray-400 text-center leading-relaxed">
           Guest accounts can read messages only.
           <a href="/login" class="text-brand-500 hover:text-brand-400 font-medium whitespace-nowrap">Sign in</a>
@@ -938,8 +967,9 @@
             </div>
             <div id="taskCoverBlock" class="hidden space-y-2 border-t border-white/10 pt-3">
               <label class="block text-gray-500 text-xs uppercase tracking-wider">Cover image</label>
-              <div id="taskCoverPreview" class="rounded-xl overflow-hidden bg-ink-700 border border-white/10 max-h-32"></div>
-              <div class="flex flex-wrap gap-2">
+              <div id="taskCoverPreview" class="rounded-xl overflow-hidden bg-ink-700 border border-white/10 max-h-32 cursor-pointer" title="Preview cover"></div>
+              <p id="taskCoverGuestNote" class="hidden text-xs text-gray-500">View only — guest accounts cannot upload files.</p>
+              <div id="taskCoverManageRow" class="flex flex-wrap gap-2">
                 <label class="inline-flex items-center gap-2 text-xs text-brand-500 hover:text-brand-400 cursor-pointer">
                   <input id="taskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
                   Upload cover
@@ -968,8 +998,24 @@
                 class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
               <button id="commentSendBtn" type="button" onclick="submitComment()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium">Send</button>
             </div>
+            <p id="commentSendCooldown" class="send-cooldown-notice hidden" role="status" aria-live="polite"></p>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attachment preview (images & PDFs; read-only for guests) -->
+  <div id="attachmentPreviewModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="attachmentPreviewTitle">
+    <div class="modal-overlay absolute inset-0 bg-black/75" onclick="closeAttachmentPreview()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between gap-3 p-4 border-b border-white/10 shrink-0">
+        <h3 id="attachmentPreviewTitle" class="text-sm font-medium text-white truncate"></h3>
+        <button type="button" onclick="closeAttachmentPreview()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 shrink-0" aria-label="Close preview">✕</button>
+      </div>
+      <div id="attachmentPreviewBody" class="flex-1 min-h-0 overflow-auto p-4 flex items-center justify-center"></div>
+      <div class="p-3 border-t border-white/10 shrink-0 flex justify-end">
+        <a id="attachmentPreviewOpenLink" href="#" target="_blank" rel="noopener" class="text-xs text-brand-500 hover:text-brand-400 font-medium">Open in new tab</a>
       </div>
     </div>
   </div>
@@ -2042,7 +2088,7 @@
         showRemove: false,
         showPermissionRole: !canAssignTeamRoles(),
       });
-      if (!['owner','admin'].includes(teamData?.userRole)) {
+      if (teamData?.userRole !== 'owner') {
         document.getElementById('inviteSection').classList.add('hidden');
       } else {
         document.getElementById('inviteSection').classList.remove('hidden');
@@ -2239,7 +2285,7 @@
       const pc = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
       const attCount = task.attachment_count || 0;
       const coverHtml = task.cover_image_url
-        ? `<div class="task-card-cover"><img src="${escHtml(task.cover_image_url)}" alt="" loading="lazy" /></div>`
+        ? `<div class="task-card-cover" data-preview-cover data-url="${escHtml(task.cover_image_url)}" data-mime="image/jpeg" data-name="Cover" role="button" tabindex="0" title="Preview cover"><img src="${escHtml(task.cover_image_url)}" alt="" loading="lazy" /></div>`
         : '';
 
       el.innerHTML = `
@@ -2876,6 +2922,43 @@
       taskAttachments = r.ok ? (data || []) : [];
     }
 
+    function isAttachmentPreviewable(mimeType) {
+      const m = String(mimeType || '').toLowerCase();
+      return m.startsWith('image/') || m === 'application/pdf';
+    }
+
+    function openAttachmentPreview(url, fileName, mimeType) {
+      const modal = document.getElementById('attachmentPreviewModal');
+      const body = document.getElementById('attachmentPreviewBody');
+      const title = document.getElementById('attachmentPreviewTitle');
+      const openLink = document.getElementById('attachmentPreviewOpenLink');
+      if (!modal || !body) return;
+      const mime = String(mimeType || '').toLowerCase();
+      const name = fileName || 'Attachment';
+      if (title) title.textContent = name;
+      if (openLink) {
+        openLink.href = url;
+        openLink.classList.remove('hidden');
+      }
+      if (mime.startsWith('image/')) {
+        body.innerHTML = `<img src="${escHtml(url)}" alt="${escHtml(name)}" />`;
+      } else if (mime === 'application/pdf') {
+        body.innerHTML = `<iframe src="${escHtml(url)}" title="${escHtml(name)}"></iframe>`;
+      } else {
+        body.innerHTML = '<p class="text-sm text-gray-500">Preview not available for this file type.</p>';
+      }
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeAttachmentPreview() {
+      const modal = document.getElementById('attachmentPreviewModal');
+      const body = document.getElementById('attachmentPreviewBody');
+      if (body) body.innerHTML = '';
+      modal?.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
     function renderTaskAttachmentsUi(task) {
       const guest = isGuest();
       const section = document.getElementById('taskAttachmentsSection');
@@ -2883,36 +2966,60 @@
       const uploadBlock = document.getElementById('taskAttachmentsUploadBlock');
       const coverBlock = document.getElementById('taskCoverBlock');
       const coverPreview = document.getElementById('taskCoverPreview');
+      const coverManageRow = document.getElementById('taskCoverManageRow');
+      const coverGuestNote = document.getElementById('taskCoverGuestNote');
       if (!section) return;
-      section.classList.remove('hidden');
+      const hasAttachments = taskAttachments.length > 0;
+      const hasCover = !!task.cover_image_url;
+      const showSection = !guest || hasAttachments || hasCover;
+      section.classList.toggle('hidden', !showSection);
+      if (!showSection) return;
       if (uploadBlock) uploadBlock.classList.toggle('hidden', guest);
-      if (coverBlock) coverBlock.classList.toggle('hidden', guest);
+      if (coverBlock) coverBlock.classList.toggle('hidden', guest && !hasCover);
+      if (coverManageRow) coverManageRow.classList.toggle('hidden', guest);
+      if (coverGuestNote) coverGuestNote.classList.toggle('hidden', !guest || !hasCover);
       if (list) {
-        if (!taskAttachments.length) {
-          list.innerHTML = '<p class="text-xs text-gray-600">No attachments yet.</p>';
+        if (!hasAttachments) {
+          list.innerHTML = guest
+            ? ''
+            : '<p class="text-xs text-gray-600">No attachments yet.</p>';
         } else {
           list.innerHTML = taskAttachments.map((a) => {
             const isImg = (a.mime_type || '').startsWith('image/');
+            const previewable = isAttachmentPreviewable(a.mime_type);
+            const previewBtn = previewable
+              ? `<button type="button" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" class="text-xs text-brand-500 hover:text-brand-400">Preview</button>`
+              : '';
             const coverBtn = !guest && isImg
               ? `<button type="button" class="text-xs text-brand-500 hover:text-brand-400" onclick="setCoverFromAttachment('${a.id}')">Use as cover</button>`
               : '';
             const delBtn = !guest
               ? `<button type="button" class="text-xs text-gray-500 hover:text-red-400" onclick="deleteTaskAttachment('${a.id}')">Remove</button>`
               : '';
-            return `<div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-ink-700/50 border border-white/10">
-              <a href="${escHtml(a.file_url)}" target="_blank" rel="noopener" class="text-gray-300 hover:text-white truncate text-xs">${escHtml(a.file_name)}</a>
-              <div class="flex gap-2 shrink-0">${coverBtn}${delBtn}</div>
+            const thumb = isImg
+              ? `<img src="${escHtml(a.file_url)}" alt="" class="attachment-preview-thumb shrink-0" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" />`
+              : '';
+            return `<div class="flex items-center gap-2 p-2 rounded-lg bg-ink-700/50 border border-white/10">
+              ${thumb}
+              <span class="text-gray-300 truncate text-xs flex-1 min-w-0">${escHtml(a.file_name)}</span>
+              <div class="flex gap-2 shrink-0 flex-wrap justify-end">${previewBtn}${coverBtn}${delBtn}</div>
             </div>`;
           }).join('');
         }
       }
       if (coverPreview) {
-        coverPreview.innerHTML = task.cover_image_url
-          ? `<img src="${escHtml(task.cover_image_url)}" alt="" class="w-full h-32 object-cover" />`
-          : '<p class="text-xs text-gray-600 p-4 text-center">No cover image</p>';
+        if (hasCover) {
+          coverPreview.innerHTML = `<img src="${escHtml(task.cover_image_url)}" alt="" class="w-full h-32 object-cover" data-preview-cover data-url="${escHtml(task.cover_image_url)}" />`;
+          coverPreview.classList.add('cursor-pointer');
+          coverPreview.title = 'Preview cover';
+        } else {
+          coverPreview.innerHTML = '<p class="text-xs text-gray-600 p-4 text-center">No cover image</p>';
+          coverPreview.classList.remove('cursor-pointer');
+          coverPreview.removeAttribute('title');
+        }
       }
       const clearBtn = document.getElementById('taskCoverClearBtn');
-      if (clearBtn) clearBtn.classList.toggle('hidden', !task.cover_image_url || guest);
+      if (clearBtn) clearBtn.classList.toggle('hidden', !hasCover || guest);
     }
 
     async function setCoverFromAttachment(attachmentId) {
@@ -3236,6 +3343,7 @@
       await submitMessageOnce(`task-comment:${taskId}`, {
         inputEl: input,
         sendBtnEl: btn,
+        cooldownNoticeEl: document.getElementById('commentSendCooldown'),
         getContent: () => prepareOutgoingMessage(input?.value),
         send: async (content) => {
           const r = await apiFetch(`/api/tasks/${taskId}/comments`, {
@@ -3245,6 +3353,8 @@
           });
           const data = await parseJsonResponse(r);
           if (!r.ok) {
+            const limited = messageSendRateLimitResult(r.status, data);
+            if (limited) return limited;
             showAlert(data.error || 'Failed to send comment');
             return false;
           }
@@ -3774,6 +3884,7 @@
       await submitMessageOnce(`team-chat:${teamId}`, {
         inputEl: input,
         sendBtnEl: btn,
+        cooldownNoticeEl: document.getElementById('chatSendCooldown'),
         getContent: () => prepareOutgoingMessage(input?.value),
         send: async (content) => {
           const r = await apiFetch(`/api/teams/${teamId}/chat`, {
@@ -3783,6 +3894,8 @@
           });
           const msg = await parseJsonResponse(r);
           if (!r.ok) {
+            const limited = messageSendRateLimitResult(r.status, msg);
+            if (limited) return limited;
             showAlert(msg.error || 'Failed to send message');
             return false;
           }
@@ -4404,6 +4517,33 @@
 
     document.getElementById('commentInput').addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.defaultPrevented) submitComment();
+    });
+
+    document.getElementById('taskAttachmentsList')?.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-preview-attachment]');
+      if (!el) return;
+      e.preventDefault();
+      openAttachmentPreview(el.dataset.url, el.dataset.name, el.dataset.mime);
+    });
+
+    document.getElementById('taskCoverPreview')?.addEventListener('click', (e) => {
+      const img = e.target.closest('[data-preview-cover]') || e.target.closest('#taskCoverPreview')?.querySelector('[data-preview-cover]');
+      if (!img?.dataset.url) return;
+      openAttachmentPreview(img.dataset.url, 'Cover image', 'image/jpeg');
+    });
+
+    document.getElementById('kanbanBoard')?.addEventListener('click', (e) => {
+      const cover = e.target.closest('[data-preview-cover]');
+      if (!cover?.dataset.url) return;
+      e.stopPropagation();
+      e.preventDefault();
+      openAttachmentPreview(cover.dataset.url, cover.dataset.name || 'Cover', cover.dataset.mime || 'image/jpeg');
+    }, true);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !document.getElementById('attachmentPreviewModal')?.classList.contains('hidden')) {
+        closeAttachmentPreview();
+      }
     });
 
     document.addEventListener('click', (e) => {

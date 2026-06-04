@@ -6,7 +6,8 @@ Thank you for your interest in TaskFlow. This project welcomes bug fixes, docume
 
 1. Read the [README](README.md) for setup and architecture.
 2. Review [FEATURES.md](FEATURES.md) for guest vs registered behavior and team owner/member permissions.
-3. Run `schema.sql` in your Supabase project if you are setting up a fresh database.
+3. For planned work, see [docs/FEATURE_CHECKLIST.md](docs/FEATURE_CHECKLIST.md) — pick **one section per PR**.
+4. Run `schema.sql` in your Supabase project if you are setting up a fresh database.
 
 ## Development setup
 
@@ -64,6 +65,7 @@ Edit line 1428 of [/public/dashboard.html](/public/dashboard.html) `FEEDBACK_ADM
 
 - Open an issue describing the problem you want to solve and who benefits (guest, member, owner).
 - Check [FEATURES.md](FEATURES.md) so the suggestion does not duplicate existing behavior.
+- Planned items with acceptance criteria: [docs/FEATURE_CHECKLIST.md](docs/FEATURE_CHECKLIST.md).
 
 ### Pull requests
 

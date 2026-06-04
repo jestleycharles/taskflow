@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { isGuestUser, GUEST_EMAIL } = require('../lib/user');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
 const { assertCanSendUserMessage } = require('../lib/message-send-guard');
+const { canBypassSpamGuard } = require('../lib/spam-guard-override');
 const {
   normalizeEmail,
   isEmailBlocked,
@@ -344,9 +345,14 @@ router.post('/api/dm/conversations/:conversationId/messages', requireAuth, async
     scopeId: conversationId,
     userId,
     content: raw,
-    skipSpamGuard: isSelfChat,
+    skipSpamGuard: isSelfChat || canBypassSpamGuard(req.session.user),
   });
-  if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+  if (!guard.ok) {
+    return res.status(guard.status).json({
+      error: guard.error,
+      retry_after_ms: guard.retry_after_ms,
+    });
+  }
   const content = guard.content;
 
   const now = new Date().toISOString();

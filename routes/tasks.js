@@ -6,6 +6,7 @@ const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
 const { assertCanSendUserMessage } = require('../lib/message-send-guard');
+const { canBypassSpamGuard } = require('../lib/spam-guard-override');
 const { isGuestUser } = require('../lib/user');
 const {
   ensureTeamColumns,
@@ -709,8 +710,14 @@ router.post('/api/tasks/:id/comments', requireAuth, async (req, res) => {
     userId,
     content: raw,
     excludeSystem: true,
+    skipSpamGuard: canBypassSpamGuard(req.session.user),
   });
-  if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+  if (!guard.ok) {
+    return res.status(guard.status).json({
+      error: guard.error,
+      retry_after_ms: guard.retry_after_ms,
+    });
+  }
 
   const { data: comment, error } = await supabaseAdmin
     .from('comments')

@@ -12,7 +12,7 @@ TaskFlow is open source and built for collaboration. Whether you want to contrib
 
 | Goal | Where to start |
 |------|----------------|
-| **Contribute** | See [CONTRIBUTING.md](CONTRIBUTING.md). Feature details: [FEATURES.md](FEATURES.md). |
+| **Contribute** | See [CONTRIBUTING.md](CONTRIBUTING.md). Feature details: [FEATURES.md](FEATURES.md). Planned work: [docs/FEATURE_CHECKLIST.md](docs/FEATURE_CHECKLIST.md). |
 | **Self-host** | Follow [Getting started](#getting-started) below and configure your own Supabase project. |
 | **Build & sell your own product** | Fork the project, rebrand, deploy, and monetize your deployment. The [Apache License 2.0](LICENSE) allows commercial use. You may add subscriptions, paid tiers, or proprietary plugins on **your** deployment. |
 | **Use the official hosted app** | The public demo may add **in-app subscriptions or paid features** later that are exclusive to that service and not guaranteed to exist in this repository. |
