@@ -344,7 +344,7 @@
         <div id="chatComposerActive" class="flex gap-2">
           <input id="chatInput" type="text" placeholder="Message the team..."
             class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
-          <button type="button" onclick="submitChatMessage()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
+          <button id="chatSendBtn" type="button" onclick="submitChatMessage()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
         </div>
         <p id="chatGuestNotice" class="hidden text-sm text-gray-400 text-center leading-relaxed">
           Guest accounts can read messages only.
@@ -830,7 +830,7 @@
             <div class="flex gap-2">
               <input id="commentInput" type="text" placeholder="Add a comment..."
                 class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
-              <button onclick="submitComment()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium">Send</button>
+              <button id="commentSendBtn" type="button" onclick="submitComment()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium">Send</button>
             </div>
           </div>
         </div>
@@ -2213,17 +2213,28 @@
     }
 
     async function submitComment() {
+      if (!activeTaskId) return;
       const input = document.getElementById('commentInput');
-      const content = prepareOutgoingMessage(input.value);
-      if (!content || !activeTaskId) return;
-      const r = await apiFetch(`/api/tasks/${activeTaskId}/comments`, {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ content })
+      const btn = document.getElementById('commentSendBtn');
+      await submitMessageOnce(`task-comment:${activeTaskId}`, {
+        inputEl: input,
+        sendBtnEl: btn,
+        getContent: () => prepareOutgoingMessage(input?.value),
+        send: async (content) => {
+          const r = await apiFetch(`/api/tasks/${activeTaskId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+          });
+          const data = await parseJsonResponse(r);
+          if (!r.ok) {
+            showAlert(data.error || 'Failed to send comment');
+            return false;
+          }
+          await loadComments(activeTaskId);
+          return true;
+        },
       });
-      if (r.ok) {
-        input.value = '';
-        await loadComments(activeTaskId);
-      }
     }
 
     function closeAllSidePanels() {
@@ -2729,23 +2740,29 @@
     async function submitChatMessage() {
       if (isGuest()) return;
       const input = document.getElementById('chatInput');
-      const content = prepareOutgoingMessage(input.value);
-      if (!content) return;
-      const r = await apiFetch(`/api/teams/${teamId}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+      const btn = document.getElementById('chatSendBtn');
+      await submitMessageOnce(`team-chat:${teamId}`, {
+        inputEl: input,
+        sendBtnEl: btn,
+        getContent: () => prepareOutgoingMessage(input?.value),
+        send: async (content) => {
+          const r = await apiFetch(`/api/teams/${teamId}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+          });
+          const msg = await parseJsonResponse(r);
+          if (!r.ok) {
+            showAlert(msg.error || 'Failed to send message');
+            return false;
+          }
+          chatMessages.push(msg);
+          renderChatMessages();
+          scrollChatToBottom();
+          markChatRead();
+          return true;
+        },
       });
-      const msg = await parseJsonResponse(r);
-      if (!r.ok) {
-        showAlert(msg.error || 'Failed to send message');
-        return;
-      }
-      input.value = '';
-      chatMessages.push(msg);
-      renderChatMessages();
-      scrollChatToBottom();
-      markChatRead();
     }
 
     function startEditChatMessage(messageId) {

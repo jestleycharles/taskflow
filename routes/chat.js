@@ -4,6 +4,7 @@ const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { isGuestUser } = require('../lib/user');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
+const { assertCanSendUserMessage } = require('../lib/message-send-guard');
 
 const router = express.Router();
 
@@ -106,9 +107,19 @@ router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
   if (!await assertTeamMember(teamId, userId))
     return res.status(403).json({ error: 'Not a member' });
 
-  const content = (req.body?.content || '').trim();
-  if (!content) return res.status(400).json({ error: 'Message cannot be empty' });
-  if (content.length > 4000) return res.status(400).json({ error: 'Message is too long' });
+  const raw = (req.body?.content || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Message cannot be empty' });
+  if (raw.length > 4000) return res.status(400).json({ error: 'Message is too long' });
+
+  const guard = await assertCanSendUserMessage(supabaseAdmin, {
+    table: 'team_chat_messages',
+    scopeColumn: 'team_id',
+    scopeId: teamId,
+    userId,
+    content: raw,
+  });
+  if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+  const content = guard.content;
 
   const { data, error } = await supabaseAdmin
     .from('team_chat_messages')

@@ -4,6 +4,7 @@ const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { isGuestUser, GUEST_EMAIL } = require('../lib/user');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
+const { assertCanSendUserMessage } = require('../lib/message-send-guard');
 const {
   normalizeEmail,
   isEmailBlocked,
@@ -331,9 +332,19 @@ router.post('/api/dm/conversations/:conversationId/messages', requireAuth, async
   const blockErr = await assertSenderNotBlocked(conv, userId);
   if (blockErr) return res.status(blockErr.status).json({ error: blockErr.error });
 
-  const content = (req.body?.content || '').trim();
-  if (!content) return res.status(400).json({ error: 'Message cannot be empty' });
-  if (content.length > 4000) return res.status(400).json({ error: 'Message is too long' });
+  const raw = (req.body?.content || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Message cannot be empty' });
+  if (raw.length > 4000) return res.status(400).json({ error: 'Message is too long' });
+
+  const guard = await assertCanSendUserMessage(supabaseAdmin, {
+    table: 'dm_messages',
+    scopeColumn: 'conversation_id',
+    scopeId: conversationId,
+    userId,
+    content: raw,
+  });
+  if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+  const content = guard.content;
 
   const now = new Date().toISOString();
   const { data, error } = await supabaseAdmin

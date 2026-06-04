@@ -125,6 +125,47 @@ function conversationListSkeletonHtml(count = 5) {
   return `<div class="space-y-2">${Array(count).fill(row).join('')}</div>`;
 }
 
+const messageSendInFlight = new Set();
+
+/**
+ * Prevents duplicate message sends while a POST is in flight (per `key`).
+ * Clears the input immediately so rapid Enter/clicks cannot resend the same text.
+ * Restores the input if `send` returns false or throws.
+ * @returns {Promise<boolean>} whether a send was attempted and completed successfully
+ */
+async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl }) {
+  if (messageSendInFlight.has(key)) return false;
+  const content = getContent();
+  if (!content) return false;
+
+  messageSendInFlight.add(key);
+  const input = inputEl || null;
+  const btn = sendBtnEl || null;
+  if (input) {
+    input.dataset.sendGuardSnapshot = input.value;
+    input.value = '';
+    input.disabled = true;
+  }
+  if (btn) btn.disabled = true;
+
+  let ok = false;
+  try {
+    ok = !!(await send(content));
+  } catch (err) {
+    if (input && !input.value) input.value = input.dataset.sendGuardSnapshot || '';
+    throw err;
+  } finally {
+    messageSendInFlight.delete(key);
+    if (!ok && input && !input.value) input.value = input.dataset.sendGuardSnapshot || '';
+    if (input) {
+      delete input.dataset.sendGuardSnapshot;
+      input.disabled = false;
+    }
+    if (btn) btn.disabled = false;
+  }
+  return ok;
+}
+
 /** Shimmer rows for chat threads and comment lists. */
 function messageListSkeletonHtml(count = 4) {
   const variants = [

@@ -3,6 +3,7 @@ const { supabaseAdmin } = require('../lib/supabase');
 const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
+const { assertCanSendUserMessage } = require('../lib/message-send-guard');
 const router = express.Router();
 
 const STATUS_LABELS = { todo: 'To Do', doing: 'Doing', done: 'Done' };
@@ -310,14 +311,26 @@ router.get('/api/tasks/:id/comments', requireAuth, async (req, res) => {
 router.post('/api/tasks/:id/comments', requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.session.user.id;
-  const { content } = req.body;
+  const raw = (req.body?.content || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Comment cannot be empty' });
+  if (raw.length > 4000) return res.status(400).json({ error: 'Comment is too long' });
 
   const { data: task } = await supabaseAdmin.from('tasks').select('team_id, title').eq('id', id).single();
   if (!task || !await isMember(task.team_id, userId)) return res.status(403).json({ error: 'Forbidden' });
 
+  const guard = await assertCanSendUserMessage(supabaseAdmin, {
+    table: 'comments',
+    scopeColumn: 'task_id',
+    scopeId: id,
+    userId,
+    content: raw,
+    excludeSystem: true,
+  });
+  if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+
   const { data: comment, error } = await supabaseAdmin
     .from('comments')
-    .insert({ task_id: id, user_id: userId, content })
+    .insert({ task_id: id, user_id: userId, content: guard.content })
     .select('*, user:user_id(id, username, avatar_color, avatar_url)')
     .single();
 

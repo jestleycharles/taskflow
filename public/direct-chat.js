@@ -849,25 +849,32 @@
   }
 
   async function submitDmMessage() {
+    if (!activeConversationId) return;
     const input = $('dmChatInput');
-    const content = prepareOutgoingDmMessage(input?.value);
-    if (!content || !activeConversationId) return;
-    const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+    const btn = $('dmChatSendBtn');
+    await submitMessageOnce(`dm:${activeConversationId}`, {
+      inputEl: input,
+      sendBtnEl: btn,
+      getContent: () => prepareOutgoingDmMessage(input?.value),
+      send: async (content) => {
+        const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+        const msg = await parseJsonResponse(r);
+        if (!r.ok) {
+          showAlert(msg.error || 'Failed to send message');
+          return false;
+        }
+        dmMessages.push(msg);
+        renderDmMessages();
+        scrollDmToBottom();
+        markDmRead();
+        loadConversations();
+        return true;
+      },
     });
-    const msg = await parseJsonResponse(r);
-    if (!r.ok) {
-      showAlert(msg.error || 'Failed to send message');
-      return;
-    }
-    input.value = '';
-    dmMessages.push(msg);
-    renderDmMessages();
-    scrollDmToBottom();
-    markDmRead();
-    loadConversations();
   }
 
   function startEditDm(messageId) {
