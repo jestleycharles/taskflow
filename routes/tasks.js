@@ -226,6 +226,74 @@ router.put('/api/teams/:teamId/tasks/reorder', requireAuth, async (req, res) => 
   res.json({ success: true });
 });
 
+// PUT /api/teams/:teamId/tasks/layout — atomically set column membership and order
+router.put('/api/teams/:teamId/tasks/layout', requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  const userId = req.session.user.id;
+  const { columns } = req.body || {};
+
+  if (!await isMember(teamId, userId)) return res.status(403).json({ error: 'Not a member' });
+  if (!columns || typeof columns !== 'object' || Array.isArray(columns)) {
+    return res.status(400).json({ error: 'columns must be an object' });
+  }
+
+  const statuses = ['todo', 'doing', 'done'];
+  const entries = Object.entries(columns).filter(([, ids]) => Array.isArray(ids) && ids.length);
+  if (!entries.length) return res.status(400).json({ error: 'columns must include at least one non-empty column' });
+
+  for (const [status] of entries) {
+    if (!statuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  const { data: allTasks, error: loadErr } = await supabaseAdmin
+    .from('tasks')
+    .select('id, status, title')
+    .eq('team_id', teamId);
+
+  if (loadErr) return sendError(res, 500, loadErr, 'load');
+
+  const teamIds = new Set((allTasks || []).map((t) => t.id));
+  const byId = new Map((allTasks || []).map((t) => [t.id, t]));
+  const seen = new Set();
+  const updates = [];
+
+  for (const [status, taskIds] of entries) {
+    for (let index = 0; index < taskIds.length; index++) {
+      const id = taskIds[index];
+      if (!teamIds.has(id)) return res.status(400).json({ error: 'Task not found' });
+      if (seen.has(id)) return res.status(400).json({ error: 'Task appears in more than one column' });
+      seen.add(id);
+      updates.push({ id, status, position: (index + 1) * 1000 });
+    }
+  }
+
+  const now = new Date().toISOString();
+  const results = await Promise.all(
+    updates.map(({ id, status, position }) =>
+      supabaseAdmin
+        .from('tasks')
+        .update({ status, position, updated_at: now })
+        .eq('id', id)
+        .eq('team_id', teamId)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed) return sendError(res, 500, failed.error, 'save');
+
+  const actor = await getMemberName(userId);
+  for (const { id, status } of updates) {
+    const existing = byId.get(id);
+    if (!existing || existing.status === status) continue;
+    const from = STATUS_LABELS[existing.status] || existing.status;
+    const to = STATUS_LABELS[status] || status;
+    const line = `moved "${existing.title}" from ${from} to ${to}`;
+    await logTaskSystemComment(id, userId, `${actor} ${line}`);
+    await logActivity(teamId, userId, 'task_updated', `${actor} ${line}`, id);
+  }
+
+  res.json({ success: true });
+});
+
 // PATCH /api/tasks/:id
 router.patch('/api/tasks/:id', requireAuth, async (req, res) => {
   const { id } = req.params;

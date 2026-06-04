@@ -112,6 +112,8 @@
       top: auto;
       right: auto;
       display: inline-flex;
+      align-items: center;
+      justify-content: center;
       vertical-align: middle;
     }
     #commentUnreadBadge.hidden {
@@ -121,9 +123,12 @@
       padding: 0;
       min-width: 1.125rem;
       width: 1.125rem;
+      align-items: center;
       justify-content: center;
     }
     .comment-unread-badge-spinner {
+      display: block;
+      flex-shrink: 0;
       width: 0.625rem;
       height: 0.625rem;
       border: 1.5px solid rgba(255, 255, 255, 0.35);
@@ -955,6 +960,7 @@
     let draggedTaskId = null;
     let dragOverTaskId = null;
     let dragOverTaskPlacement = null;
+    let dragPersistChain = Promise.resolve();
     let addTaskStatus = 'todo';
     let pollInterval = null;
     let presenceInterval = null;
@@ -1939,6 +1945,12 @@
         e.currentTarget.closest('.kanban-col')?.classList.remove('drag-over');
     }
 
+    function enqueueDragPersist(fn) {
+      const run = dragPersistChain.then(fn, fn);
+      dragPersistChain = run.catch(() => {});
+      return run;
+    }
+
     function applyColumnOrder(status, orderedIds) {
       orderedIds.forEach((id, index) => {
         const t = tasks.find((x) => x.id === id);
@@ -1949,19 +1961,36 @@
       });
     }
 
-    async function persistColumnOrder(status, taskIds) {
-      const r = await apiFetch(`/api/teams/${teamId}/tasks/reorder`, {
+    function buildLayoutPayload(columnEntries) {
+      const columns = {};
+      for (const { status, taskIds } of columnEntries) {
+        if (taskIds.length) columns[status] = taskIds;
+      }
+      return columns;
+    }
+
+    async function persistBoardLayout(columnEntries, isRetry = false) {
+      const columns = buildLayoutPayload(columnEntries);
+      if (!Object.keys(columns).length) return true;
+
+      const r = await apiFetch(`/api/teams/${teamId}/tasks/layout`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, taskIds }),
+        body: JSON.stringify({ columns }),
       });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        showAlert(d.error || 'Failed to reorder tasks');
+      if (r.ok) return true;
+
+      const d = await r.json().catch(() => ({}));
+      if (!isRetry) {
         await loadTasks();
-        return false;
+        const retryEntries = columnEntries
+          .map(({ status }) => ({ status, taskIds: getSortedColumnTasks(status).map((t) => t.id) }))
+          .filter(({ taskIds }) => taskIds.length);
+        if (retryEntries.length) return persistBoardLayout(retryEntries, true);
       }
-      return true;
+      showAlert(d.error || 'Failed to save task order');
+      await loadTasks();
+      return false;
     }
 
     async function reorderTasksInColumn(status, draggedId, targetId, placement) {
@@ -1976,91 +2005,89 @@
       const taskIds = colTasks.map((t) => t.id);
       applyColumnOrder(status, taskIds);
       renderBoard();
-      await persistColumnOrder(status, taskIds);
+      await persistBoardLayout([{ status, taskIds }]);
     }
 
     async function handleTaskCardDrop(targetTask, e) {
-      const col = e.currentTarget.closest('.kanban-col');
-      col?.classList.remove('drag-over');
-      const status = col?.dataset.status;
-      const draggedId = draggedTaskId;
-      const placement = dragOverTaskPlacement
-        || (e.clientY < e.currentTarget.getBoundingClientRect().top + e.currentTarget.getBoundingClientRect().height / 2
-          ? 'top' : 'bottom');
-      clearTaskDragIndicators();
-      if (!draggedId || !status || draggedId === targetTask.id) return;
+      await enqueueDragPersist(async () => {
+        const col = e.currentTarget.closest('.kanban-col');
+        col?.classList.remove('drag-over');
+        const status = col?.dataset.status;
+        const draggedId = draggedTaskId;
+        const placement = dragOverTaskPlacement
+          || (e.clientY < e.currentTarget.getBoundingClientRect().top + e.currentTarget.getBoundingClientRect().height / 2
+            ? 'top' : 'bottom');
+        clearTaskDragIndicators();
+        if (!draggedId || !status || draggedId === targetTask.id) return;
 
-      const task = tasks.find((t) => t.id === draggedId);
-      if (!task) return;
+        const task = tasks.find((t) => t.id === draggedId);
+        if (!task) return;
 
-      if (task.status === status) {
-        await reorderTasksInColumn(status, draggedId, targetTask.id, placement);
-        return;
-      }
+        if (task.status === status) {
+          await reorderTasksInColumn(status, draggedId, targetTask.id, placement);
+          return;
+        }
 
-      const colTasks = getSortedColumnTasks(status).filter((t) => t.id !== draggedId);
-      let insertAt = colTasks.findIndex((t) => t.id === targetTask.id);
-      if (insertAt < 0) insertAt = colTasks.length;
-      if (placement === 'bottom') insertAt += 1;
-      colTasks.splice(insertAt, 0, task);
-      const taskIds = colTasks.map((t) => t.id);
-      applyColumnOrder(status, taskIds);
-      renderBoard();
-      const statusR = await apiFetch(`/api/tasks/${draggedId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        const oldStatus = task.status;
+        const colTasks = getSortedColumnTasks(status).filter((t) => t.id !== draggedId);
+        let insertAt = colTasks.findIndex((t) => t.id === targetTask.id);
+        if (insertAt < 0) insertAt = colTasks.length;
+        if (placement === 'bottom') insertAt += 1;
+        colTasks.splice(insertAt, 0, task);
+        const destIds = colTasks.map((t) => t.id);
+
+        applyColumnOrder(status, destIds);
+        renderBoard();
+
+        const sourceIds = getSortedColumnTasks(oldStatus).map((t) => t.id);
+        const layoutEntries = [{ status, taskIds: destIds }];
+        if (sourceIds.length) layoutEntries.push({ status: oldStatus, taskIds: sourceIds });
+        const ok = await persistBoardLayout(layoutEntries);
+        if (!ok) return;
+        if (activeTaskId === draggedId) loadComments(activeTaskId);
       });
-      if (!statusR.ok) {
-        await loadTasks();
-        return;
-      }
-      const ok = await persistColumnOrder(status, taskIds);
-      if (!ok) return;
-      if (activeTaskId === draggedId) loadComments(activeTaskId);
     }
 
     async function drop(e) {
       e.preventDefault();
-      const col = e.currentTarget.closest('.kanban-col');
-      col.classList.remove('drag-over');
-      clearTaskDragIndicators();
-      const newStatus = col.dataset.status;
-      const draggedId = draggedTaskId;
-      const task = tasks.find((t) => t.id === draggedId);
-      if (!task) return;
+      await enqueueDragPersist(async () => {
+        const col = e.currentTarget.closest('.kanban-col');
+        col.classList.remove('drag-over');
+        clearTaskDragIndicators();
+        const newStatus = col.dataset.status;
+        const draggedId = draggedTaskId;
+        const task = tasks.find((t) => t.id === draggedId);
+        if (!task) return;
 
-      if (task.status === newStatus) {
-        const colTasks = getSortedColumnTasks(newStatus);
-        const from = colTasks.findIndex((t) => t.id === draggedId);
-        if (from >= 0 && from < colTasks.length - 1) {
-          const [item] = colTasks.splice(from, 1);
-          colTasks.push(item);
-          const taskIds = colTasks.map((t) => t.id);
-          applyColumnOrder(newStatus, taskIds);
-          renderBoard();
-          await persistColumnOrder(newStatus, taskIds);
+        if (task.status === newStatus) {
+          const colTasks = getSortedColumnTasks(newStatus);
+          const from = colTasks.findIndex((t) => t.id === draggedId);
+          if (from >= 0 && from < colTasks.length - 1) {
+            const [item] = colTasks.splice(from, 1);
+            colTasks.push(item);
+            const taskIds = colTasks.map((t) => t.id);
+            applyColumnOrder(newStatus, taskIds);
+            renderBoard();
+            await persistBoardLayout([{ status: newStatus, taskIds }]);
+          }
+          return;
         }
-        return;
-      }
 
-      const colTasks = getSortedColumnTasks(newStatus).filter((t) => t.id !== draggedId);
-      colTasks.push(task);
-      const taskIds = colTasks.map((t) => t.id);
-      applyColumnOrder(newStatus, taskIds);
-      renderBoard();
-      const statusR = await apiFetch(`/api/tasks/${draggedId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        const oldStatus = task.status;
+        const colTasks = getSortedColumnTasks(newStatus).filter((t) => t.id !== draggedId);
+        colTasks.push(task);
+        const destIds = colTasks.map((t) => t.id);
+
+        applyColumnOrder(newStatus, destIds);
+        renderBoard();
+
+        const sourceIds = getSortedColumnTasks(oldStatus).map((t) => t.id);
+        const layoutEntries = [{ status: newStatus, taskIds: destIds }];
+        if (sourceIds.length) layoutEntries.push({ status: oldStatus, taskIds: sourceIds });
+        const ok = await persistBoardLayout(layoutEntries);
+        if (!ok) return;
+        if (activeTaskId === draggedId) loadComments(activeTaskId);
       });
-      if (!statusR.ok) {
-        await loadTasks();
-        return;
-      }
-      const ok = await persistColumnOrder(newStatus, taskIds);
-      if (!ok) return;
-      if (activeTaskId === draggedId) loadComments(activeTaskId);
     }
 
     // Add Task
@@ -2200,8 +2227,12 @@
       document.getElementById('taskModal').classList.remove('hidden');
       await loadTaskCommentReadState(taskId);
       await loadComments(taskId);
-      if (showUnreadBadgeLoading && taskCommentsTabActive) {
-        await finishCommentsTabLoading();
+      if (showUnreadBadgeLoading) {
+        if (taskCommentsTabActive) {
+          await finishCommentsTabLoading();
+        } else {
+          clearCommentUnreadBadgeLoading();
+        }
       }
     }
     async function closeTaskModal() {
@@ -2571,6 +2602,14 @@
       await persistTaskCommentReadState(taskId, flushPersist);
     }
 
+    function taskCommentUnreadDisplayCount(taskId) {
+      if (activeTaskId === taskId && taskComments.length) {
+        return countUnreadTaskComments(taskComments, taskId);
+      }
+      const task = tasks.find((t) => t.id === taskId);
+      return task?.unread_comment_count || 0;
+    }
+
     function updateTaskCommentUnreadBadge() {
       const badge = document.getElementById('commentUnreadBadge');
       if (!badge || !activeTaskId) return;
@@ -2582,7 +2621,7 @@
         badge.classList.add('hidden');
         return;
       }
-      const unread = countUnreadTaskComments(taskComments, activeTaskId);
+      const unread = taskCommentUnreadDisplayCount(activeTaskId);
       syncTaskUnreadCount(activeTaskId, unread);
       updateTaskCardUnreadBadge(activeTaskId, unread);
       if (unread > 0) {
@@ -2614,9 +2653,13 @@
       if (commentsChanged) {
         lastLoadedCommentsSig = sig;
         renderComments();
-        if (taskCommentsTabActive && commentBatch.isAtLatest()) {
-          await ensureCommentsScrolledToBottom();
-          if (commentUnreadBadgeLoading) clearCommentUnreadBadgeLoading();
+        if (commentUnreadBadgeLoading) {
+          if (taskCommentsTabActive && commentBatch.isAtLatest()) {
+            await ensureCommentsScrolledToBottom();
+          }
+          if (!taskCommentsTabActive || commentBatch.isAtLatest()) {
+            clearCommentUnreadBadgeLoading();
+          }
         }
       }
       if (taskCommentsTabActive) {
