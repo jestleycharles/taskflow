@@ -323,6 +323,8 @@
         <h2 id="dmChatHeaderTitle" class="font-semibold text-sm text-white truncate">Messages</h2>
         <p id="dmChatHeaderSubtitle" class="hidden text-xs text-gray-500 truncate"></p>
       </div>
+      <input type="search" id="dmMessageSearch" placeholder="Search…" aria-label="Search messages"
+        class="hidden w-[5.5rem] sm:w-28 bg-ink-700 border border-white/10 rounded-lg px-2 py-1 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition shrink-0" />
       <button type="button" id="dmBlockedEmailsBtn" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 text-xs font-medium shrink-0" title="Blocked emails">Blocked</button>
       <button type="button" id="dmChatCloseBtn" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close messages">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -403,6 +405,7 @@
   <script src="/avatar-utils.js"></script>
   <script src="/message-format.js"></script>
   <script src="/api.js"></script>
+  <script src="/message-batch.js"></script>
   <!-- Confirm Modal (DM delete, etc.) -->
   <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
     <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeConfirmModal()"></div>
@@ -428,7 +431,7 @@
         <button type="button" id="dmBlockedEmailAddBtn" class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Add</button>
       </div>
       <p id="dmBlockedEmailAddError" class="hidden text-xs text-red-400 mb-3 shrink-0"></p>
-      <ul id="dmBlockedEmailsList" class="flex-1 overflow-y-auto space-y-2 min-h-0 text-sm text-gray-400"></ul>
+      <ul id="dmBlockedEmailsList" class="flex-1 overflow-y-auto space-y-2 min-h-0 max-h-[min(24rem,50vh)] text-sm text-gray-400"></ul>
       <button type="button" data-dm-close-blocked-modal class="mt-4 w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm shrink-0">Close</button>
     </div>
   </div>

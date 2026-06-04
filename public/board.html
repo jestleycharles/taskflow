@@ -265,6 +265,11 @@
       flex: 1 1 0;
       min-height: 0;
     }
+    #settingsMemberList,
+    #teamRolesList,
+    #dmBlockedEmailsList {
+      scrollbar-width: thin;
+    }
     @media (max-width: 767px) {
       #chatPanel:not(.hidden),
       #activityPanel:not(.hidden),
@@ -339,9 +344,11 @@
   <div id="boardMainRow" class="flex overflow-hidden">
     <!-- Team Chat Panel (left, full height) -->
     <div id="chatPanel" class="sidebar-slide hidden border-r border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
-      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
-        <h2 class="font-semibold text-sm text-white">Team Chat</h2>
-        <button type="button" onclick="closeChatPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close chat">
+      <div class="p-4 border-b border-white/10 flex items-center gap-2 shrink-0 bg-ink-800">
+        <h2 class="font-semibold text-sm text-white shrink-0">Team Chat</h2>
+        <input type="search" id="chatMessageSearch" placeholder="Search…" aria-label="Search team chat"
+          class="flex-1 min-w-0 max-w-[7rem] sm:max-w-[9rem] bg-ink-700 border border-white/10 rounded-lg px-2 py-1 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition" />
+        <button type="button" onclick="closeChatPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center shrink-0" aria-label="Close chat">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
@@ -563,10 +570,10 @@
           Manage team roles
         </button>
       </div>
-      <div id="settingsPanelBody" class="flex-1 overflow-y-auto p-4 min-h-0">
-        <p class="text-xs text-gray-400 mb-3">Team members</p>
-        <div id="settingsMemberList" class="space-y-2 mb-6"></div>
-        <div class="border-t border-white/10 pt-4">
+      <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
+        <p class="text-xs text-gray-400 mb-3 shrink-0">Team members</p>
+        <div id="settingsMemberList" class="flex-1 overflow-y-auto space-y-2 min-h-0 mb-4"></div>
+        <div class="border-t border-white/10 pt-4 shrink-0">
           <p class="text-xs text-gray-400 mb-3">Danger zone</p>
           <p class="text-xs text-gray-500 mb-3 leading-relaxed">Permanently delete this team, all tasks, comments, chat, and activity. This cannot be undone.</p>
           <button onclick="deleteTeam()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium">
@@ -655,7 +662,7 @@
       <div class="mb-4">
         <p class="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Role hierarchy</p>
         <p class="text-xs text-gray-500 mb-3">Drag to reorder. The team owner always appears first.</p>
-        <div id="teamRolesList" class="space-y-2 min-h-[2rem]"></div>
+        <div id="teamRolesList" class="space-y-2 min-h-[2rem] max-h-[min(16rem,40vh)] overflow-y-auto"></div>
         <p id="teamRolesEmpty" class="hidden text-xs text-gray-600 text-center py-4">No custom roles yet. Create one below.</p>
       </div>
 
@@ -781,9 +788,9 @@
       </div>
 
       <!-- Tab content -->
-      <div id="taskModalTabContent" class="flex-1 overflow-y-auto min-h-0">
+      <div id="taskModalTabContent" class="flex-1 flex flex-col min-h-0 overflow-hidden">
         <!-- Details tab -->
-        <div id="tab-details" class="p-6 space-y-4">
+        <div id="tab-details" class="flex-1 overflow-y-auto min-h-0 p-6 space-y-4">
           <div class="flex items-start justify-between gap-2">
             <div id="taskDetailDescArea" class="flex-1 min-w-0 text-gray-400 text-sm leading-relaxed"></div>
             <button id="taskEditDescBtn" type="button" onclick="startEditTask('description')" class="hidden shrink-0 text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition" title="Edit description">
@@ -830,8 +837,13 @@
         </div>
 
         <!-- Comments tab -->
-        <div id="tab-comments" class="hidden flex flex-col h-full">
-          <div id="commentsList" class="flex-1 p-6 space-y-4 overflow-y-auto max-h-64"></div>
+        <div id="tab-comments" class="hidden flex flex-col min-h-0 flex-1">
+          <div class="px-6 py-3 border-b border-white/10 shrink-0 flex items-center gap-2">
+            <span class="text-xs text-gray-500 shrink-0">Comments</span>
+            <input type="search" id="commentMessageSearch" placeholder="Search…" aria-label="Search comments"
+              class="flex-1 min-w-0 bg-ink-700 border border-white/10 rounded-lg px-2.5 py-1.5 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition" />
+          </div>
+          <div id="commentsList" class="flex-1 p-6 space-y-4 overflow-y-auto min-h-0"></div>
           <div class="p-4 border-t border-white/10">
             <div class="flex gap-2">
               <input id="commentInput" type="text" placeholder="Add a comment..." data-mention-prefer-above="1"
@@ -851,6 +863,7 @@
   <script src="/message-format.js"></script>
   <script src="/mention-autocomplete.js"></script>
   <script src="/api.js"></script>
+  <script src="/message-batch.js"></script>
   <script>
     const teamId = window.location.pathname.split('/').pop();
     let currentUser = null;
@@ -896,6 +909,8 @@
     let openReactorsPopover = null;
     let reactionPress = null;
     const REACTION_LONG_PRESS_MS = 450;
+    let chatBatch = null;
+    let commentBatch = null;
 
     const REACTION_EMOJIS = {
       love: '❤️', money: '🤑', ok: '👍', haha: '😂', sad: '😢', angry: '😠',
@@ -1254,7 +1269,7 @@
         }
         const commentsEl = document.getElementById('commentsList');
         if (commentsEl && taskComments.length) {
-          commentsEl.innerHTML = taskComments.map(renderCommentItem).join('');
+          renderComments();
         }
       }
     }
@@ -1999,6 +2014,7 @@
     }
 
     async function ensureCommentsScrolledToBottom() {
+      if (!commentBatch?.isAtLatest()) return;
       const list = document.getElementById('commentsList');
       if (!list) return;
       for (let i = 0; i < 24; i++) {
@@ -2022,6 +2038,9 @@
       resetTaskModalToDetailsTab();
       taskComments = [];
       lastLoadedCommentsSig = null;
+      commentBatch?.reset();
+      const commentSearchEl = document.getElementById('commentMessageSearch');
+      if (commentSearchEl) commentSearchEl.value = '';
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
@@ -2069,9 +2088,39 @@
       resetTaskModalToDetailsTab();
       taskComments = [];
       lastLoadedCommentsSig = null;
+      commentBatch?.reset();
+      const commentSearchEl = document.getElementById('commentMessageSearch');
+      if (commentSearchEl) commentSearchEl.value = '';
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
+    }
+
+    function commentSearchText(c) {
+      const parts = [c.content || ''];
+      if (c.user?.username) parts.push(c.user.username);
+      return parts.join(' ');
+    }
+
+    function renderComments(batchScrollHint) {
+      const list = document.getElementById('commentsList');
+      if (!list || !commentBatch) return;
+      const scrollTop = list.scrollTop;
+      const scrollHeight = list.scrollHeight;
+      const atBottom = scrollHeight - list.clientHeight - scrollTop < 48;
+      const emptyHtml = '<p class="text-sm text-gray-600 text-center py-4">No comments yet.</p>';
+      const { scrollToTop } = commentBatch.renderList(
+        list,
+        taskComments,
+        renderCommentItem,
+        emptyHtml,
+      );
+      if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
+      if (batchScrollHint === 'older' || scrollToTop) {
+        list.scrollTop = 0;
+      } else if (!atBottom && commentBatch.isAtLatest()) {
+        list.scrollTop = scrollTop;
+      }
     }
 
     function renderTaskTitleArea(task) {
@@ -2414,9 +2463,8 @@
       taskComments = comments;
       if (commentsChanged) {
         lastLoadedCommentsSig = sig;
-        list.innerHTML = comments.map(renderCommentItem).join('')
-          || '<p class="text-sm text-gray-600 text-center py-4">No comments yet.</p>';
-        if (taskCommentsTabActive) {
+        renderComments();
+        if (taskCommentsTabActive && commentBatch.isAtLatest()) {
           await ensureCommentsScrolledToBottom();
           if (commentUnreadBadgeLoading) clearCommentUnreadBadgeLoading();
         }
@@ -2452,6 +2500,7 @@
             showAlert(data.error || 'Failed to send comment');
             return false;
           }
+          commentBatch?.showLatestBatch();
           await loadComments(taskId);
           return true;
         },
@@ -2511,6 +2560,9 @@
       editingChatId = null;
       chatEditDraft = '';
       chatViewingOriginalId = null;
+      chatBatch?.reset();
+      const chatSearchEl = document.getElementById('chatMessageSearch');
+      if (chatSearchEl) chatSearchEl.value = '';
       syncChatVersionFocusUi();
       updateChatUnreadBadge();
     }
@@ -2891,7 +2943,7 @@
       } else {
         const idx = taskComments.findIndex((c) => c.id === messageId);
         if (idx !== -1) taskComments[idx] = { ...taskComments[idx], reactions: data.reactions || [] };
-        document.getElementById('commentsList').innerHTML = taskComments.map(renderCommentItem).join('');
+        renderComments();
       }
     }
 
@@ -2901,18 +2953,19 @@
       if (ta) chatEditDraft = ta.value;
     }
 
-    function renderChatMessages() {
+    function renderChatMessages(batchScrollHint) {
       const list = document.getElementById('chatMessagesList');
+      if (!list || !chatBatch) return;
       const scrollTop = list.scrollTop;
       const scrollHeight = list.scrollHeight;
       const atBottom = scrollHeight - list.clientHeight - scrollTop < 48;
-
-      if (!chatMessages.length) {
-        list.innerHTML = '<p class="text-sm text-gray-600 text-center py-8">No messages yet. Say hello to your team.</p>';
-        syncChatVersionFocusUi();
-        return;
-      }
-      list.innerHTML = chatMessages.map(m => renderChatMessageBody(m)).join('');
+      const emptyHtml = '<p class="text-sm text-gray-600 text-center py-8">No messages yet. Say hello to your team.</p>';
+      const { scrollToTop } = chatBatch.renderList(
+        list,
+        chatMessages,
+        renderChatMessageBody,
+        emptyHtml,
+      );
       syncChatVersionFocusUi();
       if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
 
@@ -2925,7 +2978,9 @@
           const len = ta.value.length;
           ta.setSelectionRange(len, len);
         }
-      } else if (!atBottom) {
+      } else if (batchScrollHint === 'older' || scrollToTop) {
+        list.scrollTop = 0;
+      } else if (!atBottom && chatBatch.isAtLatest()) {
         list.scrollTop = scrollTop;
       }
     }
@@ -2950,7 +3005,9 @@
           }
         } else {
           renderChatMessages();
-          if (data.length > prevLen || data[data.length - 1]?.id !== prevLastId) scrollChatToBottom();
+          if (chatBatch.isAtLatest() && (data.length > prevLen || data[data.length - 1]?.id !== prevLastId)) {
+            scrollChatToBottom();
+          }
         }
         markChatRead();
       } else {
@@ -2981,6 +3038,7 @@
             showAlert(msg.error || 'Failed to send message');
             return false;
           }
+          chatBatch.showLatestBatch();
           chatMessages.push(msg);
           renderChatMessages();
           scrollChatToBottom();
@@ -3675,6 +3733,34 @@
     });
 
     renderTeamRoleColorSwatches(ROLE_PRESET_COLORS[0]);
+
+    chatBatch = MessageBatch.create({
+      getMessages: () => chatMessages,
+      getSearchText: (m) => {
+        const parts = [m.content || ''];
+        if (m.content_before_edit) parts.push(m.content_before_edit);
+        if (m.user?.username) parts.push(m.user.username);
+        return parts.join(' ');
+      },
+      onBatchChange: (hint) => renderChatMessages(hint),
+    });
+    chatBatch.bindListEvents(document.getElementById('chatMessagesList'));
+
+    commentBatch = MessageBatch.create({
+      getMessages: () => taskComments,
+      getSearchText: commentSearchText,
+      onBatchChange: (hint) => renderComments(hint),
+    });
+    commentBatch.bindListEvents(document.getElementById('commentsList'));
+
+    document.getElementById('chatMessageSearch')?.addEventListener('input', (e) => {
+      chatBatch?.setSearchQuery(e.target.value);
+      renderChatMessages();
+    });
+    document.getElementById('commentMessageSearch')?.addEventListener('input', (e) => {
+      commentBatch?.setSearchQuery(e.target.value);
+      renderComments();
+    });
 
     initGuestCommentMentionGuard();
 

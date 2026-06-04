@@ -38,6 +38,7 @@
   let showConfirm = (opts) => { if (window.confirm(opts.message)) opts.onConfirm?.(); };
   let showAlert = (msg) => { window.alert(msg); };
   const dmReadByConv = new Map();
+  let dmBatch = null;
 
   function $(id) {
     return document.getElementById(id);
@@ -221,6 +222,9 @@
     dmMessages = [];
     dmLastReadAt = 0;
     editingDmId = null;
+    dmBatch?.reset();
+    const searchEl = $('dmMessageSearch');
+    if (searchEl) searchEl.value = '';
     syncView();
     if (!conversationsLoaded) showConversationListLoading();
     await loadConversations();
@@ -263,6 +267,12 @@
     $('dmChatThreadView')?.classList.toggle('hidden', !inThread);
     $('dmChatBackBtn')?.classList.toggle('hidden', !inThread);
     $('dmBlockedEmailsBtn')?.classList.toggle('hidden', inThread);
+    $('dmMessageSearch')?.classList.toggle('hidden', !inThread);
+    if (!inThread) {
+      const searchEl = $('dmMessageSearch');
+      if (searchEl) searchEl.value = '';
+      dmBatch?.reset();
+    }
     $('dmChatHeaderTitle').textContent = inThread ? conversationTitleWithIndicator(activeConversation) : 'Messages';
     $('dmChatHeaderSubtitle')?.classList.toggle('hidden', !inThread);
     if (inThread) {
@@ -487,6 +497,9 @@
     syncView();
     dmLastReadAt = dmReadByConv.get(conv.id) || 0;
     dmMessages = [];
+    dmBatch?.reset();
+    const searchEl = $('dmMessageSearch');
+    if (searchEl) searchEl.value = '';
     showDmMessagesLoading();
     await loadDmReadState();
     await loadDmMessages();
@@ -793,19 +806,20 @@
     if (ta) dmEditDraft = ta.value;
   }
 
-  function renderDmMessages() {
+  function renderDmMessages(batchScrollHint) {
     const list = $('dmMessagesList');
-    if (!list) return;
+    if (!list || !dmBatch) return;
     const scrollTop = list.scrollTop;
     const scrollHeight = list.scrollHeight;
     const atBottom = scrollHeight - list.clientHeight - scrollTop < 48;
+    const emptyHtml = '<p class="text-sm text-gray-600 text-center py-8">No messages yet. Say hello.</p>';
 
-    if (!dmMessages.length) {
-      list.innerHTML = '<p class="text-sm text-gray-600 text-center py-8">No messages yet. Say hello.</p>';
-      syncDmVersionFocusUi();
-      return;
-    }
-    list.innerHTML = dmMessages.map((m) => renderDmMessageBody(m)).join('');
+    const { scrollToTop } = dmBatch.renderList(
+      list,
+      dmMessages,
+      renderDmMessageBody,
+      emptyHtml,
+    );
     syncDmVersionFocusUi();
     if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
 
@@ -817,7 +831,9 @@
         const len = ta.value.length;
         ta.setSelectionRange(len, len);
       }
-    } else if (!atBottom) {
+    } else if (batchScrollHint === 'older' || scrollToTop) {
+      list.scrollTop = 0;
+    } else if (!atBottom && dmBatch.isAtLatest()) {
       list.scrollTop = scrollTop;
     }
   }
@@ -844,7 +860,9 @@
         }
       } else {
         renderDmMessages();
-        if (data.length > prevLen || data[data.length - 1]?.id !== prevLastId) scrollDmToBottom();
+        if (dmBatch.isAtLatest() && (data.length > prevLen || data[data.length - 1]?.id !== prevLastId)) {
+          scrollDmToBottom();
+        }
       }
       await markDmRead();
     }
@@ -870,6 +888,7 @@
           showAlert(msg.error || 'Failed to send message');
           return false;
         }
+        dmBatch.showLatestBatch();
         dmMessages.push(msg);
         renderDmMessages();
         scrollDmToBottom();
@@ -1078,6 +1097,20 @@
   function bindEvents() {
     if (eventsBound) return;
     eventsBound = true;
+
+    const dmList = $('dmMessagesList');
+    dmBatch = MessageBatch.create({
+      getMessages: () => dmMessages,
+      getSearchText: (m) => {
+        const parts = [m.content || ''];
+        if (m.content_before_edit) parts.push(m.content_before_edit);
+        if (m.user?.username) parts.push(m.user.username);
+        return parts.join(' ');
+      },
+      onBatchChange: (hint) => renderDmMessages(hint),
+    });
+    dmBatch.bindListEvents(dmList);
+
     $('dmChatFab')?.addEventListener('click', openPanel);
     $('dmChatCloseBtn')?.addEventListener('click', closePanel);
     $('dmChatBackdrop')?.addEventListener('click', closePanel);
@@ -1101,6 +1134,10 @@
       ?.addEventListener('click', () => blockActiveUser());
     $('dmChatHeaderIgnoreBtn')?.addEventListener('click', () => toggleIgnoreActiveUser());
     $('dmChatSendBtn')?.addEventListener('click', submitDmMessage);
+    $('dmMessageSearch')?.addEventListener('input', (e) => {
+      dmBatch?.setSearchQuery(e.target.value);
+      renderDmMessages();
+    });
     $('dmChatInput')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
