@@ -307,9 +307,10 @@
         align-items: stretch;
       }
       .kanban-col {
-        flex: 0 0 280px;
-        max-width: 280px;
-        min-width: 220px;
+        flex: 0 0 25vw;
+        width: 25vw;
+        max-width: none;
+        min-width: 0;
         min-height: calc(100vh - var(--nav-h) - 3rem);
       }
       .drop-zone {
@@ -428,7 +429,7 @@
     </div>
 
     <div id="boardContainer" class="flex-1 min-h-0 overflow-x-auto p-4 sm:p-6">
-      <div id="kanbanBoard" class="flex gap-4 h-full min-h-[calc(100vh-3.5rem-2rem)]" style="min-width: 700px;">
+      <div id="kanbanBoard" class="flex gap-4 h-full min-h-[calc(100vh-3.5rem-2rem)] max-md:min-w-[700px]">
 
         <!-- TO DO Column -->
         <div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-0" data-status="todo">
