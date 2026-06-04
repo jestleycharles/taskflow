@@ -5,8 +5,15 @@
 const WAKE_RETRY_DELAYS_MS = [2000, 4000, 8000];
 
 function isServiceWaking(status, bodyText) {
-  if ([502, 503, 504].includes(status)) return true;
-  return status === 404 && bodyText.trim() === 'Not Found';
+  const body = bodyText.trim();
+  if (status === 404 && body === 'Not Found') return true;
+  if ([503, 504].includes(status)) return true;
+  if (status === 502) {
+    if (!body || body === 'Not Found') return true;
+    if (/bad gateway|service is currently unavailable/i.test(body)) return false;
+    return true;
+  }
+  return false;
 }
 
 function parseJsonBody(text) {
