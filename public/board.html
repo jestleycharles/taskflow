@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
   <title>TaskFlow — Board</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -187,6 +187,9 @@
       transition: filter 0.2s ease, opacity 0.2s ease;
     }
     :root { --nav-h: 3.5rem; }
+    html {
+      touch-action: manipulation;
+    }
     #boardMainRow {
       flex: 1 1 0;
       min-height: 0;
@@ -4678,10 +4681,18 @@
       setBoardZoom(parsed);
     }
 
+    function preventBrowserPinchZoom() {
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach((type) => {
+        document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+      });
+    }
+
     function initBoardZoom() {
       const container = document.getElementById('boardContainer');
       const mobileMq = window.matchMedia('(max-width: 767px)');
       if (!container) return;
+
+      preventBrowserPinchZoom();
 
       document.getElementById('boardZoomIn')?.addEventListener('click', () => {
         changeBoardZoom(-BOARD_ZOOM_STEP);
