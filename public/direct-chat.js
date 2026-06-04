@@ -37,8 +37,82 @@
   let dmSettings = { blocked_emails: [], blocked_user_ids: [], ignored_user_ids: [] };
   let blockedEmailStartTarget = null;
   let headerAvatarMenuOpen = false;
-  let showConfirm = (opts) => { if (window.confirm(opts.message)) opts.onConfirm?.(); };
-  let showAlert = (msg) => { window.alert(msg); };
+  let dialogConfirmCallback = null;
+
+  function ensureDialogModals() {
+    if (document.getElementById('tfConfirmModal')) return;
+    const overlayClass = 'modal-overlay absolute inset-0 bg-black/60';
+    const wrap = (id, inner) => {
+      const el = document.createElement('div');
+      el.id = id;
+      el.className = 'hidden fixed inset-0 z-[70] flex items-center justify-center px-4';
+      el.innerHTML = inner;
+      document.body.appendChild(el);
+      return el;
+    };
+    wrap('tfConfirmModal', `
+      <div class="${overlayClass}" data-tf-close-confirm></div>
+      <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+        <h2 id="tfConfirmTitle" class="text-base font-semibold text-white mb-2"></h2>
+        <p id="tfConfirmMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
+        <div class="flex gap-3">
+          <button type="button" data-tf-close-confirm class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
+          <button type="button" id="tfConfirmActionBtn" class="flex-1 text-white font-medium py-2.5 rounded-xl transition text-sm">Confirm</button>
+        </div>
+      </div>`);
+    wrap('tfAlertModal', `
+      <div class="${overlayClass}" data-tf-close-alert></div>
+      <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+        <h2 id="tfAlertTitle" class="text-base font-semibold text-white mb-2">Something went wrong</h2>
+        <p id="tfAlertMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
+        <button type="button" data-tf-close-alert class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+      </div>`);
+    document.querySelectorAll('[data-tf-close-confirm]').forEach((el) => {
+      el.addEventListener('click', closeBuiltinConfirm);
+    });
+    document.getElementById('tfConfirmActionBtn')?.addEventListener('click', runBuiltinConfirm);
+    document.querySelectorAll('[data-tf-close-alert]').forEach((el) => {
+      el.addEventListener('click', closeBuiltinAlert);
+    });
+  }
+
+  function closeBuiltinConfirm() {
+    document.getElementById('tfConfirmModal')?.classList.add('hidden');
+    dialogConfirmCallback = null;
+  }
+
+  function runBuiltinConfirm() {
+    const cb = dialogConfirmCallback;
+    closeBuiltinConfirm();
+    if (cb) cb();
+  }
+
+  function closeBuiltinAlert() {
+    document.getElementById('tfAlertModal')?.classList.add('hidden');
+  }
+
+  function builtinShowConfirm({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm }) {
+    ensureDialogModals();
+    document.getElementById('tfConfirmTitle').textContent = title;
+    document.getElementById('tfConfirmMessage').textContent = message;
+    const btn = document.getElementById('tfConfirmActionBtn');
+    btn.textContent = confirmLabel;
+    btn.className = danger
+      ? 'flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-xl transition text-sm'
+      : 'flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm';
+    dialogConfirmCallback = onConfirm;
+    document.getElementById('tfConfirmModal').classList.remove('hidden');
+  }
+
+  function builtinShowAlert(message, title = 'Something went wrong') {
+    ensureDialogModals();
+    document.getElementById('tfAlertTitle').textContent = title;
+    document.getElementById('tfAlertMessage').textContent = message;
+    document.getElementById('tfAlertModal').classList.remove('hidden');
+  }
+
+  let showConfirm = builtinShowConfirm;
+  let showAlert = builtinShowAlert;
   const dmReadByConv = new Map();
   let dmBatch = null;
   let dmSearchOpen = false;

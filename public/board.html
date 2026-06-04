@@ -2405,10 +2405,27 @@
       }
     }
 
-    async function deleteTask() {
-      if (!activeTaskId || !confirm('Delete this task?')) return;
-      await apiFetch(`/api/tasks/${activeTaskId}`, { method: 'DELETE' });
-      tasks = tasks.filter(t => t.id !== activeTaskId);
+    function deleteTask() {
+      if (!activeTaskId) return;
+      showConfirm({
+        title: 'Delete task',
+        message: 'Delete this task? This cannot be undone.',
+        confirmLabel: 'Delete',
+        danger: true,
+        onConfirm: () => executeDeleteTask(),
+      });
+    }
+
+    async function executeDeleteTask() {
+      const taskId = activeTaskId;
+      if (!taskId) return;
+      const r = await apiFetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+      const d = await parseJsonResponse(r);
+      if (!r.ok) {
+        showAlert(d.error || 'Failed to delete task');
+        return;
+      }
+      tasks = tasks.filter(t => t.id !== taskId);
       closeTaskModal();
       renderBoard();
     }
