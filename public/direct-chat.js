@@ -106,12 +106,25 @@
     return conv.other_user?.email || '';
   }
 
+  function formatDmBodyHtml(content) {
+    const text = global.MessageFormat
+      ? global.MessageFormat.applyTextEmojis(String(content ?? ''))
+      : String(content ?? '');
+    return escHtml(text).replace(/\n/g, '<br>');
+  }
+
+  function prepareOutgoingDmMessage(content) {
+    const trimmed = String(content || '').trim();
+    return global.MessageFormat ? global.MessageFormat.applyTextEmojis(trimmed) : trimmed;
+  }
+
   function previewText(conv) {
     const lm = conv.last_message;
     if (!lm) return 'No messages yet';
     if (lm.deleted) return 'Message deleted';
     const prefix = lm.is_mine ? 'You: ' : '';
-    const text = (lm.content || '').replace(/\s+/g, ' ').trim();
+    const raw = lm.content || '';
+    const text = (global.MessageFormat ? global.MessageFormat.applyTextEmojis(raw) : raw).replace(/\s+/g, ' ').trim();
     const clipped = text.length > 60 ? `${text.slice(0, 60)}…` : text;
     return prefix + clipped;
   }
@@ -748,10 +761,10 @@
     const bodyHtml = msg.edited_at
       ? `<div class="chat-msg-edited-card rounded-lg bg-ink-700/40 border border-white/5 px-3 py-2">
           ${editedLabel}
-          <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(displayContent)}</p>
+          <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatDmBodyHtml(displayContent)}</p>
           ${versionToggle}
         </div>`
-      : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(displayContent)}</p>`;
+      : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatDmBodyHtml(displayContent)}</p>`;
 
     const versionActiveClass = showingOriginal ? ' chat-msg-version-active' : '';
     return `<div class="group flex items-start gap-3${versionActiveClass}" data-dm-msg-id="${msg.id}">
@@ -835,7 +848,7 @@
 
   async function submitDmMessage() {
     const input = $('dmChatInput');
-    const content = input?.value.trim();
+    const content = prepareOutgoingDmMessage(input?.value);
     if (!content || !activeConversationId) return;
     const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages`, {
       method: 'POST',
@@ -871,7 +884,7 @@
 
   async function saveEditDm(messageId) {
     const textarea = document.getElementById(`dmEditInput-${messageId}`);
-    const content = textarea?.value.trim();
+    const content = prepareOutgoingDmMessage(textarea?.value);
     if (!content || !activeConversationId) return;
     const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages/${messageId}`, {
       method: 'PATCH',

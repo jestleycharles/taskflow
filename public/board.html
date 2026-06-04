@@ -187,6 +187,33 @@
     #reactionFloatLayer {
       z-index: 200;
     }
+    #mentionFloatLayer {
+      z-index: 205;
+    }
+    .msg-mentioned-you {
+      background: rgba(79, 110, 247, 0.12);
+      border-radius: 0.75rem;
+      margin: -0.125rem -0.375rem;
+      padding: 0.125rem 0.375rem;
+    }
+    .mention-user {
+      color: #93b4ff;
+      font-weight: 500;
+    }
+    .mention-role {
+      font-weight: 600;
+      cursor: default;
+      text-decoration: underline;
+      text-decoration-color: currentColor;
+      text-underline-offset: 2px;
+    }
+    .mention-autocomplete-item-active {
+      background: rgba(79, 110, 247, 0.18);
+    }
+    .mention-role-popover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+    }
     #taskModalTabs {
       position: relative;
       z-index: 1;
@@ -795,8 +822,11 @@
   </div>
 
   <div id="reactionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
+  <div id="mentionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
 
   <script src="/avatar-utils.js"></script>
+  <script src="/message-format.js"></script>
+  <script src="/mention-autocomplete.js"></script>
   <script src="/api.js"></script>
   <script>
     const teamId = window.location.pathname.split('/').pop();
@@ -915,6 +945,92 @@
       const style = color ? ` style="color:${escHtml(color)}"` : '';
       const cls = ['font-medium', extraClass].filter(Boolean).join(' ');
       return `<span class="${cls}"${style}>${crown}${escHtml(user.username)}</span>`;
+    }
+
+    function formatMessageBodyHtml(content) {
+      return MessageFormat.formatMessageContentHtml(content, teamData, escHtml);
+    }
+
+    function messageMentionsCurrentUser(content) {
+      return MessageFormat.messageMentionsUserId(content, currentUser?.id, teamData);
+    }
+
+    function prepareOutgoingMessage(content) {
+      return MessageFormat.applyTextEmojis(String(content || '').trim());
+    }
+
+    let openMentionRolePopover = null;
+    let mentionRolePress = null;
+    const MENTION_ROLE_LONG_PRESS_MS = 450;
+
+    function getMentionRoleMembers(el) {
+      const ids = (el.dataset.mentionMembers || '').split(',').filter(Boolean);
+      return (teamData?.members || []).filter((m) => ids.some((id) => String(id) === String(m.id)));
+    }
+
+    function closeMentionRolePopover() {
+      openMentionRolePopover = null;
+      const layer = document.getElementById('mentionFloatLayer');
+      if (layer) layer.innerHTML = '';
+    }
+
+    function positionMentionFloat(floatEl, anchorEl) {
+      if (!anchorEl) return;
+      const layer = document.getElementById('mentionFloatLayer');
+      floatEl.style.position = 'fixed';
+      floatEl.style.visibility = 'hidden';
+      floatEl.style.left = '0';
+      floatEl.style.top = '0';
+      layer.appendChild(floatEl);
+      const anchor = anchorEl.getBoundingClientRect();
+      const fh = floatEl.offsetHeight;
+      const fw = floatEl.offsetWidth;
+      let top = anchor.bottom + 6;
+      let left = anchor.left;
+      if (top + fh > window.innerHeight - 8) top = Math.max(8, anchor.top - fh - 6);
+      if (left + fw > window.innerWidth - 8) left = window.innerWidth - fw - 8;
+      if (left < 8) left = 8;
+      floatEl.style.top = `${top}px`;
+      floatEl.style.left = `${left}px`;
+      floatEl.style.visibility = 'visible';
+    }
+
+    function showMentionRolePopover(anchorEl) {
+      const members = getMentionRoleMembers(anchorEl);
+      const roleName = anchorEl.textContent.replace(/^@/, '').trim();
+      openMentionRolePopover = { anchor: anchorEl };
+      const layer = document.getElementById('mentionFloatLayer');
+      layer.innerHTML = '';
+      const pop = document.createElement('div');
+      pop.className = 'mention-role-popover rounded-xl bg-ink-700 border border-white/15 p-3 min-w-[10rem] max-w-[16rem] max-h-48 overflow-y-auto';
+      pop.onclick = (e) => e.stopPropagation();
+      pop.innerHTML = members.length
+        ? `<p class="text-xs font-medium text-white mb-2">@${escHtml(roleName)} · ${members.length}</p>
+           <ul class="space-y-2">${members.map((m) => `
+             <li class="flex items-center gap-2">
+               ${userAvatarHtml(m, 'w-6 h-6')}
+               <span class="text-sm truncate">${memberNameHtml(m, m.id, 'text-sm')}</span>
+             </li>`).join('')}</ul>`
+        : `<p class="text-xs text-gray-400">@${escHtml(roleName)} — no members</p>`;
+      positionMentionFloat(pop, anchorEl);
+    }
+
+    function clearMentionRolePress() {
+      if (mentionRolePress?.timer) clearTimeout(mentionRolePress.timer);
+      mentionRolePress = null;
+    }
+
+    function initMentionComposers() {
+      if (isGuest()) return;
+      const ctx = () => teamData;
+      MentionAutocomplete.attach(document.getElementById('chatInput'), ctx);
+      MentionAutocomplete.attach(document.getElementById('commentInput'), ctx);
+    }
+
+    function attachMentionAutocompleteToEditTextarea(textarea) {
+      if (!textarea || textarea.dataset.mentionAttached || isGuest()) return;
+      textarea.dataset.mentionAttached = '1';
+      MentionAutocomplete.attach(textarea, () => teamData);
     }
 
     function memberRoleLabelHtml(member) {
@@ -1364,6 +1480,7 @@
       fetchOnlineMembers();
       updateMemberStatsDisplay();
       captureTeamRoleStateSig();
+      initMentionComposers();
     }
 
     function updateMemberStatsDisplay() {
@@ -1844,14 +1961,16 @@
           <span class="text-gray-600 ml-1.5">${timeAgo(c.created_at)}</span>
         </div>`;
       }
-      return `<div class="flex gap-3" data-comment-id="${c.id}">
+      const mentionedYou = messageMentionsCurrentUser(c.content);
+      const mentionRowClass = mentionedYou ? ' msg-mentioned-you' : '';
+      return `<div class="flex gap-3${mentionRowClass}" data-comment-id="${c.id}">
           ${userAvatarHtml(c.user, 'w-7 h-7')}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-xs font-medium">${memberNameHtml(c.user, c.user_id, 'text-xs')}</span>
               <span class="text-xs text-gray-600">${timeAgo(c.created_at)}</span>
             </div>
-            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(c.content)}</p>
+            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(c.content)}</p>
             ${renderReactionsBar('comment', c.id, c.reactions || [])}
           </div>
         </div>`;
@@ -1986,7 +2105,7 @@
 
     async function submitComment() {
       const input = document.getElementById('commentInput');
-      const content = input.value.trim();
+      const content = prepareOutgoingMessage(input.value);
       if (!content || !activeTaskId) return;
       const r = await apiFetch(`/api/tasks/${activeTaskId}/comments`, {
         method: 'POST', headers: {'Content-Type':'application/json'},
@@ -2190,13 +2309,15 @@
       const bodyHtml = msg.edited_at
         ? `<div class="chat-msg-edited-card rounded-lg bg-ink-700/40 border border-white/5 px-3 py-2">
             ${editedLabel}
-            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(displayContent)}</p>
+            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(displayContent)}</p>
             ${versionToggle}
           </div>`
-        : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${escHtml(displayContent)}</p>`;
+        : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(displayContent)}</p>`;
 
+      const mentionedYou = messageMentionsCurrentUser(displayContent);
+      const mentionRowClass = mentionedYou ? ' msg-mentioned-you' : '';
       const versionActiveClass = showingOriginal ? ' chat-msg-version-active' : '';
-      return `<div class="group flex items-start gap-3${versionActiveClass}" data-chat-msg-id="${msg.id}">
+      return `<div class="group flex items-start gap-3${versionActiveClass}${mentionRowClass}" data-chat-msg-id="${msg.id}">
           ${chatMessageAvatarHtml(user, msg.user_id)}
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-2 mb-1">
@@ -2454,6 +2575,7 @@
         const ta = document.getElementById(`chatEditInput-${editingChatId}`);
         if (ta) {
           ta.value = chatEditDraft;
+          attachMentionAutocompleteToEditTextarea(ta);
           ta.focus();
           const len = ta.value.length;
           ta.setSelectionRange(len, len);
@@ -2498,7 +2620,7 @@
     async function submitChatMessage() {
       if (isGuest()) return;
       const input = document.getElementById('chatInput');
-      const content = input.value.trim();
+      const content = prepareOutgoingMessage(input.value);
       if (!content) return;
       const r = await apiFetch(`/api/teams/${teamId}/chat`, {
         method: 'POST',
@@ -2534,7 +2656,7 @@
 
     async function saveEditChatMessage(messageId) {
       const textarea = document.getElementById(`chatEditInput-${messageId}`);
-      const content = textarea?.value.trim();
+      const content = prepareOutgoingMessage(textarea?.value);
       if (!content) return;
       const r = await apiFetch(`/api/teams/${teamId}/chat/${messageId}`, {
         method: 'PATCH',
@@ -3049,12 +3171,13 @@
     }
 
     document.getElementById('commentInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') submitComment();
+      if (e.key === 'Enter' && !e.defaultPrevented) submitComment();
     });
 
     document.addEventListener('click', (e) => {
       if (e.target.closest('#reactionFloatLayer') || e.target.closest('[data-reaction-add]') || e.target.closest('[data-reaction-pill]')) return;
       if (openReactionPicker || openReactorsPopover) closeReactionFloats();
+      if (!e.target.closest('.mention-role') && !e.target.closest('#mentionFloatLayer')) closeMentionRolePopover();
     });
 
     document.addEventListener('pointerdown', onReactionPillPointerDown);
@@ -3066,7 +3189,7 @@
     });
 
     document.getElementById('chatInput')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.defaultPrevented) {
         e.preventDefault();
         submitChatMessage();
       }
@@ -3074,7 +3197,67 @@
 
     document.getElementById('chatMessagesList')?.addEventListener('scroll', () => {
       if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
+      if (openMentionRolePopover) closeMentionRolePopover();
     }, { passive: true });
+
+    function onMentionRolePointerDown(e) {
+      const el = e.target.closest('.mention-role');
+      if (!el || e.button !== 0) return;
+      clearMentionRolePress();
+      mentionRolePress = {
+        el,
+        startX: e.clientX,
+        startY: e.clientY,
+        longFired: false,
+        timer: setTimeout(() => {
+          if (!mentionRolePress || mentionRolePress.el !== el) return;
+          mentionRolePress.longFired = true;
+          showMentionRolePopover(el);
+        }, MENTION_ROLE_LONG_PRESS_MS),
+      };
+    }
+
+    function onMentionRolePointerMove(e) {
+      if (!mentionRolePress) return;
+      const moved = Math.hypot(e.clientX - mentionRolePress.startX, e.clientY - mentionRolePress.startY);
+      if (moved > 12) clearMentionRolePress();
+    }
+
+    function onMentionRolePointerUp(e) {
+      const el = e.target.closest('.mention-role');
+      if (!mentionRolePress || !el || mentionRolePress.el !== el) {
+        clearMentionRolePress();
+        return;
+      }
+      clearTimeout(mentionRolePress.timer);
+      const wasLong = mentionRolePress.longFired;
+      clearMentionRolePress();
+      if (wasLong) {
+        e.preventDefault();
+        return;
+      }
+    }
+
+    document.addEventListener('pointerdown', onMentionRolePointerDown);
+    document.addEventListener('pointermove', onMentionRolePointerMove);
+    document.addEventListener('pointerup', onMentionRolePointerUp);
+    document.addEventListener('pointercancel', clearMentionRolePress);
+
+    document.addEventListener('mouseover', (e) => {
+      if (!(e.target instanceof Element)) return;
+      const el = e.target.closest('.mention-role');
+      if (!el) return;
+      showMentionRolePopover(el);
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      if (!(e.target instanceof Element)) return;
+      const from = e.target.closest('.mention-role');
+      const to = e.relatedTarget instanceof Element
+        ? e.relatedTarget.closest('.mention-role, #mentionFloatLayer')
+        : null;
+      if (from && !to) closeMentionRolePopover();
+    });
 
     document.getElementById('settingsMemberList').addEventListener('click', (e) => {
       const btn = e.target.closest('.remove-member-btn');
