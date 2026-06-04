@@ -32,7 +32,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Full task editing** — Edit task title and description and delete tasks (guests have limited task editing in the UI).
 - **Team invites by email** — Receive invitations at your email and accept or decline them on the dashboard.
 - **Team avatar upload** — Upload a custom team image when you own the team (guests can only use presets).
-- **Invite teammates from the board** — Send email invitations when you are owner/admin and the team owner is registered.
+- **Invite teammates from the board** — Send email invitations when you are owner and the team owner is registered.
 - **OAuth sign-in** — Sign in with Google or GitHub in addition to email and password.
 - **Manage your own messages** — Edit or delete messages you sent in team chat and direct messages.
 
@@ -142,7 +142,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Activity panel** — View team activity feed.
 - **Member list** — See owners, custom roles, and online status.
 
-### Registered users — team **member**, **admin**, or **owner**
+### Registered users — team **member** or **owner**
 
 - **Everything guests have**, plus:
 - **Edit task title & description** — Inline edit with “view original” when edited.
@@ -154,13 +154,10 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Chat search & pagination** — Search and batch navigation in team chat.
 - **Spam protection** — Per-thread cooldown, duplicate detection, and similar-message guards on send.
 
-### Team **owner** / **admin** (registered)
+### Team **owner** (registered)
 
 - **Invite panel on board** — Email invite UI (disabled if team owner is guest).
-
-### Team **owner** only (registered or guest)
-
-- **Team settings panel** — Edit team info, avatar, custom roles, member roles, and remove members.
+- **Team settings panel** — Edit team info, avatar (disabled if team owner is guest), custom roles, member roles, and remove members.
 
 ---
 
@@ -185,7 +182,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Message send guard** — Cooldown, duplicate, near-duplicate, and burst detection for chat, DMs, and comments.
 - **Feedback honeypot** — Hidden field bot trap on feedback form.
 - **Guest feedback limits** — Per-session hourly/daily caps and cooldown (server-side).
-- **Turnstile (optional)** — Cloudflare captcha for guest feedback when keys are configured.
+- **Turnstile** — Cloudflare captcha for guest feedback when keys are configured.
 - **Session security** — HTTP-only cookies, `trust proxy` for TLS behind Render, `sameSite: lax`.
 
 ---

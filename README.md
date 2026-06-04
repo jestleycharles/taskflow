@@ -42,7 +42,7 @@ Please keep the license file with any distribution and document your own changes
 High-level overview:
 
 - Guest or registered sign-in (email/password, Google, GitHub)
-- Teams with owner, admin, and member roles; custom display roles
+- Teams with owner and member roles; custom display roles
 - Kanban board (To Do / Doing / Done) with drag-and-drop and 5s polling sync
 - Tasks with priority, due dates, assignees, comments, reactions, and @mentions
 - Team chat (read-only for guests) and direct messages (registered users)
@@ -159,7 +159,7 @@ The **`public/`** folder is the web client. Express serves it as static files an
 2. From the **Dashboard**, create a **New Team** and open its board.
 3. Add tasks with column **+** buttons; **drag and drop** between columns.
 4. **Click a task** to edit details, comments, and reactions (registered users get full edit/delete).
-5. Open **Team** on the board to invite members (registered owner/admin; not for guest-owned teams).
+5. Open **Team** on the board to invite members (registered owner; not for guest-owned teams).
 6. Use **Activity** for the team feed and the **chat** button for team-wide messages.
 7. Registered users: **Direct messages** from the dashboard FAB and **profile** from the header.
 
