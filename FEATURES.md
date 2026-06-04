@@ -110,11 +110,6 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Email invites** — Invite registered users by email; pending invites appear until accepted.
 - **Cancel pending invites** — Remove a pending invitation.
 
-### Registered users — as team **admin**
-
-- **Invite by email** — Same as owner when team owner is registered (not guest-owned).
-- **No settings access** — Cannot edit team name/description, avatars, custom roles, remove members, or delete team.
-
 ### Registered users — as team **member**
 
 - **Join via invite** — Accept invite from dashboard; decline to dismiss.
