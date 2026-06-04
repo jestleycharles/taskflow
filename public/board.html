@@ -634,22 +634,31 @@
       <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
         <p class="text-xs text-gray-400 mb-3 shrink-0">Team members</p>
         <div id="settingsMemberList" class="flex-1 overflow-y-auto space-y-2 min-h-0 mb-4"></div>
-        <div id="transferOwnershipSection" class="hidden border-t border-white/10 pt-4 shrink-0 mb-4">
-          <p class="text-xs text-gray-400 mb-2">Transfer ownership</p>
-          <p class="text-xs text-gray-500 mb-3 leading-relaxed">Make another registered member the owner. You will become a regular member and keep access to this board.</p>
-          <select id="transferOwnershipSelect" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2 text-white text-sm mb-2 focus:outline-none focus:border-brand-500 transition">
-            <option value="">Select a member…</option>
-          </select>
-          <button type="button" id="transferOwnershipBtn" onclick="confirmTransferOwnership()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium disabled:opacity-50 disabled:pointer-events-none">
-            Transfer ownership
+        <div id="settingsDangerZone" class="border-t border-white/10 pt-4 shrink-0">
+          <button type="button" id="dangerZoneToggleBtn" onclick="toggleSettingsDangerZone()" aria-expanded="false" aria-controls="dangerZoneContent"
+            class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+            Danger zone
+            <svg id="dangerZoneChevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
           </button>
-        </div>
-        <div class="border-t border-white/10 pt-4 shrink-0">
-          <p class="text-xs text-gray-400 mb-3">Danger zone</p>
-          <p class="text-xs text-gray-500 mb-3 leading-relaxed">Permanently delete this team, all tasks, comments, chat, and activity. This cannot be undone.</p>
-          <button onclick="deleteTeam()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium">
-            Delete Team
-          </button>
+          <div id="dangerZoneContent" class="hidden mt-3 space-y-4 rounded-xl border border-red-500/25 bg-red-500/5 p-3">
+            <div id="transferOwnershipSection" class="hidden space-y-2">
+              <p class="text-xs text-red-400/90 font-medium">Transfer ownership</p>
+              <p class="text-xs text-gray-500 leading-relaxed">Make another registered member the owner. You will become a regular member and keep access to this board.</p>
+              <select id="transferOwnershipSelect" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500/50 transition">
+                <option value="">Select a member…</option>
+              </select>
+              <button type="button" id="transferOwnershipBtn" onclick="confirmTransferOwnership()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium disabled:opacity-50 disabled:pointer-events-none">
+                Transfer ownership
+              </button>
+            </div>
+            <div id="dangerZoneDeleteBlock" class="space-y-2">
+              <p class="text-xs text-red-400/90 font-medium">Delete team</p>
+              <p class="text-xs text-gray-500 leading-relaxed">Permanently delete this team, all tasks, comments, chat, and activity. This cannot be undone.</p>
+              <button type="button" onclick="deleteTeam()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium">
+                Delete team
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -4027,6 +4036,23 @@
     function closeSettingsPanel() {
       document.getElementById('settingsPanel').classList.add('hidden');
       setSidePanelMobileOpen(false);
+      setSettingsDangerZoneOpen(false);
+    }
+
+    function setSettingsDangerZoneOpen(open) {
+      const content = document.getElementById('dangerZoneContent');
+      const btn = document.getElementById('dangerZoneToggleBtn');
+      const chevron = document.getElementById('dangerZoneChevron');
+      if (!content || !btn) return;
+      content.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      chevron?.classList.toggle('rotate-180', open);
+    }
+
+    function toggleSettingsDangerZone() {
+      const content = document.getElementById('dangerZoneContent');
+      if (!content) return;
+      setSettingsDangerZoneOpen(content.classList.contains('hidden'));
     }
 
     function applyTeamHeader() {
@@ -4281,6 +4307,9 @@
       const showTransfer =
         !isGuest() && teamData?.userRole === 'owner' && candidates.length > 0;
       transferSection?.classList.toggle('hidden', !showTransfer);
+      const deleteBlock = document.getElementById('dangerZoneDeleteBlock');
+      deleteBlock?.classList.toggle('border-t', showTransfer);
+      deleteBlock?.classList.toggle('pt-4', showTransfer);
       const select = document.getElementById('transferOwnershipSelect');
       if (select && showTransfer) {
         select.innerHTML =
