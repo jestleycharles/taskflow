@@ -31,6 +31,24 @@ async function assertTeamMember(teamId, userId) {
   return !!data;
 }
 
+async function loadTeamPendingInvites(teamId) {
+  const { data, error } = await supabaseAdmin
+    .from('team_invites')
+    .select('id, user_id, invited_by, created_at, users(id, username, email, avatar_color, avatar_url)')
+    .eq('team_id', teamId);
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.users?.id || row.user_id,
+    invite_id: row.id,
+    username: row.users?.username,
+    email: row.users?.email,
+    avatar_color: row.users?.avatar_color,
+    avatar_url: row.users?.avatar_url,
+    invited_by: row.invited_by,
+    pending: true,
+  }));
+}
+
 async function assertTeamOwner(teamId, userId) {
   const { data } = await supabaseAdmin
     .from('team_members')
@@ -420,9 +438,17 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
   const memberIds = memberList.map((m) => m.id);
   ping(userId, id);
 
+  let pending_invites = [];
+  try {
+    pending_invites = await loadTeamPendingInvites(id);
+  } catch (invErr) {
+    return sendError(res, 500, invErr, 'load');
+  }
+
   res.json({
     ...team,
     members: memberList,
+    pending_invites,
     roles,
     separate_role_members: !!team.separate_role_members,
     userRole: membership.role,
@@ -431,7 +457,73 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
   });
 });
 
-// POST /api/teams/:id/invite - invite by email
+// GET /api/team-invites — pending invites for the current user
+router.get('/api/team-invites', requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+
+  const { data, error } = await supabaseAdmin
+    .from('team_invites')
+    .select('id, team_id, created_at, teams(id, name, description, avatar_color, avatar_url)')
+    .eq('user_id', userId);
+
+  if (error) return sendError(res, 500, error, 'load');
+
+  const invites = (data || []).map((row) => ({
+    id: row.id,
+    team_id: row.team_id,
+    team: row.teams,
+  }));
+  res.json(invites);
+});
+
+// POST /api/team-invites/:id/accept — accept a pending invite
+router.post('/api/team-invites/:id/accept', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: invite, error: fetchErr } = await supabaseAdmin
+    .from('team_invites')
+    .select('id, team_id, user_id, teams(name)')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchErr || !invite) return res.status(404).json({ error: 'Invite not found' });
+
+  const { error: memberErr } = await supabaseAdmin
+    .from('team_members')
+    .insert({ team_id: invite.team_id, user_id: userId, role: 'member' });
+
+  if (memberErr) return sendError(res, 400, memberErr, 'save');
+
+  await supabaseAdmin.from('team_invites').delete().eq('id', id);
+
+  const username = req.session.user.username || 'A user';
+  await logActivity(invite.team_id, userId, 'member_joined', `${username} joined the team`);
+  res.json({ success: true, team_id: invite.team_id });
+});
+
+// POST /api/team-invites/:id/decline — reject a pending invite
+router.post('/api/team-invites/:id/decline', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: invite } = await supabaseAdmin
+    .from('team_invites')
+    .select('id, team_id')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!invite) return res.status(404).json({ error: 'Invite not found' });
+
+  const { error } = await supabaseAdmin.from('team_invites').delete().eq('id', id);
+  if (error) return sendError(res, 500, error, 'load');
+
+  res.json({ success: true });
+});
+
+// POST /api/teams/:id/invite - invite by email (creates pending invite)
 router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { email } = req.body;
@@ -442,17 +534,76 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
   if (!membership || !['owner','admin'].includes(membership.role))
     return res.status(403).json({ error: 'Only owners/admins can invite' });
 
-  const { data: invitee } = await supabaseAdmin.from('users').select('id, username').eq('email', email).single();
+  const trimmedEmail = String(email || '').trim().toLowerCase();
+  if (!trimmedEmail) return res.status(400).json({ error: 'Email is required' });
+
+  const { data: invitee } = await supabaseAdmin
+    .from('users')
+    .select('id, username, email, avatar_color, avatar_url')
+    .eq('email', trimmedEmail)
+    .single();
   if (!invitee) return res.status(404).json({ error: 'User not found' });
 
-  const { error } = await supabaseAdmin
+  if (invitee.id === userId) return res.status(400).json({ error: 'You cannot invite yourself' });
+
+  const { data: existingMember } = await supabaseAdmin
     .from('team_members')
-    .insert({ team_id: id, user_id: invitee.id, role: 'member' });
+    .select('user_id')
+    .eq('team_id', id)
+    .eq('user_id', invitee.id)
+    .single();
+  if (existingMember) return res.status(400).json({ error: 'User is already a member' });
 
-  if (error) return res.status(400).json({ error: 'User already in team' });
+  const { data: existingInvite } = await supabaseAdmin
+    .from('team_invites')
+    .select('id')
+    .eq('team_id', id)
+    .eq('user_id', invitee.id)
+    .single();
+  if (existingInvite) return res.status(400).json({ error: 'Invitation already sent' });
 
-  await logActivity(id, userId, 'member_invited', `Invited ${invitee.username} to the team`);
-  res.json({ success: true, user: invitee });
+  const { data: invite, error } = await supabaseAdmin
+    .from('team_invites')
+    .insert({ team_id: id, user_id: invitee.id, invited_by: userId })
+    .select('id')
+    .single();
+
+  if (error) return sendError(res, 400, error, 'save');
+
+  await logActivity(id, userId, 'member_invited', `Invited ${invitee.username} to the team (pending)`);
+  res.json({ success: true, user: invitee, invite_id: invite.id, pending: true });
+});
+
+// DELETE /api/teams/:id/invites/:uid — cancel a pending invite (owner only)
+router.delete('/api/teams/:id/invites/:uid', requireAuth, async (req, res) => {
+  const { id, uid } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
+  if (!membership || membership.role !== 'owner')
+    return res.status(403).json({ error: 'Only the team owner can cancel invites' });
+
+  const { data: invite } = await supabaseAdmin
+    .from('team_invites')
+    .select('id, users(username)')
+    .eq('team_id', id)
+    .eq('user_id', uid)
+    .single();
+
+  if (!invite) return res.status(404).json({ error: 'Pending invite not found' });
+
+  const { error } = await supabaseAdmin
+    .from('team_invites')
+    .delete()
+    .eq('team_id', id)
+    .eq('user_id', uid);
+
+  if (error) return sendError(res, 500, error, 'load');
+
+  const username = invite.users?.username || 'A user';
+  await logActivity(id, userId, 'invite_cancelled', `Cancelled invite for ${username}`);
+  res.json({ success: true });
 });
 
 // PATCH /api/teams/:id/role-display — separate members by role (owner only)
@@ -714,6 +865,7 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
   await supabaseAdmin.from('activity_log').delete().eq('team_id', id);
   await supabaseAdmin.from('team_chat_messages').delete().eq('team_id', id);
   await supabaseAdmin.from('team_roles').delete().eq('team_id', id);
+  await supabaseAdmin.from('team_invites').delete().eq('team_id', id);
   await supabaseAdmin.from('team_members').delete().eq('team_id', id);
 
   if (isStorageTeamAvatarUrl(team.avatar_url)) {

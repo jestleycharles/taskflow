@@ -1108,7 +1108,7 @@
     }
 
     function sortMembersForDisplay(members) {
-      const list = [...(members || [])];
+      const list = [...(members || [])].filter((m) => !m.pending);
       const owners = list.filter((m) => m.role === 'owner');
       const rest = list.filter((m) => m.role !== 'owner');
       const roles = teamData?.roles || [];
@@ -1117,51 +1117,67 @@
         ordered.push(...rest.filter((m) => m.custom_role_id === role.id));
       }
       ordered.push(...rest.filter((m) => !m.custom_role_id));
-      return ordered;
+      const pending = (members || []).filter((m) => m.pending);
+      return [...ordered, ...pending];
     }
 
     function buildMemberDisplaySections(members) {
       const list = members || [];
+      const pending = list.filter((m) => m.pending);
+      const active = list.filter((m) => !m.pending);
       if (!teamData?.separate_role_members) {
-        return [{ title: null, titleColor: null, members: sortMembersForDisplay(list) }];
+        const sections = [{ title: null, titleColor: null, members: sortMembersForDisplay(active) }];
+        if (pending.length) sections.push({ title: 'Pending', titleColor: '#f59e0b', members: pending });
+        return sections;
       }
       const sections = [];
-      const owners = list.filter((m) => m.role === 'owner');
+      const owners = active.filter((m) => m.role === 'owner');
       if (owners.length) sections.push({ title: 'Owner', titleColor: '#f59e0b', members: owners });
       for (const role of teamData.roles || []) {
-        const ms = list.filter((m) => m.custom_role_id === role.id);
+        const ms = active.filter((m) => m.custom_role_id === role.id);
         if (ms.length) sections.push({ title: role.name, titleColor: role.color_hex, members: ms });
       }
-      const unassigned = list.filter((m) => m.role !== 'owner' && !m.custom_role_id);
+      const unassigned = active.filter((m) => m.role !== 'owner' && !m.custom_role_id);
       if (unassigned.length) sections.push({ title: 'Members', titleColor: '#9ca3af', members: unassigned });
+      if (pending.length) sections.push({ title: 'Pending', titleColor: '#f59e0b', members: pending });
       return sections;
     }
 
     function memberRowHtml(m, options = {}) {
       const { showAssign = false, showRemove = false, showPermissionRole = true } = options;
-      const assignBlock = showAssign && (teamData?.roles?.length || 0) > 0 && m.role !== 'owner'
+      const isPending = !!m.pending;
+      const assignBlock = showAssign && !isPending && (teamData?.roles?.length || 0) > 0 && m.role !== 'owner'
         ? `<select class="assign-role-select mt-1 w-full bg-ink-700 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-brand-500" data-user-id="${m.id}">
             <option value="">No role</option>
             ${(teamData.roles || []).map((r) => `<option value="${r.id}" ${m.custom_role_id === r.id ? 'selected' : ''}>${escHtml(r.name)}</option>`).join('')}
           </select>`
         : '';
-      const permBadge = showPermissionRole && !m.custom_role && m.role !== 'owner'
-        ? `<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-400">${m.role}</span>`
-        : showPermissionRole && m.role === 'owner'
-          ? ''
+      const permBadge = isPending
+        ? `<span class="text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 bg-amber-500/10 shrink-0">pending</span>`
+        : showPermissionRole && !m.custom_role && m.role !== 'owner'
+          ? `<span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-400">${m.role}</span>`
+          : showPermissionRole && m.role === 'owner'
+            ? ''
+            : '';
+      const removeBtn = showRemove && !isPending && m.role !== 'owner'
+        ? `<button type="button" class="remove-member-btn text-gray-500 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10" data-user-id="${m.id}" data-username="${escHtml(m.username)}" title="Remove member">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>`
+        : showRemove && isPending
+          ? `<button type="button" class="cancel-invite-btn text-gray-500 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10" data-user-id="${m.id}" data-username="${escHtml(m.username)}" title="Cancel invite">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>`
           : '';
-      return `<div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5">
+      return `<div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 ${isPending ? 'opacity-80' : ''}">
           ${memberAvatarHtml(m, 'w-8 h-8')}
           <div class="flex-1 min-w-0">
-            ${memberRoleLabelHtml(m)}
+            ${isPending ? '' : memberRoleLabelHtml(m)}
             <p class="text-sm truncate">${memberNameHtml(m)}</p>
             <p class="text-xs text-gray-500 truncate">${escHtml(m.email)}</p>
             ${assignBlock}
           </div>
           ${permBadge}
-          ${showRemove && m.role !== 'owner' ? `<button type="button" class="remove-member-btn text-gray-500 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10" data-user-id="${m.id}" data-username="${escHtml(m.username)}" title="Remove member">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>` : ''}
+          ${removeBtn}
         </div>`;
     }
 
@@ -1180,6 +1196,11 @@
       return teamData?.userRole === 'owner' && (teamData?.roles?.length || 0) > 0;
     }
 
+    function membersWithPending(members) {
+      const pending = (teamData?.pending_invites || []).map((p) => ({ ...p, pending: true }));
+      return [...(members || []), ...pending];
+    }
+
     function teamRoleStateSignature(data) {
       if (!data) return '';
       const roles = (data.roles || [])
@@ -1188,7 +1209,10 @@
       const members = (data.members || [])
         .map((m) => `${m.id}:${m.role}:${m.custom_role_id || ''}`)
         .join('|');
-      return `${data.separate_role_members ? 1 : 0}#${roles}#${members}`;
+      const pending = (data.pending_invites || [])
+        .map((p) => `${p.id}:${p.invite_id || ''}`)
+        .join('|');
+      return `${data.separate_role_members ? 1 : 0}#${roles}#${members}#${pending}`;
     }
 
     let teamRoleStateSig = '';
@@ -1236,6 +1260,7 @@
       teamData.members = data.members;
       teamData.roles = data.roles;
       teamData.separate_role_members = data.separate_role_members;
+      teamData.pending_invites = data.pending_invites || [];
       if (data.member_count != null) teamData.member_count = data.member_count;
       refreshTeamRoleVisuals();
     }
@@ -1530,6 +1555,7 @@
       teamData = await r.json();
       teamData.roles = teamData.roles || [];
       teamData.separate_role_members = !!teamData.separate_role_members;
+      teamData.pending_invites = teamData.pending_invites || [];
       applyTeamHeader();
       renderMemberAvatars(teamData.members);
       renderMemberList(teamData.members);
@@ -1589,7 +1615,7 @@
     }
 
     function renderMemberList(members) {
-      document.getElementById('memberList').innerHTML = renderMemberSectionsHtml(members, {
+      document.getElementById('memberList').innerHTML = renderMemberSectionsHtml(membersWithPending(members), {
         showAssign: canAssignTeamRoles(),
         showRemove: false,
         showPermissionRole: !canAssignTeamRoles(),
@@ -3036,14 +3062,37 @@
 
     function renderSettingsMemberList(members) {
       const assignHint = canAssignTeamRoles()
-        ? '<p class="text-xs text-gray-500 mb-3">Assign a display role to each member (owner cannot be changed).</p>'
+        ? '<p class="text-xs text-gray-500 mb-3">Assign a display role to each member (owner cannot be changed). Pending invites cannot be assigned roles until they accept.</p>'
         : '';
       document.getElementById('settingsMemberList').innerHTML =
-        assignHint + renderMemberSectionsHtml(members, {
+        assignHint + renderMemberSectionsHtml(membersWithPending(members), {
           showAssign: canAssignTeamRoles(),
           showRemove: true,
           showPermissionRole: !canAssignTeamRoles(),
         });
+    }
+
+    function cancelInvite(userId, username) {
+      const name = username || teamData?.pending_invites?.find((p) => String(p.id) === String(userId))?.username;
+      if (!name) return;
+      showConfirm({
+        title: 'Cancel invite',
+        message: `Cancel the invitation for ${name}? They will no longer see this team invite.`,
+        confirmLabel: 'Cancel invite',
+        danger: true,
+        onConfirm: () => executeCancelInvite(userId),
+      });
+    }
+
+    async function executeCancelInvite(userId) {
+      const r = await apiFetch(`/api/teams/${teamId}/invites/${userId}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (!r.ok) {
+        showAlert(d.error || 'Failed to cancel invite');
+        return;
+      }
+      await loadTeam();
+      renderSettingsMemberList(teamData.members);
     }
 
     function removeMember(userId, username) {
@@ -3116,7 +3165,9 @@
       msg.classList.remove('hidden');
       if (d.success) {
         msg.className = 'text-xs mt-2 text-emerald-400';
-        msg.textContent = `✓ ${d.user.username} added to team!`;
+        msg.textContent = d.pending
+          ? `✓ Invitation sent to ${d.user.username}`
+          : `✓ ${d.user.username} added to team!`;
         document.getElementById('inviteEmail').value = '';
         await loadTeam();
       } else {
@@ -3389,6 +3440,11 @@
     });
 
     document.getElementById('settingsMemberList').addEventListener('click', (e) => {
+      const cancelBtn = e.target.closest('.cancel-invite-btn');
+      if (cancelBtn) {
+        cancelInvite(cancelBtn.dataset.userId, cancelBtn.dataset.username);
+        return;
+      }
       const btn = e.target.closest('.remove-member-btn');
       if (!btn) return;
       removeMember(btn.dataset.userId, btn.dataset.username);

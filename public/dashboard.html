@@ -172,6 +172,21 @@
 
   <!-- Main -->
   <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+
+    <!-- Team Invites (shown when user has pending invites) -->
+    <section id="teamInvitesSection" class="hidden fade-up mb-12">
+      <div class="flex items-end justify-between gap-4 mb-6">
+        <div>
+          <div class="flex items-center gap-2.5 mb-1">
+            <h2 class="text-2xl font-bold text-white">Team Invites</h2>
+            <span id="teamInvitesCount" class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30"></span>
+          </div>
+          <p class="text-gray-400 text-sm">You've been invited to join these teams. Accept to get access, or decline to dismiss.</p>
+        </div>
+      </div>
+      <div id="teamInvitesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
     <div class="fade-up flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
       <div>
         <h1 class="text-3xl font-bold text-white mb-1">Your Teams</h1>
@@ -499,6 +514,7 @@
     let createTeamDraft = { presetId: null, avatar_url: null, pendingFile: null };
     let createTeamSaving = false;
     let teamsList = [];
+    let teamInvitesList = [];
     let onlineTeamIds = new Set();
     let teamOnlinePollInterval = null;
     const TEAM_ONLINE_POLL_MS = 4000;
@@ -680,6 +696,84 @@
         DirectChat.init(currentUser, { showConfirm, showAlert });
       }
       loadTeams();
+      loadTeamInvites();
+    }
+
+    async function loadTeamInvites() {
+      const r = await apiFetch('/api/team-invites');
+      if (!r.ok) return;
+      const invites = await parseJsonResponse(r);
+      if (!Array.isArray(invites)) return;
+      teamInvitesList = invites;
+      renderTeamInvitesSection();
+    }
+
+    function renderTeamInvitesSection() {
+      const section = document.getElementById('teamInvitesSection');
+      const grid = document.getElementById('teamInvitesGrid');
+      const countEl = document.getElementById('teamInvitesCount');
+
+      if (!teamInvitesList.length) {
+        section.classList.add('hidden');
+        grid.innerHTML = '';
+        return;
+      }
+
+      section.classList.remove('hidden');
+      countEl.textContent = teamInvitesList.length;
+
+      grid.innerHTML = teamInvitesList.map((invite, i) => {
+        const team = invite.team || {};
+        return `<div class="invite-card bg-ink-800 border border-amber-500/20 rounded-2xl p-5 fade-up" style="animation-delay:${i * 0.07}s">
+          <div class="flex items-start gap-3 mb-4">
+            ${teamAvatarHtml(team, 'w-11 h-11 text-sm')}
+            <div class="flex-1 min-w-0">
+              <h3 class="text-white font-semibold truncate">${escHtml(team.name || 'Team')}</h3>
+              <p class="text-gray-500 text-sm line-clamp-3 mt-1">${escHtml(team.description || 'No description')}</p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="acceptTeamInvite('${invite.id}')"
+              class="flex-1 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium py-2 rounded-xl transition">
+              Accept
+            </button>
+            <button type="button" onclick="declineTeamInvite('${invite.id}')"
+              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-sm font-medium py-2 rounded-xl transition">
+              Decline
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function acceptTeamInvite(inviteId) {
+      const card = document.querySelector(`.invite-card button[onclick="acceptTeamInvite('${inviteId}')"]`)?.closest('.invite-card');
+      if (card) {
+        card.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      }
+      const r = await apiFetch(`/api/team-invites/${inviteId}/accept`, { method: 'POST' });
+      const d = await parseJsonResponse(r);
+      if (!r.ok) {
+        if (card) card.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+        return showAlert(d.error || 'Failed to accept invite');
+      }
+      await loadTeamInvites();
+      showTeamsLoading();
+      await loadTeams();
+    }
+
+    async function declineTeamInvite(inviteId) {
+      const card = document.querySelector(`.invite-card button[onclick="declineTeamInvite('${inviteId}')"]`)?.closest('.invite-card');
+      if (card) {
+        card.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      }
+      const r = await apiFetch(`/api/team-invites/${inviteId}/decline`, { method: 'POST' });
+      const d = await parseJsonResponse(r);
+      if (!r.ok) {
+        if (card) card.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+        return showAlert(d.error || 'Failed to decline invite');
+      }
+      await loadTeamInvites();
     }
 
     function isTeamOnline(teamId) {
