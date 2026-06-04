@@ -524,9 +524,11 @@
 
     <!-- Activity Side Panel -->
     <div id="activityPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
-      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
-        <h2 class="font-semibold text-sm text-white">Activity</h2>
-        <button type="button" onclick="closeActivityPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close activity">
+      <div class="p-4 border-b border-white/10 flex items-center gap-2 shrink-0 bg-ink-800 w-full">
+        <h2 class="font-semibold text-sm text-white shrink-0">Activity</h2>
+        <input type="search" id="activityMessageSearch" placeholder="Search…" aria-label="Search activity"
+          class="flex-1 min-w-0 bg-ink-700 border border-white/10 rounded-lg px-2 py-1 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition" />
+        <button type="button" onclick="closeActivityPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center shrink-0 ml-0" aria-label="Close activity">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
@@ -914,6 +916,8 @@
     let reactionPress = null;
     const REACTION_LONG_PRESS_MS = 450;
     let chatBatch = null;
+    let activityLogs = [];
+    let activityBatch = null;
     let commentBatch = null;
 
     const REACTION_EMOJIS = {
@@ -3400,17 +3404,49 @@
       window.location = '/dashboard';
     }
 
+    function renderActivityItem(log) {
+      return `<div class="flex gap-3">
+          ${userAvatarHtml(log.user || { username: '?', avatar_color: '#4f6ef7' }, 'w-7 h-7 mt-0.5')}
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-gray-300 leading-relaxed">${escHtml(log.description)}</p>
+            <p class="text-xs text-gray-600 mt-1">${timeAgo(log.created_at)}</p>
+          </div>
+        </div>`;
+    }
+
+    function renderActivity(batchScrollHint) {
+      const list = document.getElementById('activityList');
+      if (!list || !activityBatch) return;
+      const prevHeight = list.scrollHeight;
+      const scrollTop = list.scrollTop;
+      const atBottom = list.scrollHeight - list.clientHeight - scrollTop < 48;
+      const emptyHtml = '<p class="text-sm text-gray-600 text-center py-4">No activity yet.</p>';
+      const { scrollToTop, scrollToBottom } = activityBatch.renderList(
+        list,
+        activityLogs,
+        renderActivityItem,
+        emptyHtml,
+      );
+
+      if (batchScrollHint === 'older' || scrollToBottom) {
+        if (batchScrollHint === 'older' && !atBottom) {
+          list.scrollTop = scrollTop + (list.scrollHeight - prevHeight);
+        } else if (scrollToBottom) {
+          list.scrollTop = list.scrollHeight;
+        }
+      } else if (batchScrollHint === 'newer' || scrollToTop) {
+        list.scrollTop = 0;
+      } else if (!atBottom && activityBatch.isAtLatest()) {
+        list.scrollTop = scrollTop;
+      }
+    }
+
     async function loadActivity() {
       const r = await apiFetch(`/api/teams/${teamId}/activity`);
       const logs = await r.json();
-      document.getElementById('activityList').innerHTML = logs.map(l => `
-        <div class="flex gap-3">
-          ${userAvatarHtml(l.user || { username: '?', avatar_color: '#4f6ef7' }, 'w-7 h-7 mt-0.5')}
-          <div class="flex-1 min-w-0">
-            <p class="text-xs text-gray-300 leading-relaxed">${escHtml(l.description)}</p>
-            <p class="text-xs text-gray-600 mt-1">${timeAgo(l.created_at)}</p>
-          </div>
-        </div>`).join('') || '<p class="text-sm text-gray-600 text-center py-4">No activity yet.</p>';
+      if (!Array.isArray(logs)) return;
+      activityLogs = logs;
+      renderActivity();
     }
 
     // Invite
@@ -3757,6 +3793,16 @@
     });
     commentBatch.bindListEvents(document.getElementById('commentsList'));
 
+    activityBatch = MessageBatch.create({
+      batchSize: 50,
+      anchor: 'start',
+      getMessages: () => activityLogs,
+      getSearchText: (l) => [l.description || '', l.user?.username || ''].join(' '),
+      emptySearchHtml: '<p class="text-sm text-gray-600 text-center py-8">No activity matches your search.</p>',
+      onBatchChange: (hint) => renderActivity(hint),
+    });
+    activityBatch.bindListEvents(document.getElementById('activityList'));
+
     document.getElementById('chatMessageSearch')?.addEventListener('input', (e) => {
       chatBatch?.setSearchQuery(e.target.value);
       renderChatMessages();
@@ -3764,6 +3810,10 @@
     document.getElementById('commentMessageSearch')?.addEventListener('input', (e) => {
       commentBatch?.setSearchQuery(e.target.value);
       renderComments();
+    });
+    document.getElementById('activityMessageSearch')?.addEventListener('input', (e) => {
+      activityBatch?.setSearchQuery(e.target.value);
+      renderActivity();
     });
 
     initGuestCommentMentionGuard();

@@ -4,6 +4,8 @@
  */
 (function () {
   const DM_POLL_MS = 4000;
+  const APP_PRESENCE_PING_MS = 15000;
+  const DM_ONLINE_POLL_MS = 4000;
   const REACTION_LONG_PRESS_MS = 450;
 
   const REACTION_EMOJIS = {
@@ -40,6 +42,10 @@
   const dmReadByConv = new Map();
   let dmBatch = null;
   let dmSearchOpen = false;
+  let dmOnlineUserIds = new Set();
+  let appPresenceInterval = null;
+  let dmOnlinePollInterval = null;
+  let appPresenceLeft = false;
 
   function $(id) {
     return document.getElementById(id);
@@ -57,6 +63,100 @@
     if (conv.is_self) return 'Note to self';
     const u = conv.other_user;
     return u ? u.username : 'Unknown';
+  }
+
+  function isDmUserOnline(userId) {
+    return userId != null && dmOnlineUserIds.has(String(userId));
+  }
+
+  function dmAvatarWithPresenceHtml(user, sizeClass) {
+    const online = isDmUserOnline(user?.id);
+    return `<div class="relative shrink-0" title="${online ? 'Online' : 'Offline'}">
+      ${userAvatarHtml(user, sizeClass)}
+      ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Online"></span>' : ''}
+    </div>`;
+  }
+
+  function dmParticipantIds() {
+    const ids = new Set();
+    for (const conv of visibleConversations()) {
+      if (conv.is_self && currentUser?.id) ids.add(String(currentUser.id));
+      else if (conv.other_user?.id) ids.add(String(conv.other_user.id));
+    }
+    return ids;
+  }
+
+  function dmOnlineStats() {
+    const ids = dmParticipantIds();
+    const total = ids.size;
+    const online = [...ids].filter((id) => dmOnlineUserIds.has(id)).length;
+    return { total, online };
+  }
+
+  function listViewTitle() {
+    const { total, online } = dmOnlineStats();
+    return total > 0 ? `Messages · ${online}/${total} online` : 'Messages';
+  }
+
+  function updateDmPresenceUi() {
+    if (view === 'list') {
+      $('dmChatHeaderTitle').textContent = listViewTitle();
+      renderConversationList();
+    } else {
+      syncHeaderAvatar();
+    }
+  }
+
+  async function pingAppPresence() {
+    if (appPresenceLeft || !enabled) return;
+    await apiFetch('/api/presence/app/ping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+  }
+
+  function stopAppPresence() {
+    clearInterval(appPresenceInterval);
+    clearInterval(dmOnlinePollInterval);
+    appPresenceInterval = null;
+    dmOnlinePollInterval = null;
+  }
+
+  function leaveAppPresence() {
+    if (appPresenceLeft) return;
+    appPresenceLeft = true;
+    stopAppPresence();
+    fetch('/api/presence/app/leave', {
+      method: 'POST',
+      credentials: 'same-origin',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+  }
+
+  async function fetchDmOnlineUsers() {
+    if (appPresenceLeft || !enabled) return;
+    const r = await apiFetch('/api/dm/online');
+    if (!r.ok) return;
+    const ids = await parseJsonResponse(r);
+    if (!Array.isArray(ids)) return;
+    const next = new Set(ids.map(String));
+    const changed = next.size !== dmOnlineUserIds.size
+      || [...next].some((id) => !dmOnlineUserIds.has(id))
+      || [...dmOnlineUserIds].some((id) => !next.has(id));
+    dmOnlineUserIds = next;
+    if (changed) updateDmPresenceUi();
+  }
+
+  function startAppPresence() {
+    if (!enabled || appPresenceLeft) return;
+    stopAppPresence();
+    pingAppPresence();
+    fetchDmOnlineUsers();
+    appPresenceInterval = setInterval(pingAppPresence, APP_PRESENCE_PING_MS);
+    dmOnlinePollInterval = setInterval(fetchDmOnlineUsers, DM_ONLINE_POLL_MS);
   }
 
   function normalizeEmailLocal(email) {
@@ -247,18 +347,29 @@
     const other = activeConversation?.other_user;
     closeHeaderAvatarMenu();
 
-    if (!inThread || isSelf || !other) {
+    if (!inThread) {
+      wrap?.classList.add('hidden');
+      return;
+    }
+
+    const displayUser = isSelf ? currentUser : other;
+    if (!displayUser) {
       wrap?.classList.add('hidden');
       return;
     }
 
     wrap?.classList.remove('hidden');
-    if (avatarHost) avatarHost.innerHTML = userAvatarHtml(other, 'w-9 h-9');
+    if (avatarHost) avatarHost.innerHTML = dmAvatarWithPresenceHtml(displayUser, 'w-9 h-9');
     if (btn) {
-      btn.disabled = false;
-      btn.setAttribute('aria-label', `Options for ${other.username || 'user'}`);
+      btn.disabled = isSelf;
+      btn.setAttribute('aria-label', isSelf ? 'You' : `Options for ${other?.username || 'user'}`);
+      if (isSelf) btn.setAttribute('aria-expanded', 'false');
     }
-    syncHeaderIgnoreMenuBtn();
+    if (isSelf) {
+      $('dmChatHeaderAvatarMenu')?.classList.add('hidden');
+    } else {
+      syncHeaderIgnoreMenuBtn();
+    }
   }
 
   function resetDmMessageSearch() {
@@ -312,7 +423,7 @@
     $('dmBlockedEmailsBtn')?.classList.toggle('hidden', inThread);
     if (!inThread) resetDmMessageSearch();
     else syncDmMessageSearchUi();
-    $('dmChatHeaderTitle').textContent = inThread ? conversationTitleWithIndicator(activeConversation) : 'Messages';
+    $('dmChatHeaderTitle').textContent = inThread ? conversationTitleWithIndicator(activeConversation) : listViewTitle();
     $('dmChatHeaderSubtitle')?.classList.toggle('hidden', !inThread);
     if (inThread) {
       $('dmChatHeaderSubtitle').textContent = conversationSubtitle(activeConversation);
@@ -557,6 +668,8 @@
     conversationsLoaded = true;
     renderConversationList();
     updateUnreadBadge();
+    if (view === 'list') $('dmChatHeaderTitle').textContent = listViewTitle();
+    fetchDmOnlineUsers();
   }
 
   function renderConversationList() {
@@ -584,7 +697,7 @@
         const active = conv.id === activeConversationId ? ' bg-white/10 border-brand-500/30' : ' border-white/5 hover:bg-white/5';
         return `<button type="button" data-conv-id="${conv.id}"
             class="w-full text-left flex items-center gap-3 p-3 rounded-xl border transition${active}">
-            ${userAvatarHtml(conv.other_user, 'w-10 h-10')}
+            ${dmAvatarWithPresenceHtml(conv.other_user, 'w-10 h-10')}
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between gap-2">
                 <span class="text-sm font-medium text-white truncate">${escHtml(title)}</span>
@@ -822,7 +935,7 @@
 
     const versionActiveClass = showingOriginal ? ' chat-msg-version-active' : '';
     return `<div class="group flex items-start gap-3${versionActiveClass}" data-dm-msg-id="${msg.id}">
-        ${userAvatarHtml(user, 'w-8 h-8')}
+        ${dmAvatarWithPresenceHtml(user, 'w-8 h-8')}
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-2 mb-1">
             <div class="min-w-0">
@@ -1284,14 +1397,17 @@
     if (!enabled) {
       hideFab();
       stopPolling();
+      stopAppPresence();
       return;
     }
+    appPresenceLeft = false;
     showFab();
     bindEvents();
     loadDmSettings().then(() => {
       loadConversations();
     });
     startPolling();
+    startAppPresence();
     updateUnreadBadge();
   }
 
@@ -1302,13 +1418,18 @@
       closePanel();
       hideFab();
       stopPolling();
+      leaveAppPresence();
     } else {
+      appPresenceLeft = false;
       showFab();
       bindEvents();
       if (!convPollInterval) startPolling();
+      startAppPresence();
       loadDmSettings().then(() => loadConversations());
     }
   }
 
-  window.DirectChat = { init, onUserUpdated, openPanel, closePanel };
+  window.addEventListener('pagehide', leaveAppPresence);
+
+  window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence };
 })();

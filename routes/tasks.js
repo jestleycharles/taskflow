@@ -389,8 +389,7 @@ router.get('/api/teams/:teamId/activity', requireAuth, async (req, res) => {
     .from('activity_log')
     .select('*, user:user_id(id, username, avatar_color, avatar_url)')
     .eq('team_id', teamId)
-    .order('created_at', { ascending: false })
-    .limit(50);
+    .order('created_at', { ascending: false });
 
   res.json(data || []);
 });

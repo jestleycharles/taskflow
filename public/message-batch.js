@@ -6,6 +6,8 @@
   const BATCH_SIZE = 20;
 
   function createMessageBatchController(options = {}) {
+    const batchSize = options.batchSize ?? BATCH_SIZE;
+    const anchor = options.anchor === 'start' ? 'start' : 'end';
     let batchOffset = 0;
     let searchQuery = '';
     let searchPage = 0;
@@ -53,18 +55,18 @@
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matches = all.filter((m) => getSearchText(m).toLowerCase().includes(q));
-        const totalPages = Math.max(1, Math.ceil(matches.length / BATCH_SIZE));
+        const totalPages = Math.max(1, Math.ceil(matches.length / batchSize));
         if (searchPage >= totalPages) searchPage = totalPages - 1;
         if (searchPage < 0) searchPage = 0;
-        const start = searchPage * BATCH_SIZE;
+        const start = searchPage * batchSize;
         return {
-          messages: matches.slice(start, start + BATCH_SIZE),
+          messages: matches.slice(start, start + batchSize),
           mode: 'search',
           totalMatches: matches.length,
           searchPage,
           totalPages,
           hasSearchPrev: searchPage > 0,
-          hasSearchNext: start + BATCH_SIZE < matches.length,
+          hasSearchNext: start + batchSize < matches.length,
           isSearching: true,
         };
       }
@@ -80,8 +82,21 @@
         };
       }
 
-      const endExclusive = Math.max(0, total - batchOffset * BATCH_SIZE);
-      const start = Math.max(0, endExclusive - BATCH_SIZE);
+      if (anchor === 'start') {
+        const endExclusive = Math.min(total, (batchOffset + 1) * batchSize);
+        const visible = all.slice(0, endExclusive);
+        return {
+          messages: visible,
+          mode: 'browse',
+          hasOlder: endExclusive < total,
+          hasNewer: batchOffset > 0,
+          olderCount: total - endExclusive,
+          isSearching: false,
+        };
+      }
+
+      const endExclusive = Math.max(0, total - batchOffset * batchSize);
+      const start = Math.max(0, endExclusive - batchSize);
       const visible = all.slice(start, endExclusive);
 
       return {
@@ -95,8 +110,16 @@
     }
 
     function olderButtonHtml(olderCount) {
-      const count = Math.min(BATCH_SIZE, olderCount);
+      const count = Math.min(batchSize, olderCount);
       const label = count === 1 ? 'Show 1 older message' : `Show ${count} older messages`;
+      return `<div class="msg-batch-nav flex justify-center py-2">
+        <button type="button" data-msg-batch-older class="text-xs text-brand-500 hover:text-brand-400 font-medium px-3 py-1.5 rounded-lg hover:bg-white/5 transition">${label}</button>
+      </div>`;
+    }
+
+    function olderActivityButtonHtml(olderCount) {
+      const count = Math.min(batchSize, olderCount);
+      const label = count === 1 ? 'Show 1 older activity' : `Show ${count} older activity`;
       return `<div class="msg-batch-nav flex justify-center py-2">
         <button type="button" data-msg-batch-older class="text-xs text-brand-500 hover:text-brand-400 font-medium px-3 py-1.5 rounded-lg hover:bg-white/5 transition">${label}</button>
       </div>`;
@@ -105,6 +128,12 @@
     function newerButtonHtml() {
       return `<div class="msg-batch-nav flex justify-center py-2">
         <button type="button" data-msg-batch-newer class="text-xs text-brand-500 hover:text-brand-400 font-medium px-3 py-1.5 rounded-lg hover:bg-white/5 transition">Show newer messages</button>
+      </div>`;
+    }
+
+    function newerActivityButtonHtml() {
+      return `<div class="msg-batch-nav flex justify-center py-2">
+        <button type="button" data-msg-batch-newer class="text-xs text-brand-500 hover:text-brand-400 font-medium px-3 py-1.5 rounded-lg hover:bg-white/5 transition">Show newer activity</button>
       </div>`;
     }
 
@@ -123,29 +152,36 @@
 
     function renderList(listEl, messages, renderItem, emptyHtml) {
       const slice = getSlice(messages);
+      const olderBtn = anchor === 'start' ? olderActivityButtonHtml : olderButtonHtml;
+      const newerBtn = anchor === 'start' ? newerActivityButtonHtml : newerButtonHtml;
 
       if (!messages.length && !slice.isSearching) {
         listEl.innerHTML = emptyHtml;
-        return { slice, atBottom: true, scrollToTop: false };
+        return { slice, atBottom: true, scrollToTop: false, scrollToBottom: false };
       }
 
       if (slice.isSearching && slice.totalMatches === 0) {
-        listEl.innerHTML = '<p class="text-sm text-gray-600 text-center py-8">No messages match your search.</p>';
-        return { slice, atBottom: true, scrollToTop: false };
+        const emptySearch = options.emptySearchHtml
+          || '<p class="text-sm text-gray-600 text-center py-8">No messages match your search.</p>';
+        listEl.innerHTML = emptySearch;
+        return { slice, atBottom: true, scrollToTop: false, scrollToBottom: false };
       }
 
       const parts = [];
-      if (slice.mode === 'browse' && slice.hasOlder) parts.push(olderButtonHtml(slice.olderCount));
+      if (slice.mode === 'browse' && slice.hasNewer) parts.push(newerBtn());
+      if (slice.mode === 'browse' && slice.hasOlder && anchor === 'end') parts.push(olderBtn(slice.olderCount));
       if (slice.mode === 'search') parts.push(searchNavHtml(slice));
       parts.push(slice.messages.map(renderItem).join(''));
-      if (slice.mode === 'browse' && slice.hasNewer) parts.push(newerButtonHtml());
+      if (slice.mode === 'browse' && slice.hasOlder && anchor === 'start') parts.push(olderBtn(slice.olderCount));
+      if (slice.mode === 'browse' && slice.hasNewer && anchor === 'end') parts.push(newerBtn());
       if (slice.mode === 'search' && slice.totalPages > 1) parts.push(searchNavHtml(slice));
 
       listEl.innerHTML = parts.join('');
 
       return {
         slice,
-        scrollToTop: slice.mode === 'browse' && batchOffset > 0 && !slice.isSearching,
+        scrollToTop: slice.mode === 'browse' && anchor === 'end' && batchOffset > 0 && !slice.isSearching,
+        scrollToBottom: slice.mode === 'browse' && anchor === 'start' && batchOffset > 0 && !slice.isSearching,
       };
     }
 
@@ -181,7 +217,7 @@
     }
 
     return {
-      BATCH_SIZE,
+      BATCH_SIZE: batchSize,
       reset,
       setSearchQuery,
       getSearchQuery: () => searchQuery,

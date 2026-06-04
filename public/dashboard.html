@@ -1089,6 +1089,7 @@
     });
 
     async function logout() {
+      DirectChat.leaveAppPresence?.();
       await apiFetch('/api/auth/logout', { method: 'POST' });
       window.location = '/login';
     }

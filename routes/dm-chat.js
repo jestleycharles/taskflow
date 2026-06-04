@@ -11,6 +11,7 @@ const {
   isSenderBlockedInConversation,
   isUserIgnored,
 } = require('../lib/dm-blocks');
+const { ping, leave, getOnlineUserIds, APP_SCOPE } = require('../lib/presence');
 
 const router = express.Router();
 
@@ -443,6 +444,43 @@ router.delete('/api/dm/conversations/:conversationId/messages/:messageId', requi
   if (error) return sendError(res, 500, error, 'load');
   const reactionsMap = await fetchReactionsForMessages('dm', [data.id]);
   res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
+});
+
+// POST /api/presence/app/ping — heartbeat while logged into the dashboard
+router.post('/api/presence/app/ping', requireAuth, async (req, res) => {
+  if (rejectGuest(req, res)) return;
+  ping(req.session.user.id, APP_SCOPE);
+  res.json({ ok: true });
+});
+
+// POST /api/presence/app/leave — user signed out, closed tab, or left dashboard
+router.post('/api/presence/app/leave', requireAuth, async (req, res) => {
+  if (rejectGuest(req, res)) return;
+  leave(req.session.user.id, APP_SCOPE);
+  res.json({ ok: true });
+});
+
+// GET /api/dm/online — user ids online among DM participants (including self)
+router.get('/api/dm/online', requireAuth, async (req, res) => {
+  if (rejectGuest(req, res)) return;
+  const userId = req.session.user.id;
+
+  const { data: convs, error } = await supabaseAdmin
+    .from('dm_conversations')
+    .select('user_a_id, user_b_id')
+    .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
+
+  if (error) return sendError(res, 500, error, 'load');
+
+  const participantIds = new Set([String(userId)]);
+  for (const conv of convs || []) {
+    const otherId = await getOtherParticipantId(conv, userId);
+    if (otherId) participantIds.add(String(otherId));
+    else participantIds.add(String(userId));
+  }
+
+  ping(userId, APP_SCOPE);
+  res.json(getOnlineUserIds([...participantIds], APP_SCOPE));
 });
 
 module.exports = router;
