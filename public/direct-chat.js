@@ -39,6 +39,7 @@
   let showAlert = (msg) => { window.alert(msg); };
   const dmReadByConv = new Map();
   let dmBatch = null;
+  let dmSearchOpen = false;
 
   function $(id) {
     return document.getElementById(id);
@@ -203,6 +204,7 @@
     await flushDmReadState();
     closeReactionFloats();
     dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
+    resetDmMessageSearch();
     panelOpen = false;
     $('dmChatPanel')?.classList.add('hidden');
     setPanelOpenUi(false);
@@ -222,9 +224,7 @@
     dmMessages = [];
     dmLastReadAt = 0;
     editingDmId = null;
-    dmBatch?.reset();
-    const searchEl = $('dmMessageSearch');
-    if (searchEl) searchEl.value = '';
+    resetDmMessageSearch();
     syncView();
     if (!conversationsLoaded) showConversationListLoading();
     await loadConversations();
@@ -261,18 +261,57 @@
     syncHeaderIgnoreMenuBtn();
   }
 
+  function resetDmMessageSearch() {
+    dmSearchOpen = false;
+    const searchEl = $('dmMessageSearch');
+    if (searchEl) searchEl.value = '';
+    dmBatch?.reset();
+    $('dmMessageSearchWrap')?.classList.add('hidden');
+    $('dmChatHeaderTitleWrap')?.classList.remove('hidden');
+    $('dmMessageSearchBtn')?.classList.add('hidden');
+    if (view === 'thread' && activeConversationId) {
+      $('dmMessageSearchBtn')?.classList.remove('hidden');
+    }
+  }
+
+  function openDmMessageSearch() {
+    if (view !== 'thread' || !activeConversationId) return;
+    dmSearchOpen = true;
+    $('dmChatHeaderTitleWrap')?.classList.add('hidden');
+    $('dmMessageSearchWrap')?.classList.remove('hidden');
+    $('dmMessageSearchBtn')?.classList.add('hidden');
+    const searchEl = $('dmMessageSearch');
+    if (searchEl) {
+      searchEl.focus();
+      searchEl.select();
+    }
+  }
+
+  function syncDmMessageSearchUi() {
+    const inThread = view === 'thread' && activeConversationId;
+    if (!inThread) {
+      resetDmMessageSearch();
+      return;
+    }
+    if (dmSearchOpen) {
+      $('dmChatHeaderTitleWrap')?.classList.add('hidden');
+      $('dmMessageSearchWrap')?.classList.remove('hidden');
+      $('dmMessageSearchBtn')?.classList.add('hidden');
+    } else {
+      $('dmChatHeaderTitleWrap')?.classList.remove('hidden');
+      $('dmMessageSearchWrap')?.classList.add('hidden');
+      $('dmMessageSearchBtn')?.classList.remove('hidden');
+    }
+  }
+
   function syncView() {
     const inThread = view === 'thread' && activeConversationId;
     $('dmChatListView')?.classList.toggle('hidden', inThread);
     $('dmChatThreadView')?.classList.toggle('hidden', !inThread);
     $('dmChatBackBtn')?.classList.toggle('hidden', !inThread);
     $('dmBlockedEmailsBtn')?.classList.toggle('hidden', inThread);
-    $('dmMessageSearch')?.classList.toggle('hidden', !inThread);
-    if (!inThread) {
-      const searchEl = $('dmMessageSearch');
-      if (searchEl) searchEl.value = '';
-      dmBatch?.reset();
-    }
+    if (!inThread) resetDmMessageSearch();
+    else syncDmMessageSearchUi();
     $('dmChatHeaderTitle').textContent = inThread ? conversationTitleWithIndicator(activeConversation) : 'Messages';
     $('dmChatHeaderSubtitle')?.classList.toggle('hidden', !inThread);
     if (inThread) {
@@ -497,9 +536,7 @@
     syncView();
     dmLastReadAt = dmReadByConv.get(conv.id) || 0;
     dmMessages = [];
-    dmBatch?.reset();
-    const searchEl = $('dmMessageSearch');
-    if (searchEl) searchEl.value = '';
+    resetDmMessageSearch();
     showDmMessagesLoading();
     await loadDmReadState();
     await loadDmMessages();
@@ -1134,6 +1171,7 @@
       ?.addEventListener('click', () => blockActiveUser());
     $('dmChatHeaderIgnoreBtn')?.addEventListener('click', () => toggleIgnoreActiveUser());
     $('dmChatSendBtn')?.addEventListener('click', submitDmMessage);
+    $('dmMessageSearchBtn')?.addEventListener('click', openDmMessageSearch);
     $('dmMessageSearch')?.addEventListener('input', (e) => {
       dmBatch?.setSearchQuery(e.target.value);
       renderDmMessages();
