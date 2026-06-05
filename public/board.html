@@ -2532,8 +2532,7 @@
     }
 
     async function init() {
-      hideNavigationLoading();
-      setNavigatingAway(true);
+      showNavigationLoading('Loading team…');
       try {
         const r = await apiFetch('/api/me');
         const meData = await parseJsonResponse(r);
@@ -2559,7 +2558,7 @@
         startChatPolling();
         startPresence();
       } finally {
-        setNavigatingAway(false);
+        hideNavigationLoading();
       }
     }
 
@@ -5141,8 +5140,7 @@
       const r = await apiFetch(`/api/teams/${teamId}/leave`, { method: 'POST' });
       const d = await r.json();
       if (!r.ok) {
-        setNavigatingAway(false);
-        navigationLoadingEl?.classList.add('hidden');
+        hideNavigationLoading();
         showAlert(d.error || 'Could not leave team');
         startPolling();
         startChatPolling();
@@ -5204,8 +5202,7 @@
       const r = await apiFetch(`/api/teams/${teamId}`, { method: 'DELETE' });
       const d = await r.json();
       if (!r.ok) {
-        setNavigatingAway(false);
-        navigationLoadingEl?.classList.add('hidden');
+        hideNavigationLoading();
         showAlert(d.error || 'Failed to delete team');
         startPolling();
         startChatPolling();
@@ -6031,8 +6028,12 @@
     initAttachmentDropZone('taskAttachmentDropZone', 'taskAttachmentFile');
     initAttachmentDropZone('taskCoverDropZone', 'taskCoverFile');
 
-    window.addEventListener('popstate', () => {
+    window.tfResetPageNavigationUi = () => {
       hideNavigationLoading();
+    };
+
+    window.addEventListener('popstate', () => {
+      resetTransientNavigationUi();
       if (boardHistoryPopping) {
         boardHistoryPopping = false;
         return;

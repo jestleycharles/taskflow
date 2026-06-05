@@ -61,9 +61,18 @@ function hideNavigationLoading() {
   setNavigatingAway(false);
 }
 
-// Full-page nav overlays must not survive back/forward cache restores (e.g. back from board).
+/** Clear full-page overlays and page-specific nav UI before bfcache / after restore. */
+function resetTransientNavigationUi() {
+  hideNavigationLoading();
+  if (typeof window.tfResetPageNavigationUi === 'function') {
+    window.tfResetPageNavigationUi();
+  }
+}
+
+// Transient loading UI must not survive the back-forward cache (e.g. dashboard card skeleton).
+window.addEventListener('pagehide', resetTransientNavigationUi);
 window.addEventListener('pageshow', (event) => {
-  if (event.persisted) hideNavigationLoading();
+  if (event.persisted) resetTransientNavigationUi();
 });
 
 function showUpdateRequiredModal() {
