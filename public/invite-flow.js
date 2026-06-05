@@ -71,7 +71,7 @@ async function initInviteBanner({ bannerId, loginLinkId, registerLinkId } = {}) 
   if (banner) {
     const team = data.team || {};
     const name = team.name || 'a team';
-    banner.className = 'bg-brand-500/10 border border-brand-500/30 text-brand-200 text-sm rounded-lg px-4 py-3 mb-5';
+    banner.className = 'bg-brand-500/10 border border-brand-500/30 text-gray-300 text-sm rounded-lg px-4 py-3 mb-5';
     banner.innerHTML = `You&rsquo;ve been invited to join <strong class="text-white">${escHtml(name)}</strong>. Sign in or create an account to join.`;
     banner.classList.remove('hidden');
   }

@@ -920,13 +920,13 @@
       <p class="text-sm text-gray-400 leading-relaxed mb-6">
         This team was deleted or you no longer have access. You will be returned to your dashboard.
       </p>
-      <a href="/dashboard" class="block w-full text-center bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Go to dashboard</a>
+      <a href="/dashboard" onclick="showNavigationLoading('Returning to dashboard…')" class="block w-full text-center bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Go to dashboard</a>
     </div>
   </div>
 
   <!-- Edit Team Modal -->
   <div id="editTeamModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeEditTeamModal()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
       <h2 class="text-lg font-semibold text-white mb-1">Team details</h2>
       <p class="text-gray-500 text-sm mb-5">Update your team name, description, and avatar.</p>
@@ -972,7 +972,7 @@
         </div>
 
         <div class="flex gap-3 pt-2">
-          <button type="button" onclick="closeEditTeamModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
+          <button type="button" onclick="requestCloseBoardOverlay()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
           <button type="button" id="editTeamSaveBtn" onclick="saveEditTeam()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Save changes</button>
         </div>
       </div>
@@ -981,7 +981,7 @@
 
   <!-- Team Roles Modal -->
   <div id="teamRolesModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeTeamRolesModal()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
       <h2 class="text-lg font-semibold text-white mb-1">Team roles</h2>
       <p class="text-gray-500 text-sm mb-5">Create display roles, set colors, and control how members are grouped on the board.</p>
@@ -1032,13 +1032,13 @@
         </div>
       </div>
 
-      <button type="button" onclick="closeTeamRolesModal()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
+      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
     </div>
   </div>
 
   <!-- Column Management Modal -->
   <div id="columnMgmtModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeColumnMgmtModal()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
       <h2 class="text-lg font-semibold text-white mb-1">Board columns</h2>
       <p class="text-gray-500 text-sm mb-5">Rename, reorder, add, or remove columns. Tasks in a removed column must be moved first.</p>
@@ -1078,18 +1078,18 @@
           </div>
         </div>
       </div>
-      <button type="button" onclick="closeColumnMgmtModal()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
+      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
     </div>
   </div>
 
   <!-- Confirm Modal -->
   <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeConfirmModal()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
       <h2 id="confirmTitle" class="text-base font-semibold text-white mb-2"></h2>
       <p id="confirmMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
       <div class="flex gap-3">
-        <button type="button" onclick="closeConfirmModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
+        <button type="button" onclick="requestCloseBoardOverlay()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
         <button type="button" id="confirmActionBtn" onclick="runConfirmAction()" class="flex-1 text-white font-medium py-2.5 rounded-xl transition text-sm">Confirm</button>
       </div>
     </div>
@@ -1097,11 +1097,11 @@
 
   <!-- Alert Modal -->
   <div id="alertModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeAlertModal()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
       <h2 id="alertTitle" class="text-base font-semibold text-white mb-2">Something went wrong</h2>
       <p id="alertMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
-      <button type="button" onclick="closeAlertModal()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
     </div>
   </div>
 
@@ -1458,6 +1458,11 @@
     let activityBatch = null;
     let commentBatch = null;
     let boardHistoryPopping = false;
+    const BOARD_SIDEPANELS = new Set(['activity', 'team', 'settings', 'chat']);
+
+    function isBoardSidepanel(name) {
+      return BOARD_SIDEPANELS.has(name);
+    }
     let taskModalClosing = false;
     let taskSubmitSaving = false;
     let attachmentUploadBusy = false;
@@ -1514,18 +1519,33 @@
 
     function pushBoardOverlay(name) {
       if (boardHistoryPopping) return;
-      history.pushState({ tfBoardOverlay: name, t: Date.now() }, '');
+      const current = history.state?.tfBoardOverlay;
+      if (current && isBoardSidepanel(current) && isBoardSidepanel(name)) {
+        history.replaceState({ tfBoardOverlay: name, t: Date.now() }, '');
+      } else {
+        history.pushState({ tfBoardOverlay: name, t: Date.now() }, '');
+      }
     }
 
     function requestCloseBoardOverlay() {
       if (getTopBoardOverlay()) history.back();
     }
 
-    function syncBoardOverlayHistory(prevOverlay) {
-      if (!prevOverlay || boardHistoryPopping) return;
-      closeBoardOverlayUi(prevOverlay);
-      boardHistoryPopping = true;
-      history.back();
+    function dismissBoardOverlayHistory(expected) {
+      const state = history.state?.tfBoardOverlay;
+      if (state && (!expected || state === expected)) {
+        boardHistoryPopping = true;
+        history.back();
+      }
+    }
+
+    function closeBoardOverlayBeforeOpen(name) {
+      const prev = getTopBoardOverlay();
+      if (!prev || prev === name) return;
+      closeBoardOverlayUi(prev);
+      if (!isBoardSidepanel(prev) && history.state?.tfBoardOverlay === prev) {
+        dismissBoardOverlayHistory(prev);
+      }
     }
 
     async function closeBoardOverlayUi(overlay) {
@@ -1654,6 +1674,7 @@
         : 'flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm';
       confirmCallback = onConfirm;
       document.getElementById('confirmModal').classList.remove('hidden');
+      pushBoardOverlay('confirm');
     }
 
     function closeConfirmModal() {
@@ -1664,6 +1685,7 @@
     function runConfirmAction() {
       const cb = confirmCallback;
       closeConfirmModal();
+      dismissBoardOverlayHistory('confirm');
       if (cb) cb();
     }
 
@@ -1671,6 +1693,7 @@
       document.getElementById('alertTitle').textContent = title;
       document.getElementById('alertMessage').textContent = message;
       document.getElementById('alertModal').classList.remove('hidden');
+      pushBoardOverlay('alert');
     }
 
     function closeAlertModal() {
@@ -2185,6 +2208,7 @@
       resetTeamRoleAddDrawer();
       renderTeamRolesList();
       document.getElementById('teamRolesModal').classList.remove('hidden');
+      pushBoardOverlay('teamRoles');
     }
 
     function closeTeamRolesModal() {
@@ -2298,6 +2322,7 @@
       resetColumnAddDrawer();
       renderColumnMgmtList();
       document.getElementById('columnMgmtModal').classList.remove('hidden');
+      pushBoardOverlay('columnMgmt');
     }
 
     function closeColumnMgmtModal() {
@@ -2507,26 +2532,35 @@
     }
 
     async function init() {
-      const r = await apiFetch('/api/me');
-      const meData = await parseJsonResponse(r);
-      if (!r.ok) {
-        if (isApiUnauthorizedUpdate(r, meData)) return;
-        if (r.status === 401) return (window.location = '/login');
-        return;
+      showNavigationLoading('Loading team…');
+      try {
+        const r = await apiFetch('/api/me');
+        const meData = await parseJsonResponse(r);
+        if (!r.ok) {
+          if (isApiUnauthorizedUpdate(r, meData)) return;
+          if (r.status === 401) {
+            window.location = '/login';
+            return;
+          }
+          return;
+        }
+        currentUser = meData;
+        if (currentUser.error) return;
+        const teamOk = await loadTeam();
+        if (!teamOk) return;
+        await loadTasks();
+        applyChatComposerState();
+        applyGuestTeamAvatarUploadUi();
+        syncAddTaskModalUi();
+        await loadChatReadState();
+        await loadChat();
+        startPolling();
+        startChatPolling();
+        startPresence();
+      } finally {
+        navigationLoadingEl?.classList.add('hidden');
+        setNavigatingAway(false);
       }
-      currentUser = meData;
-      if (currentUser.error) return;
-      const teamOk = await loadTeam();
-      if (!teamOk) return;
-      await loadTasks();
-      applyChatComposerState();
-      applyGuestTeamAvatarUploadUi();
-      syncAddTaskModalUi();
-      await loadChatReadState();
-      await loadChat();
-      startPolling();
-      startChatPolling();
-      startPresence();
     }
 
     function isGuest() {
@@ -4040,8 +4074,7 @@
     }
 
     function openChatPanel() {
-      const prev = getTopBoardOverlay();
-      if (prev && prev !== 'chat') syncBoardOverlayHistory(prev);
+      closeBoardOverlayBeforeOpen('chat');
       closeAllSidePanels();
       chatPanelOpen = true;
       applyChatComposerState();
@@ -4630,13 +4663,9 @@
 
     // Activity Panel
     function openActivityPanel() {
-      const prev = getTopBoardOverlay();
-      if (prev && prev !== 'activity') syncBoardOverlayHistory(prev);
+      closeBoardOverlayBeforeOpen('activity');
+      if (chatPanelOpen) closeChatPanelUi();
       closeAllSidePanels();
-      if (chatPanelOpen) {
-        closeChatPanelUi();
-        syncBoardOverlayHistory('chat');
-      }
       document.getElementById('activityPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
       loadActivity();
@@ -4650,13 +4679,9 @@
       requestCloseBoardOverlay();
     }
     function openTeamPanel() {
-      const prev = getTopBoardOverlay();
-      if (prev && prev !== 'team') syncBoardOverlayHistory(prev);
+      closeBoardOverlayBeforeOpen('team');
+      if (chatPanelOpen) closeChatPanelUi();
       closeAllSidePanels();
-      if (chatPanelOpen) {
-        closeChatPanelUi();
-        syncBoardOverlayHistory('chat');
-      }
       document.getElementById('teamPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
       fetchOnlineMembers();
@@ -4673,13 +4698,9 @@
     // Settings Panel (owners only)
     function openSettingsPanel() {
       if (teamData?.userRole !== 'owner') return;
-      const prev = getTopBoardOverlay();
-      if (prev && prev !== 'settings') syncBoardOverlayHistory(prev);
+      closeBoardOverlayBeforeOpen('settings');
+      if (chatPanelOpen) closeChatPanelUi();
       closeAllSidePanels();
-      if (chatPanelOpen) {
-        closeChatPanelUi();
-        syncBoardOverlayHistory('chat');
-      }
       document.getElementById('settingsPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
       pushBoardOverlay('settings');
@@ -4911,6 +4932,7 @@
       applyGuestTeamAvatarUploadUi();
       resetEditTeamDetailsDrawer();
       document.getElementById('editTeamModal').classList.remove('hidden');
+      pushBoardOverlay('editTeam');
       setTimeout(() => document.getElementById('editTeamName').focus(), 50);
     }
 
@@ -4991,6 +5013,7 @@
       btn.textContent = 'Save changes';
       applyTeamHeader();
       closeEditTeamModal();
+      dismissBoardOverlayHistory('editTeam');
     }
 
     document.getElementById('editTeamAvatarFile')?.addEventListener('change', (e) => {
@@ -5100,11 +5123,30 @@
       });
     }
 
+    function stopBoardBackgroundWork() {
+      clearInterval(pollInterval);
+      clearInterval(chatPollInterval);
+      clearInterval(presenceInterval);
+      clearInterval(onlinePollInterval);
+      pollInterval = null;
+      chatPollInterval = null;
+      presenceInterval = null;
+      onlinePollInterval = null;
+    }
+
     async function executeLeaveTeam() {
+      stopBoardBackgroundWork();
+      setNavigatingAway(true);
+      showNavigationLoading('Leaving team…');
       const r = await apiFetch(`/api/teams/${teamId}/leave`, { method: 'POST' });
       const d = await r.json();
       if (!r.ok) {
+        setNavigatingAway(false);
+        navigationLoadingEl?.classList.add('hidden');
         showAlert(d.error || 'Could not leave team');
+        startPolling();
+        startChatPolling();
+        startPresence();
         return;
       }
       window.location = '/dashboard';
@@ -5156,10 +5198,18 @@
     }
 
     async function executeDeleteTeam() {
+      stopBoardBackgroundWork();
+      setNavigatingAway(true);
+      showNavigationLoading('Deleting team…');
       const r = await apiFetch(`/api/teams/${teamId}`, { method: 'DELETE' });
       const d = await r.json();
       if (!r.ok) {
+        setNavigatingAway(false);
+        navigationLoadingEl?.classList.add('hidden');
         showAlert(d.error || 'Failed to delete team');
+        startPolling();
+        startChatPolling();
+        startPresence();
         return;
       }
       window.location = '/dashboard';
@@ -5408,8 +5458,17 @@
       onlinePollInterval = setInterval(fetchOnlineMembers, ONLINE_POLL_MS);
     }
 
+    function navigateToDashboard() {
+      leavePresence();
+      showNavigationLoading('Returning to dashboard…');
+      window.location = '/dashboard';
+    }
+
     window.addEventListener('pagehide', leavePresence);
-    document.querySelector('a[href="/dashboard"]')?.addEventListener('click', leavePresence);
+    document.querySelector('nav a[href="/dashboard"]')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateToDashboard();
+    });
 
     // Real-time polling (5s); only re-builds the board when task fields change, not on every unread tick
     function startPolling() {

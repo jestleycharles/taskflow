@@ -31,6 +31,30 @@ function isUnauthorizedUpdateError(status, bodyText) {
 }
 
 let updateRequiredShown = false;
+let suppressUnauthorizedModal = false;
+
+function setNavigatingAway(suppress = true) {
+  suppressUnauthorizedModal = suppress;
+}
+
+let navigationLoadingEl = null;
+
+function showNavigationLoading(message = 'Loading…') {
+  setNavigatingAway(true);
+  if (!navigationLoadingEl) {
+    navigationLoadingEl = document.createElement('div');
+    navigationLoadingEl.id = 'tfNavigationLoading';
+    navigationLoadingEl.className = 'fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-6';
+    navigationLoadingEl.style.cssText = 'background: rgba(15,17,23,0.88); backdrop-filter: blur(6px); font-family: "DM Sans", sans-serif;';
+    navigationLoadingEl.innerHTML = `
+      <div class="w-10 h-10 rounded-full border-2 border-brand-500/30 border-t-brand-500 animate-spin" aria-hidden="true"></div>
+      <p data-tf-nav-label class="text-sm text-gray-300 text-center"></p>`;
+    document.body.appendChild(navigationLoadingEl);
+  }
+  const label = navigationLoadingEl.querySelector('[data-tf-nav-label]');
+  if (label) label.textContent = message;
+  navigationLoadingEl.classList.remove('hidden');
+}
 
 function showUpdateRequiredModal() {
   if (updateRequiredShown) return;
@@ -92,7 +116,7 @@ async function apiFetch(url, options = {}) {
     await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAYS_MS[attempt]));
   }
 
-  if (isUnauthorizedUpdateError(lastResponse.status, lastBody)) {
+  if (!suppressUnauthorizedModal && isUnauthorizedUpdateError(lastResponse.status, lastBody)) {
     showUpdateRequiredModal();
   }
 
