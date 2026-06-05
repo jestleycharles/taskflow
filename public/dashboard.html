@@ -121,6 +121,44 @@
       .avatar-preset-btn.selected {
         box-shadow: 0 0 0 2px #4f6ef7;
       }
+      @keyframes btnSpin {
+        to { transform: rotate(360deg); }
+      }
+      .btn-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(255,255,255,0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: btnSpin 0.65s linear infinite;
+        flex-shrink: 0;
+      }
+      .btn-loading {
+        pointer-events: none;
+        opacity: 0.75;
+      }
+      @media (max-width: 767px) and (orientation: landscape) {
+        #portraitLockOverlay {
+          display: flex !important;
+        }
+        body.portrait-locked > *:not(#portraitLockOverlay) {
+          display: none !important;
+        }
+      }
+      #portraitLockOverlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #0f1117;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 2rem;
+        text-align: center;
+      }
       @keyframes pulse {
         0%,
         100% {
@@ -238,7 +276,15 @@
       }
     </style>
   </head>
-  <body class="grid-bg min-h-screen text-white">
+  <body class="grid-bg min-h-screen text-white portrait-locked">
+
+    <div id="portraitLockOverlay" aria-hidden="true">
+      <svg class="w-12 h-12 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      </svg>
+      <p class="text-white font-medium">Please rotate your device</p>
+      <p class="text-gray-500 text-sm">TaskFlow works best in portrait mode</p>
+    </div>
     <!-- Navbar -->
     <nav
       class="border-b border-white/10 bg-ink-900/80 backdrop-blur-sm sticky top-0 z-40"
@@ -990,6 +1036,7 @@
       </div>
     </div>
 
+    <script src="/mobile-orientation.js"></script>
     <script src="/pwa-install.js"></script>
     <script src="/avatar-utils.js"></script>
     <script src="/message-format.js"></script>
@@ -2419,6 +2466,22 @@
         updateCreateTeamPreview();
       }
 
+      function setCreateTeamBtnLoading(loading, label) {
+        const btn = document.getElementById("createTeamBtn");
+        if (!btn) return;
+        if (loading) {
+          if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+          btn.disabled = true;
+          btn.classList.add("btn-loading", "inline-flex", "items-center", "justify-center", "gap-2");
+          btn.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span>${label || "Creating…"}</span>`;
+        } else {
+          btn.disabled = false;
+          btn.classList.remove("btn-loading", "inline-flex", "items-center", "justify-center", "gap-2");
+          btn.textContent = btn.dataset.origText || "Create Team";
+          delete btn.dataset.origText;
+        }
+      }
+
       async function createTeam() {
         if (createTeamSaving) return;
         const name = document.getElementById("teamName").value.trim();
@@ -2436,10 +2499,8 @@
           body.avatar_url = createTeamDraft.avatar_url;
         }
 
-        const btn = document.getElementById("createTeamBtn");
         createTeamSaving = true;
-        btn.disabled = true;
-        btn.textContent = "Creating…";
+        setCreateTeamBtnLoading(true, "Creating…");
 
         const r = await apiFetch("/api/teams", {
           method: "POST",
@@ -2449,8 +2510,7 @@
         const d = await parseJsonResponse(r);
         if (d.error) {
           createTeamSaving = false;
-          btn.disabled = false;
-          btn.textContent = "Create Team";
+          setCreateTeamBtnLoading(false);
           const el = document.getElementById("modalError");
           el.textContent = d.error;
           el.classList.remove("hidden");
@@ -2458,6 +2518,7 @@
         }
 
         if (createTeamDraft.pendingFile && !currentUser?.is_guest) {
+          setCreateTeamBtnLoading(true, "Uploading avatar…");
           const form = new FormData();
           form.append("avatar", createTeamDraft.pendingFile);
           const upR = await apiFetch(`/api/teams/${d.id}/avatar/upload`, {
@@ -2467,8 +2528,7 @@
           const upD = await parseJsonResponse(upR);
           if (!upR.ok) {
             createTeamSaving = false;
-            btn.disabled = false;
-            btn.textContent = "Create Team";
+            setCreateTeamBtnLoading(false);
             const el = document.getElementById("modalError");
             el.textContent =
               upD.error || "Team created but avatar upload failed";
@@ -2481,8 +2541,7 @@
         }
 
         createTeamSaving = false;
-        btn.disabled = false;
-        btn.textContent = "Create Team";
+        setCreateTeamBtnLoading(false);
         closeCreateModal();
         showTeamsLoading();
         await loadTeams();

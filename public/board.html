@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>TaskFlow — Board</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -120,6 +122,140 @@
       border: 1px solid rgba(255,255,255,0.1);
     }
     .attachment-preview-thumb:hover { border-color: rgba(79, 110, 247, 0.6); }
+    .attachment-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      color: #9ca3af;
+      transition: color 0.15s, background 0.15s;
+    }
+    .attachment-icon-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .attachment-icon-btn.danger:hover { color: #f87171; background: rgba(239,68,68,0.12); }
+    .attachment-icon-btn.brand:hover { color: #818cf8; background: rgba(79,110,247,0.12); }
+    .attachment-drop-zone {
+      border: 2px dashed rgba(255,255,255,0.12);
+      border-radius: 0.875rem;
+      padding: 1.25rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: rgba(255,255,255,0.02);
+    }
+    .attachment-drop-zone:hover,
+    .attachment-drop-zone.drag-over {
+      border-color: rgba(79,110,247,0.45);
+      background: rgba(79,110,247,0.06);
+    }
+    .attachment-drop-zone.has-file {
+      border-style: solid;
+      border-color: rgba(79,110,247,0.25);
+      padding: 0.75rem;
+    }
+    .attachment-file-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: 0.75rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .attachment-file-thumb {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.5rem;
+      object-fit: cover;
+      background: #252840;
+      flex-shrink: 0;
+    }
+    .attachment-file-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.5rem;
+      background: #252840;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #6b7280;
+    }
+    .cover-upload-preview {
+      width: 100%;
+      max-height: 8rem;
+      object-fit: cover;
+      border-radius: 0.75rem;
+      display: block;
+    }
+    .btn-spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: comment-unread-badge-spin 0.65s linear infinite;
+      flex-shrink: 0;
+    }
+    .btn-loading {
+      pointer-events: none;
+      opacity: 0.75;
+    }
+    .modal-busy-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      background: rgba(15,17,23,0.72);
+      backdrop-filter: blur(4px);
+      border-radius: inherit;
+    }
+    .modal-busy-overlay .busy-spinner {
+      width: 1.75rem;
+      height: 1.75rem;
+      border: 2.5px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: comment-unread-badge-spin 0.65s linear infinite;
+    }
+    .upload-busy-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.75rem;
+      background: rgba(79,110,247,0.08);
+      border: 1px solid rgba(79,110,247,0.2);
+      font-size: 0.75rem;
+      color: #a5b4fc;
+    }
+    @media (max-width: 767px) and (orientation: landscape) {
+      #portraitLockOverlay {
+        display: flex !important;
+      }
+      body.portrait-locked > *:not(#portraitLockOverlay) {
+        display: none !important;
+      }
+    }
+    #portraitLockOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0f1117;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+      text-align: center;
+    }
     #attachmentPreviewBody iframe {
       width: 100%;
       height: min(70vh, 720px);
@@ -500,7 +636,15 @@
     }
   </style>
 </head>
-<body class="grid-bg h-screen text-white flex flex-col overflow-hidden">
+<body class="grid-bg h-screen text-white flex flex-col overflow-hidden portrait-locked">
+
+  <div id="portraitLockOverlay" aria-hidden="true">
+    <svg class="w-12 h-12 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+    <p class="text-white font-medium">Please rotate your device</p>
+    <p class="text-gray-500 text-sm">TaskFlow works best in portrait mode</p>
+  </div>
 
   <!-- Navbar -->
   <nav class="border-b border-white/10 bg-ink-900/90 backdrop-blur-sm sticky top-0 z-40">
@@ -587,7 +731,69 @@
       <div id="boardZoomScaler">
         <div id="boardZoomInner">
           <div id="kanbanBoard" class="flex gap-4 h-full min-h-[calc(100vh-7rem-2rem)]">
-            <!-- Columns rendered by renderKanbanBoard() -->
+            <div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-0">
+              <div class="board-pan-surface flex items-center justify-between mb-3 px-1">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="skeleton w-2.5 h-2.5 rounded-full shrink-0"></div>
+                  <div class="skeleton h-3 w-16 rounded"></div>
+                  <div class="skeleton h-5 w-6 rounded-full shrink-0"></div>
+                </div>
+              </div>
+              <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2">
+                <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
+                  <div class="skeleton h-3.5 w-3/4 rounded mb-2.5"></div>
+                  <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
+                  <div class="skeleton h-2.5 w-12 rounded"></div>
+                </div>
+                <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
+                  <div class="skeleton h-3.5 w-2/3 rounded mb-2.5"></div>
+                  <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
+                  <div class="skeleton h-2.5 w-10 rounded"></div>
+                </div>
+              </div>
+            </div>
+            <div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-1">
+              <div class="board-pan-surface flex items-center justify-between mb-3 px-1">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="skeleton w-2.5 h-2.5 rounded-full shrink-0"></div>
+                  <div class="skeleton h-3 w-14 rounded"></div>
+                  <div class="skeleton h-5 w-6 rounded-full shrink-0"></div>
+                </div>
+              </div>
+              <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2">
+                <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
+                  <div class="skeleton h-3.5 w-4/5 rounded mb-2.5"></div>
+                  <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
+                  <div class="skeleton h-2.5 w-14 rounded"></div>
+                </div>
+                <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
+                  <div class="skeleton h-3.5 w-1/2 rounded mb-2.5"></div>
+                  <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
+                  <div class="skeleton h-2.5 w-12 rounded"></div>
+                </div>
+              </div>
+            </div>
+            <div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-2">
+              <div class="board-pan-surface flex items-center justify-between mb-3 px-1">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="skeleton w-2.5 h-2.5 rounded-full shrink-0"></div>
+                  <div class="skeleton h-3 w-12 rounded"></div>
+                  <div class="skeleton h-5 w-6 rounded-full shrink-0"></div>
+                </div>
+              </div>
+              <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2">
+                <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
+                  <div class="skeleton h-3.5 w-3/5 rounded mb-2.5"></div>
+                  <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
+                  <div class="skeleton h-2.5 w-10 rounded"></div>
+                </div>
+                <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
+                  <div class="skeleton h-3.5 w-2/3 rounded mb-2.5"></div>
+                  <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
+                  <div class="skeleton h-2.5 w-12 rounded"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -908,15 +1114,33 @@
           <div id="addTaskOptionalContent" class="hidden mt-3 space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
             <textarea id="taskDesc" placeholder="Description (optional)" rows="2"
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm resize-none"></textarea>
-            <div id="addTaskAttachmentsBlock" class="hidden space-y-2 border border-white/10 rounded-xl p-3 bg-ink-700/40">
-              <label class="block text-gray-500 text-xs">Attachments</label>
-              <input id="addTaskAttachmentFiles" type="file" multiple class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-500 file:text-white file:text-xs" />
-              <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-                <input id="addTaskCoverToggle" type="checkbox" class="rounded border-white/20" />
-                Use first image attachment as cover
-              </label>
-              <label class="block text-gray-500 text-xs mt-2">Cover image (optional)</label>
-              <input id="addTaskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-gray-300 file:text-xs" />
+            <div id="addTaskAttachmentsBlock" class="hidden space-y-4">
+              <div>
+                <p class="text-sm text-gray-200 font-medium mb-0.5">Files</p>
+                <p class="text-xs text-gray-500 mb-2">Drop files here or tap to browse</p>
+                <div id="addTaskDropZone" class="attachment-drop-zone" role="button" tabindex="0" aria-label="Add attachments">
+                  <input id="addTaskAttachmentFiles" type="file" multiple class="hidden" />
+                  <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                  <p class="text-xs text-gray-400">Images, PDFs, and other files</p>
+                </div>
+                <div id="addTaskFilesList" class="space-y-2 mt-2"></div>
+              </div>
+              <div>
+                <p class="text-sm text-gray-200 font-medium mb-0.5">Cover image</p>
+                <p class="text-xs text-gray-500 mb-2">Shown on the task card (optional)</p>
+                <div id="addTaskCoverDropZone" class="attachment-drop-zone" role="button" tabindex="0" aria-label="Add cover image">
+                  <input id="addTaskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                  <div id="addTaskCoverPlaceholder">
+                    <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <p class="text-xs text-gray-400">Tap to choose a cover photo</p>
+                  </div>
+                  <div id="addTaskCoverPreview" class="hidden"></div>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer mt-2">
+                  <input id="addTaskCoverToggle" type="checkbox" class="rounded border-white/20" />
+                  Use first image attachment as cover instead
+                </label>
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -944,7 +1168,7 @@
         </div>
         <div class="flex gap-3 pt-2">
           <button onclick="closeAddTask()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
-          <button onclick="submitTask()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add Task</button>
+          <button id="addTaskSubmitBtn" onclick="submitTask()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add Task</button>
         </div>
       </div>
     </div>
@@ -954,6 +1178,10 @@
   <div id="taskModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeTaskModal()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
+      <div id="taskModalBusy" class="modal-busy-overlay hidden rounded-2xl" role="status" aria-live="polite">
+        <div class="busy-spinner" aria-hidden="true"></div>
+        <p id="taskModalBusyText" class="text-sm text-gray-300">Loading task…</p>
+      </div>
       <!-- Task Header -->
       <div class="p-6 border-b border-white/10">
         <div class="flex items-start justify-between gap-3">
@@ -1037,26 +1265,42 @@
                   </select>
                 </div>
               </div>
-              <div id="taskAttachmentsSection" class="hidden border-t border-white/10 pt-4 space-y-3">
-                <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Attachments</label>
-                <div id="taskAttachmentsList" class="space-y-2 text-sm"></div>
-                <div id="taskAttachmentsUploadBlock" class="hidden space-y-2">
-                  <input id="taskAttachmentFile" type="file" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-500 file:text-white file:text-xs" />
-                  <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-                    <input id="taskAttachmentAsCover" type="checkbox" class="rounded border-white/20" />
-                    Also use as cover image (images only)
-                  </label>
+              <div id="taskAttachmentsSection" class="hidden border-t border-white/10 pt-4 space-y-4">
+                <div>
+                  <p class="text-sm text-gray-200 font-medium mb-0.5">Files</p>
+                  <div id="taskAttachmentsList" class="space-y-2 text-sm mt-2"></div>
+                  <div id="taskAttachmentUploadBusy" class="upload-busy-row hidden mt-2" role="status">
+                    <span class="btn-spinner" aria-hidden="true"></span>
+                    <span>Uploading…</span>
+                  </div>
+                  <div id="taskAttachmentsUploadBlock" class="hidden mt-2">
+                    <div id="taskAttachmentDropZone" class="attachment-drop-zone" role="button" tabindex="0" aria-label="Upload attachment">
+                      <input id="taskAttachmentFile" type="file" class="hidden" />
+                      <svg class="w-7 h-7 mx-auto text-gray-500 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" /></svg>
+                      <p class="text-xs text-gray-400">Add a file</p>
+                    </div>
+                    <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer mt-2">
+                      <input id="taskAttachmentAsCover" type="checkbox" class="rounded border-white/20" />
+                      Also use as cover (images only)
+                    </label>
+                  </div>
                 </div>
                 <div id="taskCoverBlock" class="hidden space-y-2 border-t border-white/10 pt-3">
-                  <label class="block text-gray-500 text-xs uppercase tracking-wider">Cover image</label>
+                  <p class="text-sm text-gray-200 font-medium">Cover image</p>
                   <div id="taskCoverPreview" class="rounded-xl overflow-hidden bg-ink-700 border border-white/10 max-h-32 cursor-pointer" title="Preview cover"></div>
                   <p id="taskCoverGuestNote" class="hidden text-xs text-gray-500">View only — guest accounts cannot upload files.</p>
-                  <div id="taskCoverManageRow" class="flex flex-wrap gap-2">
-                    <label class="inline-flex items-center gap-2 text-xs text-brand-500 hover:text-brand-400 cursor-pointer">
+                  <div id="taskCoverUploadBusy" class="upload-busy-row hidden" role="status">
+                    <span class="btn-spinner" aria-hidden="true"></span>
+                    <span>Uploading cover…</span>
+                  </div>
+                  <div id="taskCoverManageRow" class="flex flex-wrap items-center gap-2">
+                    <div id="taskCoverDropZone" class="attachment-drop-zone flex-1 min-w-[10rem] py-2" role="button" tabindex="0" aria-label="Upload cover image">
                       <input id="taskCoverFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
-                      Upload cover
-                    </label>
-                    <button type="button" id="taskCoverClearBtn" onclick="clearTaskCover()" class="text-xs text-gray-500 hover:text-red-400 transition">Remove cover</button>
+                      <p class="text-xs text-brand-500 font-medium">Change cover</p>
+                    </div>
+                    <button type="button" id="taskCoverClearBtn" onclick="clearTaskCover()" class="attachment-icon-btn danger" title="Remove cover" aria-label="Remove cover">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1108,6 +1352,7 @@
   <div id="reactionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
   <div id="mentionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
 
+  <script src="/mobile-orientation.js"></script>
   <script src="/avatar-utils.js"></script>
   <script src="/message-format.js"></script>
   <script src="/mention-autocomplete.js"></script>
@@ -1168,11 +1413,181 @@
     let activityLogs = [];
     let activityBatch = null;
     let commentBatch = null;
+    let boardHistoryPopping = false;
+    let taskModalClosing = false;
+    let taskSubmitSaving = false;
+    let attachmentUploadBusy = false;
+    let coverUploadBusy = false;
+
+    const ICON_EYE = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>';
+    const ICON_TRASH = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+    const ICON_IMAGE = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
 
     const REACTION_EMOJIS = {
       love: '❤️', money: '🤑', ok: '👍', haha: '😂', sad: '😢', angry: '😠',
       fire: '🔥', clap: '👏', think: '🤔', party: '🎉', eyes: '👀', hundred: '💯',
     };
+
+    function setButtonLoading(btn, loading, loadingLabel) {
+      if (!btn) return;
+      if (loading) {
+        if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+        btn.disabled = true;
+        btn.classList.add('btn-loading', 'inline-flex', 'items-center', 'justify-center', 'gap-2');
+        btn.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span>${escHtml(loadingLabel || 'Loading…')}</span>`;
+      } else {
+        btn.disabled = false;
+        btn.classList.remove('btn-loading', 'inline-flex', 'items-center', 'justify-center', 'gap-2');
+        btn.textContent = btn.dataset.origText || btn.textContent;
+        delete btn.dataset.origText;
+      }
+    }
+
+    function setTaskModalBusy(show, text) {
+      const el = document.getElementById('taskModalBusy');
+      const label = document.getElementById('taskModalBusyText');
+      if (!el) return;
+      el.classList.toggle('hidden', !show);
+      if (label && text) label.textContent = text;
+    }
+
+    function getTopBoardOverlay() {
+      if (!document.getElementById('attachmentPreviewModal')?.classList.contains('hidden')) return 'attachmentPreview';
+      if (!document.getElementById('taskModal')?.classList.contains('hidden')) return 'task';
+      if (!document.getElementById('addTaskModal')?.classList.contains('hidden')) return 'addTask';
+      if (chatPanelOpen) return 'chat';
+      if (!document.getElementById('activityPanel')?.classList.contains('hidden')) return 'activity';
+      if (!document.getElementById('teamPanel')?.classList.contains('hidden')) return 'team';
+      if (!document.getElementById('settingsPanel')?.classList.contains('hidden')) return 'settings';
+      return null;
+    }
+
+    function pushBoardOverlay(name) {
+      if (boardHistoryPopping) return;
+      history.pushState({ tfBoardOverlay: name, t: Date.now() }, '');
+    }
+
+    function requestCloseBoardOverlay() {
+      if (getTopBoardOverlay()) history.back();
+    }
+
+    function syncBoardOverlayHistory(prevOverlay) {
+      if (!prevOverlay || boardHistoryPopping) return;
+      closeBoardOverlayUi(prevOverlay);
+      boardHistoryPopping = true;
+      history.back();
+      boardHistoryPopping = false;
+    }
+
+    async function closeBoardOverlayUi(overlay) {
+      switch (overlay) {
+        case 'attachmentPreview': closeAttachmentPreviewUi(); break;
+        case 'task': await closeTaskModalUi(); break;
+        case 'addTask': closeAddTaskUi(); break;
+        case 'chat': closeChatPanelUi(); break;
+        case 'activity': closeActivityPanelUi(); break;
+        case 'team': closeTeamPanelUi(); break;
+        case 'settings': closeSettingsPanelUi(); break;
+      }
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes) return '';
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function attachmentFileIconHtml(mimeType) {
+      if ((mimeType || '').startsWith('image/')) return ICON_IMAGE;
+      return '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>';
+    }
+
+    function renderAddTaskFilesList() {
+      const list = document.getElementById('addTaskFilesList');
+      const input = document.getElementById('addTaskAttachmentFiles');
+      if (!list || !input) return;
+      const files = input.files ? Array.from(input.files) : [];
+      if (!files.length) {
+        list.innerHTML = '';
+        return;
+      }
+      list.innerHTML = files.map((f, i) => {
+        const isImg = f.type.startsWith('image/');
+        const thumb = isImg
+          ? `<img src="${URL.createObjectURL(f)}" alt="" class="attachment-file-thumb" />`
+          : `<div class="attachment-file-icon">${attachmentFileIconHtml(f.type)}</div>`;
+        return `<div class="attachment-file-row">
+          ${thumb}
+          <div class="min-w-0 flex-1">
+            <p class="text-xs text-gray-200 truncate">${escHtml(f.name)}</p>
+            <p class="text-[10px] text-gray-500">${formatFileSize(f.size)}</p>
+          </div>
+          <button type="button" class="attachment-icon-btn danger" onclick="removeAddTaskFile(${i})" title="Remove" aria-label="Remove ${escHtml(f.name)}">${ICON_TRASH}</button>
+        </div>`;
+      }).join('');
+    }
+
+    function removeAddTaskFile(index) {
+      const input = document.getElementById('addTaskAttachmentFiles');
+      if (!input?.files) return;
+      const dt = new DataTransfer();
+      Array.from(input.files).forEach((f, i) => { if (i !== index) dt.items.add(f); });
+      input.files = dt.files;
+      renderAddTaskFilesList();
+    }
+
+    function renderAddTaskCoverPreview() {
+      const input = document.getElementById('addTaskCoverFile');
+      const preview = document.getElementById('addTaskCoverPreview');
+      const placeholder = document.getElementById('addTaskCoverPlaceholder');
+      const zone = document.getElementById('addTaskCoverDropZone');
+      const file = input?.files?.[0];
+      if (!preview || !placeholder || !zone) return;
+      if (!file) {
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        placeholder.classList.remove('hidden');
+        zone.classList.remove('has-file');
+        return;
+      }
+      placeholder.classList.add('hidden');
+      preview.classList.remove('hidden');
+      zone.classList.add('has-file');
+      preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="" class="cover-upload-preview" />`;
+    }
+
+    function initAttachmentDropZone(zoneId, inputId, { onFiles, multiple = false } = {}) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+      if (!zone || !input) return;
+      const openPicker = () => input.click();
+      zone.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        openPicker();
+      });
+      zone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(); }
+      });
+      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const files = e.dataTransfer?.files;
+        if (!files?.length) return;
+        if (multiple) {
+          const dt = new DataTransfer();
+          Array.from(input.files || []).forEach((f) => dt.items.add(f));
+          Array.from(files).forEach((f) => dt.items.add(f));
+          input.files = dt.files;
+        } else {
+          input.files = files;
+        }
+        onFiles?.();
+      });
+      input.addEventListener('change', () => onFiles?.());
+    }
 
     function showConfirm({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm }) {
       document.getElementById('confirmTitle').textContent = title;
@@ -2582,6 +2997,7 @@
       syncAddTaskModalUi();
       resetAddTaskOptionalDrawer();
       document.getElementById('addTaskModal').classList.remove('hidden');
+      pushBoardOverlay('addTask');
       setTimeout(() => document.getElementById('taskTitle').focus(), 50);
     }
     function openAddTaskWithColumnPicker() {
@@ -2593,9 +3009,10 @@
       syncAddTaskModalUi();
       resetAddTaskOptionalDrawer();
       document.getElementById('addTaskModal').classList.remove('hidden');
+      pushBoardOverlay('addTask');
       setTimeout(() => document.getElementById('taskTitle').focus(), 50);
     }
-    function closeAddTask() {
+    function closeAddTaskUi() {
       document.getElementById('addTaskModal').classList.add('hidden');
       ['taskTitle','taskDesc'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
       const af = document.getElementById('addTaskAttachmentFiles');
@@ -2605,6 +3022,14 @@
       const ct = document.getElementById('addTaskCoverToggle');
       if (ct) ct.checked = false;
       addTaskShowColumnPicker = false;
+      renderAddTaskFilesList();
+      renderAddTaskCoverPreview();
+      const submitBtn = document.getElementById('addTaskSubmitBtn');
+      if (submitBtn) setButtonLoading(submitBtn, false);
+      taskSubmitSaving = false;
+    }
+    function closeAddTask() {
+      requestCloseBoardOverlay();
     }
     async function uploadTaskAttachment(taskId, file, setAsCover = false) {
       const form = new FormData();
@@ -2627,54 +3052,67 @@
       return data;
     }
     async function submitTask() {
+      if (taskSubmitSaving) return;
       const title = document.getElementById('taskTitle').value.trim();
       if (!title) return;
+      const submitBtn = document.getElementById('addTaskSubmitBtn');
+      taskSubmitSaving = true;
+      setButtonLoading(submitBtn, true, 'Creating…');
       const status = addTaskShowColumnPicker
         ? (document.getElementById('addTaskColumnSelect')?.value || addTaskStatusTarget)
         : addTaskStatusTarget;
-      const r = await apiFetch(`/api/teams/${teamId}/tasks`, {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          title,
-          description: document.getElementById('taskDesc').value.trim(),
-          status,
-          priority: document.getElementById('taskPriority').value,
-          due_date: document.getElementById('taskDue').value || null,
-          assigned_to: document.getElementById('taskAssignee').value || null
-        })
-      });
-      let task = await parseJsonResponse(r);
-      if (!r.ok) {
-        showAlert(task.error || 'Failed to create task');
-        return;
-      }
-      if (!isGuest()) {
-        const files = document.getElementById('addTaskAttachmentFiles')?.files;
-        const coverFile = document.getElementById('addTaskCoverFile')?.files?.[0];
-        const useFirstAsCover = document.getElementById('addTaskCoverToggle')?.checked;
-        try {
-          let firstImageUrl = null;
-          if (files?.length) {
-            for (let i = 0; i < files.length; i++) {
-              const f = files[i];
-              const asCover = useFirstAsCover && i === 0 && f.type.startsWith('image/');
-              const row = await uploadTaskAttachment(task.id, f, asCover);
-              if (asCover) firstImageUrl = row.file_url;
-              task.attachment_count = (task.attachment_count || 0) + 1;
-            }
-          }
-          if (coverFile) {
-            task = await uploadTaskCover(task.id, coverFile);
-          } else if (firstImageUrl) {
-            task.cover_image_url = firstImageUrl;
-          }
-        } catch (err) {
-          showAlert(err.message || 'Task created but some uploads failed');
+      try {
+        const r = await apiFetch(`/api/teams/${teamId}/tasks`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            title,
+            description: document.getElementById('taskDesc').value.trim(),
+            status,
+            priority: document.getElementById('taskPriority').value,
+            due_date: document.getElementById('taskDue').value || null,
+            assigned_to: document.getElementById('taskAssignee').value || null
+          })
+        });
+        let task = await parseJsonResponse(r);
+        if (!r.ok) {
+          showAlert(task.error || 'Failed to create task');
+          return;
         }
+        if (!isGuest()) {
+          const files = document.getElementById('addTaskAttachmentFiles')?.files;
+          const coverFile = document.getElementById('addTaskCoverFile')?.files?.[0];
+          const useFirstAsCover = document.getElementById('addTaskCoverToggle')?.checked;
+          setButtonLoading(submitBtn, true, 'Uploading files…');
+          try {
+            let firstImageUrl = null;
+            if (files?.length) {
+              for (let i = 0; i < files.length; i++) {
+                const f = files[i];
+                const asCover = useFirstAsCover && i === 0 && f.type.startsWith('image/');
+                const row = await uploadTaskAttachment(task.id, f, asCover);
+                if (asCover) firstImageUrl = row.file_url;
+                task.attachment_count = (task.attachment_count || 0) + 1;
+              }
+            }
+            if (coverFile) {
+              task = await uploadTaskCover(task.id, coverFile);
+            } else if (firstImageUrl) {
+              task.cover_image_url = firstImageUrl;
+            }
+          } catch (err) {
+            showAlert(err.message || 'Task created but some uploads failed');
+          }
+        }
+        tasks.push(task);
+        renderBoard({ animateNew: true });
+        boardHistoryPopping = true;
+        closeAddTaskUi();
+        if (history.state?.tfBoardOverlay) history.back();
+        boardHistoryPopping = false;
+      } finally {
+        taskSubmitSaving = false;
+        setButtonLoading(submitBtn, false);
       }
-      tasks.push(task);
-      renderBoard({ animateNew: true });
-      closeAddTask();
     }
 
     function resetTaskModalToDetailsTab() {
@@ -2749,6 +3187,8 @@
 
     // Task Detail Modal
     async function openTaskModal(taskId) {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
       activeTaskId = taskId;
       resetTaskModalToDetailsTab();
       taskComments = [];
@@ -2761,50 +3201,62 @@
       taskViewingOriginalField = null;
       resetTaskDetailsDrawer();
       document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
+      document.getElementById('taskModal').classList.remove('hidden');
+      setTaskModalBusy(true, 'Loading task…');
+      pushBoardOverlay('task');
       const showUnreadBadgeLoading = (task.unread_comment_count || 0) > 0;
       if (showUnreadBadgeLoading) showCommentUnreadBadgeLoading();
-      const pc = PRIORITY_CONFIG[task.priority];
-      document.getElementById('taskDetailPriority').innerHTML = `<span class="px-2 py-0.5 rounded-md text-xs ${pc.bg}">${pc.label}</span>`;
-      renderTaskTitleArea(task);
-      renderTaskDescArea(task);
-      const canEdit = !isGuest();
-      document.getElementById('taskEditBtn').classList.toggle('hidden', !canEdit);
-      document.getElementById('taskEditDescBtn').classList.toggle('hidden', !canEdit);
-      document.getElementById('taskDeleteBtn').classList.toggle('hidden', !canEdit);
-      document.getElementById('detailStatus').value = task.status;
-      document.getElementById('detailPriority').value = task.priority;
-      document.getElementById('detailDue').value = task.due_date ? task.due_date.split('T')[0] : '';
-      document.getElementById('detailAssignee').value = task.assigned_to || '';
-      document.getElementById('detailCreator').innerHTML = task.creator
-        ? memberNameHtml(task.creator, task.creator.id, 'text-sm text-gray-300')
-        : '<span class="text-sm text-gray-300">Unknown</span>';
-      populateStatusDropdowns();
-      await loadTaskAttachments(taskId);
-      renderTaskAttachmentsUi(task);
-      document.getElementById('taskModal').classList.remove('hidden');
-      await loadTaskCommentReadState(taskId);
-      await loadComments(taskId);
-      if (showUnreadBadgeLoading) {
-        if (taskCommentsTabActive) {
-          await finishCommentsTabLoading();
-        } else {
-          clearCommentUnreadBadgeLoading();
+      try {
+        const pc = PRIORITY_CONFIG[task.priority];
+        document.getElementById('taskDetailPriority').innerHTML = `<span class="px-2 py-0.5 rounded-md text-xs ${pc.bg}">${pc.label}</span>`;
+        renderTaskTitleArea(task);
+        renderTaskDescArea(task);
+        const canEdit = !isGuest();
+        document.getElementById('taskEditBtn').classList.toggle('hidden', !canEdit);
+        document.getElementById('taskEditDescBtn').classList.toggle('hidden', !canEdit);
+        document.getElementById('taskDeleteBtn').classList.toggle('hidden', !canEdit);
+        document.getElementById('detailStatus').value = task.status;
+        document.getElementById('detailPriority').value = task.priority;
+        document.getElementById('detailDue').value = task.due_date ? task.due_date.split('T')[0] : '';
+        document.getElementById('detailAssignee').value = task.assigned_to || '';
+        document.getElementById('detailCreator').innerHTML = task.creator
+          ? memberNameHtml(task.creator, task.creator.id, 'text-sm text-gray-300')
+          : '<span class="text-sm text-gray-300">Unknown</span>';
+        populateStatusDropdowns();
+        await loadTaskAttachments(taskId);
+        renderTaskAttachmentsUi(task);
+        await loadTaskCommentReadState(taskId);
+        await loadComments(taskId);
+        if (showUnreadBadgeLoading) {
+          if (taskCommentsTabActive) {
+            await finishCommentsTabLoading();
+          } else {
+            clearCommentUnreadBadgeLoading();
+          }
         }
+      } finally {
+        setTaskModalBusy(false);
       }
     }
-    async function closeTaskModal() {
+    async function closeTaskModalUi() {
+      if (taskModalClosing) return;
+      taskModalClosing = true;
+      setTaskModalBusy(true, 'Saving…');
       closeReactionFloats();
       dismissMessageComposer(
         document.getElementById('commentInput'),
         document.getElementById('commentSendBtn')
       );
       const closingTaskId = activeTaskId;
-      if (closingTaskId) {
-        await persistTaskCommentReadState(closingTaskId, true);
-        const unread = tasks.find((t) => t.id === closingTaskId)?.unread_comment_count || 0;
-        updateTaskCardUnreadBadge(closingTaskId, unread);
+      try {
+        if (closingTaskId) {
+          await persistTaskCommentReadState(closingTaskId, true);
+          const unread = tasks.find((t) => t.id === closingTaskId)?.unread_comment_count || 0;
+          updateTaskCardUnreadBadge(closingTaskId, unread);
+        }
+      } finally {
+        setTaskModalBusy(false);
+        taskModalClosing = false;
       }
       document.getElementById('taskModal').classList.add('hidden');
       activeTaskId = null;
@@ -2817,6 +3269,9 @@
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
+    }
+    function closeTaskModal() {
+      requestCloseBoardOverlay();
     }
 
     function commentSearchText(c) {
@@ -3044,14 +3499,18 @@
       }
       modal.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
+      pushBoardOverlay('attachmentPreview');
     }
 
-    function closeAttachmentPreview() {
+    function closeAttachmentPreviewUi() {
       const modal = document.getElementById('attachmentPreviewModal');
       const body = document.getElementById('attachmentPreviewBody');
       if (body) body.innerHTML = '';
       modal?.classList.add('hidden');
       document.body.style.overflow = '';
+    }
+    function closeAttachmentPreview() {
+      requestCloseBoardOverlay();
     }
 
     function renderTaskAttachmentsUi(task) {
@@ -3083,21 +3542,21 @@
             const isImg = (a.mime_type || '').startsWith('image/');
             const previewable = isAttachmentPreviewable(a.mime_type);
             const previewBtn = previewable
-              ? `<button type="button" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" class="text-xs text-brand-500 hover:text-brand-400">Preview</button>`
+              ? `<button type="button" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" class="attachment-icon-btn brand" title="Preview" aria-label="Preview ${escHtml(a.file_name)}">${ICON_EYE}</button>`
               : '';
             const coverBtn = !guest && isImg
-              ? `<button type="button" class="text-xs text-brand-500 hover:text-brand-400" onclick="setCoverFromAttachment('${a.id}')">Use as cover</button>`
+              ? `<button type="button" class="attachment-icon-btn brand" onclick="setCoverFromAttachment('${a.id}')" title="Use as cover" aria-label="Use as cover">${ICON_IMAGE}</button>`
               : '';
             const delBtn = !guest
-              ? `<button type="button" class="text-xs text-gray-500 hover:text-red-400" onclick="deleteTaskAttachment('${a.id}')">Remove</button>`
+              ? `<button type="button" class="attachment-icon-btn danger" onclick="deleteTaskAttachment('${a.id}')" title="Remove" aria-label="Remove ${escHtml(a.file_name)}">${ICON_TRASH}</button>`
               : '';
             const thumb = isImg
-              ? `<img src="${escHtml(a.file_url)}" alt="" class="attachment-preview-thumb shrink-0" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" />`
-              : '';
-            return `<div class="flex items-center gap-2 p-2 rounded-lg bg-ink-700/50 border border-white/10">
+              ? `<img src="${escHtml(a.file_url)}" alt="" class="attachment-file-thumb" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" />`
+              : `<div class="attachment-file-icon">${attachmentFileIconHtml(a.mime_type)}</div>`;
+            return `<div class="attachment-file-row">
               ${thumb}
               <span class="text-gray-300 truncate text-xs flex-1 min-w-0">${escHtml(a.file_name)}</span>
-              <div class="flex gap-2 shrink-0 flex-wrap justify-end">${previewBtn}${coverBtn}${delBtn}</div>
+              <div class="flex gap-0.5 shrink-0">${previewBtn}${coverBtn}${delBtn}</div>
             </div>`;
           }).join('');
         }
@@ -3186,8 +3645,11 @@
     }
 
     async function onTaskAttachmentSelected(file) {
-      if (!activeTaskId || !file || isGuest()) return;
+      if (!activeTaskId || !file || isGuest() || attachmentUploadBusy) return;
       const asCover = document.getElementById('taskAttachmentAsCover')?.checked && file.type.startsWith('image/');
+      const busy = document.getElementById('taskAttachmentUploadBusy');
+      attachmentUploadBusy = true;
+      if (busy) busy.classList.remove('hidden');
       try {
         await uploadTaskAttachment(activeTaskId, file, asCover);
         await loadTaskAttachments(activeTaskId);
@@ -3204,12 +3666,18 @@
         }
       } catch (err) {
         showAlert(err.message || 'Upload failed');
+      } finally {
+        attachmentUploadBusy = false;
+        if (busy) busy.classList.add('hidden');
       }
       document.getElementById('taskAttachmentFile').value = '';
     }
 
     async function onTaskCoverFileSelected(file) {
-      if (!activeTaskId || !file || isGuest()) return;
+      if (!activeTaskId || !file || isGuest() || coverUploadBusy) return;
+      const busy = document.getElementById('taskCoverUploadBusy');
+      coverUploadBusy = true;
+      if (busy) busy.classList.remove('hidden');
       try {
         const updated = await uploadTaskCover(activeTaskId, file);
         const idx = tasks.findIndex((t) => t.id === activeTaskId);
@@ -3219,6 +3687,9 @@
         renderBoard();
       } catch (err) {
         showAlert(err.message || 'Upload failed');
+      } finally {
+        coverUploadBusy = false;
+        if (busy) busy.classList.add('hidden');
       }
       document.getElementById('taskCoverFile').value = '';
     }
@@ -3476,10 +3947,9 @@
     }
 
     function closeAllSidePanels() {
-      document.getElementById('activityPanel').classList.add('hidden');
-      document.getElementById('teamPanel').classList.add('hidden');
-      document.getElementById('settingsPanel').classList.add('hidden');
-      setSidePanelMobileOpen(false);
+      closeActivityPanelUi();
+      closeTeamPanelUi();
+      closeSettingsPanelUi();
     }
 
     // Team Chat
@@ -3502,6 +3972,8 @@
     }
 
     function openChatPanel() {
+      const prev = getTopBoardOverlay();
+      if (prev && prev !== 'chat') syncBoardOverlayHistory(prev);
       closeAllSidePanels();
       chatPanelOpen = true;
       applyChatComposerState();
@@ -3513,9 +3985,10 @@
       else renderChatMessages();
       scrollChatToBottom();
       if (!isGuest()) setTimeout(() => document.getElementById('chatInput')?.focus(), 50);
+      pushBoardOverlay('chat');
     }
 
-    function closeChatPanel() {
+    function closeChatPanelUi() {
       closeReactionFloats();
       dismissMessageComposer(
         document.getElementById('chatInput'),
@@ -3533,6 +4006,9 @@
       if (chatSearchEl) chatSearchEl.value = '';
       syncChatVersionFocusUi();
       updateChatUnreadBadge();
+    }
+    function closeChatPanel() {
+      requestCloseBoardOverlay();
     }
 
     function toggleChatMessageVersion(messageId) {
@@ -4086,37 +4562,67 @@
 
     // Activity Panel
     function openActivityPanel() {
+      const prev = getTopBoardOverlay();
+      if (prev && prev !== 'activity') syncBoardOverlayHistory(prev);
       closeAllSidePanels();
+      if (chatPanelOpen) {
+        closeChatPanelUi();
+        syncBoardOverlayHistory('chat');
+      }
       document.getElementById('activityPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
       loadActivity();
+      pushBoardOverlay('activity');
     }
-    function closeActivityPanel() {
+    function closeActivityPanelUi() {
       document.getElementById('activityPanel').classList.add('hidden');
       setSidePanelMobileOpen(false);
     }
+    function closeActivityPanel() {
+      requestCloseBoardOverlay();
+    }
     function openTeamPanel() {
+      const prev = getTopBoardOverlay();
+      if (prev && prev !== 'team') syncBoardOverlayHistory(prev);
       closeAllSidePanels();
+      if (chatPanelOpen) {
+        closeChatPanelUi();
+        syncBoardOverlayHistory('chat');
+      }
       document.getElementById('teamPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
       fetchOnlineMembers();
+      pushBoardOverlay('team');
     }
-    function closeTeamPanel() {
+    function closeTeamPanelUi() {
       document.getElementById('teamPanel').classList.add('hidden');
       setSidePanelMobileOpen(false);
+    }
+    function closeTeamPanel() {
+      requestCloseBoardOverlay();
     }
 
     // Settings Panel (owners only)
     function openSettingsPanel() {
       if (teamData?.userRole !== 'owner') return;
+      const prev = getTopBoardOverlay();
+      if (prev && prev !== 'settings') syncBoardOverlayHistory(prev);
       closeAllSidePanels();
+      if (chatPanelOpen) {
+        closeChatPanelUi();
+        syncBoardOverlayHistory('chat');
+      }
       document.getElementById('settingsPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
+      pushBoardOverlay('settings');
     }
-    function closeSettingsPanel() {
+    function closeSettingsPanelUi() {
       document.getElementById('settingsPanel').classList.add('hidden');
       setSidePanelMobileOpen(false);
       setSettingsDangerZoneOpen(false);
+    }
+    function closeSettingsPanel() {
+      requestCloseBoardOverlay();
     }
 
     function setSettingsDangerZoneOpen(open) {
@@ -5256,6 +5762,17 @@
     document.getElementById('taskCoverFile')?.addEventListener('change', (e) => {
       const f = e.target.files?.[0];
       if (f) onTaskCoverFileSelected(f);
+    });
+
+    initAttachmentDropZone('addTaskDropZone', 'addTaskAttachmentFiles', { multiple: true, onFiles: renderAddTaskFilesList });
+    initAttachmentDropZone('addTaskCoverDropZone', 'addTaskCoverFile', { onFiles: renderAddTaskCoverPreview });
+    initAttachmentDropZone('taskAttachmentDropZone', 'taskAttachmentFile');
+    initAttachmentDropZone('taskCoverDropZone', 'taskCoverFile');
+
+    window.addEventListener('popstate', () => {
+      if (boardHistoryPopping) return;
+      const overlay = getTopBoardOverlay();
+      if (overlay) closeBoardOverlayUi(overlay);
     });
 
     initBoardZoom();
