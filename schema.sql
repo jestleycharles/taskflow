@@ -327,6 +327,19 @@ ALTER TABLE dm_ignored_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 
 -- =============================================================================
+-- Express session store (connect-pg-simple; auto-created on startup if missing)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS session (
+  sid varchar NOT NULL,
+  sess json NOT NULL,
+  expire timestamp(6) NOT NULL,
+  CONSTRAINT session_pkey PRIMARY KEY (sid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_expire ON session (expire);
+
+-- =============================================================================
 -- Storage (Supabase Dashboard → Storage, public buckets):
 --   avatars — {userId}/..., teams/{teamId}/...
 --   task-files — tasks/{taskId}/...

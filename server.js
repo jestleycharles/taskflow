@@ -37,7 +37,11 @@ async function start() {
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: sessionPool ? new PgSession({ pool: sessionPool, tableName: 'session' }) : undefined,
+    store: sessionPool ? new PgSession({
+      pool: sessionPool,
+      tableName: 'session',
+      createTableIfMissing: true,
+    }) : undefined,
     cookie: {
       secure: 'auto',
       httpOnly: true,
