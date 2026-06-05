@@ -2532,7 +2532,8 @@
     }
 
     async function init() {
-      showNavigationLoading('Loading team…');
+      hideNavigationLoading();
+      setNavigatingAway(true);
       try {
         const r = await apiFetch('/api/me');
         const meData = await parseJsonResponse(r);
@@ -2558,7 +2559,6 @@
         startChatPolling();
         startPresence();
       } finally {
-        navigationLoadingEl?.classList.add('hidden');
         setNavigatingAway(false);
       }
     }
@@ -6032,6 +6032,7 @@
     initAttachmentDropZone('taskCoverDropZone', 'taskCoverFile');
 
     window.addEventListener('popstate', () => {
+      hideNavigationLoading();
       if (boardHistoryPopping) {
         boardHistoryPopping = false;
         return;

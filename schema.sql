@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS team_chat_read_state (
 
 CREATE TABLE IF NOT EXISTS message_reactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'comment', 'dm')),
+  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'comment', 'dm', 'feature_post')),
   message_id UUID NOT NULL,
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   emoji TEXT NOT NULL,
@@ -298,6 +298,35 @@ CREATE INDEX IF NOT EXISTS feedback_created_idx ON feedback (created_at DESC);
 CREATE INDEX IF NOT EXISTS feedback_session_id_idx ON feedback (session_id) WHERE session_id IS NOT NULL;
 
 -- =============================================================================
+-- Dashboard feature roadmap posts (social-style feed below teams)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS feature_posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  caption TEXT NOT NULL,
+  image_url TEXT,
+  post_type TEXT NOT NULL CHECK (post_type IN ('in_progress', 'completed')),
+  checklist_ref TEXT,
+  created_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS feature_posts_created_idx ON feature_posts (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS feature_post_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES feature_posts (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS feature_post_comments_post_created_idx
+  ON feature_post_comments (post_id, created_at);
+
+-- =============================================================================
 -- Row Level Security (optional hardening)
 -- The Express server uses the service role key. Enable RLS to block direct
 -- anon/authenticated API access to tables; no policies are required for the app.
@@ -325,6 +354,8 @@ ALTER TABLE dm_blocked_emails ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_user_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_ignored_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feature_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feature_post_comments ENABLE ROW LEVEL SECURITY;
 
 -- =============================================================================
 -- Express session store (connect-pg-simple; auto-created on startup if missing)
@@ -343,6 +374,12 @@ CREATE INDEX IF NOT EXISTS idx_session_expire ON session (expire);
 -- Storage (Supabase Dashboard → Storage, public buckets):
 --   avatars — {userId}/..., teams/{teamId}/...
 --   task-files — tasks/{taskId}/...
+--   feature-posts — posts/{postId}/...
+--
+-- Migration (existing DBs): extend message_reactions.message_type CHECK:
+--   ALTER TABLE message_reactions DROP CONSTRAINT IF EXISTS message_reactions_message_type_check;
+--   ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_message_type_check
+--     CHECK (message_type IN ('chat', 'comment', 'dm', 'feature_post'));
 -- =============================================================================
 
 -- =============================================================================

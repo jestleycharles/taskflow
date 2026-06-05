@@ -9,6 +9,20 @@ Use this document to pick **one feature per PR/agent session**. Each section is 
 - [ ] Update [FEATURES.md](../FEATURES.md) and [schema.sql](../schema.sql) when behavior or DB changes.
 - [ ] Test: guest flow, registered member, team owner.
 
+**Dashboard roadmap posts (`What we're building`)**
+
+The dashboard shows social-style posts below **Your Teams** (above the feedback inbox). All users can read; only **registered** users can react and comment. Only the **feedback admin** (`FEEDBACK_ADMIN_EMAIL`) can create, edit, or delete posts via the dashboard or `POST/PATCH/DELETE /api/feature-posts`.
+
+**Posting rules for agents (do this every feature PR):**
+
+1. **One “in progress” post at a time** — Do not publish the whole checklist. Only announce the feature you are actively building *right now*.
+2. **When you start a feature** — Under the admin account, create (or ensure there is) a single post with `post_type: in_progress`, title/caption describing that checklist item, optional picture, and `checklist_ref` (e.g. `§3`). If a seed post already exists for the same item, update it instead of duplicating.
+3. **When you finish that feature** — Add a **second** post with `post_type: completed` (“Shipped”) summarizing what landed. Then create a new **in progress** post for the *next* unchecked item only (not all remaining items).
+4. **Example timeline:** §3 in progress → ship §3 (completed post) → §4 in progress → ship §4 → §5 in progress …
+5. On first deploy with an empty `feature_posts` table, the server seeds the current in-progress post for the next checklist item (see `lib/feature-post-seed.js`). After that, agents maintain posts through the admin UI or API.
+
+Posts support the same emoji reactions as team chat (`love`, `haha`, `fire`, etc.) and registered-user comments.
+
 **Status key** (edit checkboxes as you work)
 
 - `[ ]` Not started · `[~]` In progress · `[x]` Done
@@ -637,5 +651,6 @@ Dependencies are loose; recommended sequence for fewer conflicts:
 - [ ] One feature section above per PR.
 - [ ] `FEATURES.md` updated.
 - [ ] `schema.sql` updated + migration note in PR description if production DB exists.
+- [ ] **Roadmap posts:** completed post for this feature + new in-progress post for the next item only (see **Dashboard roadmap posts** above).
 - [ ] Manual test steps in PR description.
 - [ ] No unrelated refactors; match existing Express + vanilla JS patterns.

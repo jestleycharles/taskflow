@@ -56,6 +56,16 @@ function showNavigationLoading(message = 'Loading…') {
   navigationLoadingEl.classList.remove('hidden');
 }
 
+function hideNavigationLoading() {
+  navigationLoadingEl?.classList.add('hidden');
+  setNavigatingAway(false);
+}
+
+// Full-page nav overlays must not survive back/forward cache restores (e.g. back from board).
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) hideNavigationLoading();
+});
+
 function showUpdateRequiredModal() {
   if (updateRequiredShown) return;
   updateRequiredShown = true;

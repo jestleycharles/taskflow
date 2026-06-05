@@ -16,6 +16,8 @@ const dmSettingsRoutes = require('./routes/dm-settings');
 const { router: reactionRoutes } = require('./routes/reactions');
 const feedbackRoutes = require('./routes/feedback');
 const inviteLinkRoutes = require('./routes/invite-links');
+const featurePostRoutes = require('./routes/feature-posts');
+const { ensureFeaturePostSeed } = require('./lib/feature-post-seed');
 const { supabaseAdmin } = require('./lib/supabase');
 const { toSessionUser } = require('./lib/user');
 const { requireAuth } = require('./middleware/auth');
@@ -88,6 +90,7 @@ app.use(dmSettingsRoutes);
 app.use(reactionRoutes);
 app.use(feedbackRoutes);
 app.use(inviteLinkRoutes);
+app.use(featurePostRoutes);
 
 app.get('/features.md', (req, res) => {
   res.sendFile(path.join(__dirname, 'FEATURES.md'));
@@ -118,6 +121,8 @@ app.get('/api/me', requireAuth, async (req, res) => {
   req.session.user = toSessionUser(user);
   res.json(req.session.user);
 });
+
+  await ensureFeaturePostSeed();
 
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`TaskFlow running on port ${PORT}`));

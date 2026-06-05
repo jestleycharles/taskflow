@@ -81,10 +81,16 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Direct message inbox** — FAB to open DM conversations; start chats by registered user email.
 - **DM online status** — See which DM contacts are online (app-level presence).
 - **Feedback** — Same as guests
+- **Roadmap comments** — Comment on dashboard “What we’re building” posts (guests can read only).
+
+### Everyone (guest + registered)
+
+- **What we’re building** — Social-style roadmap feed below your teams on the dashboard: title, caption, picture, emoji reactions (same set as chat), and comments. Guests can read and view reactions; only registered users can react or comment.
 
 ### Feedback admin (registered, `FEEDBACK_ADMIN_EMAIL` in server `.env`)
 
 - **Feedback inbox** — Paginated list of all user submissions with search. Only visible when `FEEDBACK_ADMIN_EMAIL` is set and matches your signed-in email. The admin address is never exposed to the client; `/api/me` returns `is_feedback_admin: true` for that account only.
+- **Roadmap posts** — Create, edit, and delete dashboard roadmap posts (`POST/PATCH/DELETE /api/feature-posts`). Posts are attributed to the admin account. Use **in progress** for the feature currently being built and **Shipped** when it is done.
 
 ---
 

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Chat attachments preview">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1d2e"/>
+      <stop offset="100%" stop-color="#252840"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4f6ef7"/>
+      <stop offset="100%" stop-color="#3a57e8"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <rect x="48" y="56" width="704" height="338" rx="24" fill="#0f1117" stroke="#ffffff22" stroke-width="2"/>
+  <rect x="88" y="96" width="220" height="28" rx="14" fill="#363952"/>
+  <rect x="88" y="148" width="420" height="18" rx="9" fill="#363952" opacity="0.7"/>
+  <rect x="88" y="178" width="360" height="18" rx="9" fill="#363952" opacity="0.5"/>
+  <rect x="88" y="230" width="180" height="120" rx="16" fill="url(#accent)" opacity="0.25" stroke="#4f6ef7" stroke-width="2"/>
+  <path d="M148 278 L168 298 L208 248" fill="none" stroke="#4f6ef7" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="290" y="230" width="180" height="120" rx="16" fill="#363952" stroke="#ffffff18" stroke-width="2"/>
+  <text x="380" y="302" text-anchor="middle" font-family="system-ui,sans-serif" font-size="42" fill="#9ca3af">PDF</text>
+  <circle cx="640" cy="120" r="28" fill="#4f6ef7"/>
+  <path d="M628 120 L636 128 L654 108" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="400" y="410" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="600" fill="#e5e7eb">File &amp; image sharing</text>
+</svg>

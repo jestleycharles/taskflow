@@ -76,13 +76,20 @@ router.post('/api/reactions/toggle', requireAuth, async (req, res) => {
   const messageId = req.body?.messageId;
   const emoji = req.body?.emoji;
 
-  if (!['chat', 'comment', 'dm'].includes(messageType)) {
+  if (!['chat', 'comment', 'dm', 'feature_post'].includes(messageType)) {
     return res.status(400).json({ error: 'Invalid message type' });
   }
   if (!messageId) return res.status(400).json({ error: 'messageId required' });
   if (!isValidReactionEmoji(emoji)) return res.status(400).json({ error: 'Invalid reaction' });
 
-  if (messageType === 'dm') {
+  if (messageType === 'feature_post') {
+    const { data: post } = await supabaseAdmin
+      .from('feature_posts')
+      .select('id')
+      .eq('id', messageId)
+      .maybeSingle();
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+  } else if (messageType === 'dm') {
     const conversationId = await resolveDmMessage(messageId);
     if (!conversationId) return res.status(404).json({ error: 'Message not found' });
     const { data: conv } = await supabaseAdmin

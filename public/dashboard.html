@@ -486,6 +486,41 @@
         </div>
       </div>
 
+      <!-- Roadmap / what's next (all users; admin manages posts) -->
+      <section
+        id="featurePostsSection"
+        class="fade-up mt-14 pt-10 border-t border-white/10"
+      >
+        <div
+          class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6"
+        >
+          <div>
+            <h2 class="text-2xl font-bold text-white mb-1">What we&apos;re building</h2>
+            <p class="text-gray-400 text-sm">
+              Roadmap updates from the team — react and comment on what&apos;s in progress.
+            </p>
+          </div>
+          <button
+            type="button"
+            id="featurePostNewBtn"
+            class="hidden text-sm text-white bg-brand-500 hover:bg-brand-600 px-4 py-2 rounded-xl transition shrink-0"
+            onclick="openFeaturePostModal()"
+          >
+            New post
+          </button>
+        </div>
+        <div id="featurePostsList" class="space-y-4 max-w-2xl">
+          <div class="bg-ink-800 border border-white/10 rounded-2xl p-5">
+            <div class="skeleton w-24 h-5 rounded-full mb-4"></div>
+            <div class="skeleton w-3/4 h-5 mb-3"></div>
+            <div class="skeleton w-full h-3 mb-2"></div>
+            <div class="skeleton w-5/6 h-3 mb-4"></div>
+            <div class="skeleton w-full h-40 rounded-xl mb-4"></div>
+            <div class="skeleton w-32 h-6 rounded-full"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- User feedback inbox (admin only) -->
       <section
         id="feedbackAdminSection"
@@ -1079,6 +1114,26 @@
         ></div>
 
         <div
+          id="inviteLinkPreviewLoading"
+          class="hidden border border-white/10 bg-white/[0.02] rounded-2xl px-4 py-4 mb-4"
+          aria-hidden="true"
+        >
+          <div class="flex items-start gap-3 mb-3">
+            <div class="skeleton w-11 h-11 rounded-xl shrink-0"></div>
+            <div class="min-w-0 flex-1 space-y-2">
+              <div class="skeleton h-4 w-2/5 rounded"></div>
+              <div class="skeleton h-3 w-full rounded"></div>
+              <div class="skeleton h-3 w-4/5 rounded"></div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <div class="skeleton h-3 w-24 rounded"></div>
+            <div class="skeleton h-3 w-20 rounded"></div>
+            <div class="skeleton h-3 w-28 rounded"></div>
+          </div>
+        </div>
+
+        <div
           id="inviteLinkPreview"
           class="hidden border border-white/10 bg-white/[0.02] rounded-2xl px-4 py-4 mb-4"
         >
@@ -1101,9 +1156,17 @@
           </div>
 
           <p id="inviteLinkPreviewUsage" class="text-xs text-gray-400 mt-3 hidden"></p>
+
+          <button
+            type="button"
+            onclick="changeInviteLink()"
+            class="mt-3 text-xs text-gray-500 hover:text-gray-300 transition"
+          >
+            Use a different link
+          </button>
         </div>
 
-        <div class="space-y-4">
+        <div id="inviteLinkInputWrap" class="space-y-4">
           <div>
             <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">
               Invite link
@@ -1115,17 +1178,16 @@
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
             />
           </div>
-
-          <button
-            type="button"
-            id="inviteLinkJoinBtn"
-            onclick="joinByInviteLink()"
-            disabled
-            class="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white font-medium py-2.5 rounded-xl transition text-sm"
-          >
-            Join team
-          </button>
         </div>
+
+        <button
+          type="button"
+          id="inviteLinkJoinBtn"
+          onclick="joinByInviteLink()"
+          class="hidden w-full mt-4 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white font-medium py-2.5 rounded-xl transition text-sm"
+        >
+          Join team
+        </button>
       </div>
     </div>
 
@@ -1337,6 +1399,111 @@
         </div>
       </div>
     </div>
+
+    <!-- Feature roadmap post (admin) -->
+    <div
+      id="featurePostModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeFeaturePostModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up max-h-[90vh] overflow-y-auto"
+      >
+        <h2 id="featurePostModalTitle" class="text-base font-semibold text-white mb-1">
+          New roadmap post
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">
+          Share what is in progress or what shipped. Only one active &ldquo;in progress&rdquo; post at a time is recommended.
+        </p>
+        <div
+          id="featurePostModalError"
+          class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
+        ></div>
+        <form id="featurePostForm" onsubmit="submitFeaturePost(event)" class="space-y-4">
+          <input type="hidden" id="featurePostEditId" value="" />
+          <div>
+            <label for="featurePostTitle" class="block text-xs text-gray-400 mb-1.5">Title</label>
+            <input
+              type="text"
+              id="featurePostTitle"
+              required
+              maxlength="200"
+              class="w-full bg-ink-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
+              placeholder="Feature name"
+            />
+          </div>
+          <div>
+            <label for="featurePostCaption" class="block text-xs text-gray-400 mb-1.5">Caption</label>
+            <textarea
+              id="featurePostCaption"
+              required
+              rows="4"
+              maxlength="5000"
+              class="w-full bg-ink-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition resize-y min-h-[96px]"
+              placeholder="What are we building or what shipped?"
+            ></textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="featurePostType" class="block text-xs text-gray-400 mb-1.5">Post type</label>
+              <select
+                id="featurePostType"
+                class="w-full bg-ink-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition"
+              >
+                <option value="in_progress">In progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div>
+              <label for="featurePostChecklistRef" class="block text-xs text-gray-400 mb-1.5">Checklist ref (optional)</label>
+              <input
+                type="text"
+                id="featurePostChecklistRef"
+                maxlength="20"
+                class="w-full bg-ink-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
+                placeholder="§3"
+              />
+            </div>
+          </div>
+          <div>
+            <label for="featurePostImage" class="block text-xs text-gray-400 mb-1.5">Picture (optional)</label>
+            <input
+              type="file"
+              id="featurePostImage"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              class="w-full text-sm text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-white/10 file:text-gray-200 hover:file:bg-white/15"
+            />
+            <p id="featurePostImageHint" class="hidden text-xs text-gray-500 mt-1"></p>
+            <img
+              id="featurePostImagePreview"
+              alt=""
+              class="hidden mt-3 w-full max-h-48 object-cover rounded-xl border border-white/10"
+            />
+          </div>
+          <div class="flex gap-2 pt-1">
+            <button
+              type="button"
+              onclick="closeFeaturePostModal()"
+              class="flex-1 text-sm text-gray-300 hover:text-white px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              id="featurePostSubmitBtn"
+              class="flex-1 text-sm text-white bg-brand-500 hover:bg-brand-600 px-4 py-2.5 rounded-xl transition"
+            >
+              Publish
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="featurePostReactionLayer" class="fixed inset-0 pointer-events-none z-[70]"></div>
 
     <!-- Feedback / bug report -->
     <div
@@ -1636,28 +1803,65 @@
         document.getElementById("alertModal").classList.add("hidden");
       }
 
+      function resetInviteLinkPreviewUi() {
+        invitePreviewToken = null;
+        invitePreviewData = null;
+        inviteAutoPreviewLastToken = null;
+        invitePreviewFetching = false;
+        document.getElementById("inviteLinkModalError").classList.add("hidden");
+        document.getElementById("inviteLinkPreview").classList.add("hidden");
+        document.getElementById("inviteLinkPreviewLoading").classList.add("hidden");
+        document.getElementById("inviteLinkPreviewUsage")?.classList.add("hidden");
+        document.getElementById("inviteLinkInputWrap")?.classList.remove("hidden");
+        const joinBtn = document.getElementById("inviteLinkJoinBtn");
+        if (joinBtn) {
+          joinBtn.classList.add("hidden");
+          joinBtn.disabled = false;
+          joinBtn.textContent = "Join team";
+        }
+      }
+
+      function showInviteLinkPreviewLoading() {
+        document.getElementById("inviteLinkModalError").classList.add("hidden");
+        document.getElementById("inviteLinkPreview").classList.add("hidden");
+        document.getElementById("inviteLinkPreviewLoading").classList.remove("hidden");
+        document.getElementById("inviteLinkInputWrap")?.classList.remove("hidden");
+        const joinBtn = document.getElementById("inviteLinkJoinBtn");
+        if (joinBtn) joinBtn.classList.add("hidden");
+      }
+
+      function showInviteLinkPreviewReady() {
+        document.getElementById("inviteLinkPreviewLoading").classList.add("hidden");
+        document.getElementById("inviteLinkPreview").classList.remove("hidden");
+        document.getElementById("inviteLinkInputWrap")?.classList.add("hidden");
+        const joinBtn = document.getElementById("inviteLinkJoinBtn");
+        if (joinBtn) {
+          joinBtn.classList.remove("hidden");
+          joinBtn.disabled = false;
+        }
+      }
+
+      function changeInviteLink() {
+        clearTimeout(inviteAutoPreviewTimer);
+        resetInviteLinkPreviewUi();
+        const input = document.getElementById("inviteLinkInput");
+        if (input) {
+          input.value = "";
+          setTimeout(() => input.focus(), 50);
+        }
+      }
+
       function openInviteLinkModal() {
         if (currentUser?.is_guest) {
           return showAlert("Invite links require a registered account.", "Sign in required");
         }
         clearTimeout(inviteAutoPreviewTimer);
-        inviteAutoPreviewLastToken = null;
-        document.getElementById("inviteLinkModalError").classList.add("hidden");
         document.getElementById("inviteLinkInput").value = "";
-        document.getElementById("inviteLinkPreview").classList.add("hidden");
-        document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
-        invitePreviewToken = null;
-        invitePreviewData = null;
-        const joinBtn = document.getElementById("inviteLinkJoinBtn");
-        if (joinBtn) {
-          joinBtn.disabled = true;
-          joinBtn.textContent = "Join team";
-        }
+        resetInviteLinkPreviewUi();
         document.getElementById("inviteLinkModal").classList.remove("hidden");
         pushDashboardOverlay("inviteLink");
         const input = document.getElementById("inviteLinkInput");
         if (input) {
-          // Auto-preview as the user pastes/types a valid link/token.
           input.oninput = () => scheduleInviteAutoPreview();
           input.onpaste = () => setTimeout(() => scheduleInviteAutoPreview(), 0);
         }
@@ -1666,7 +1870,7 @@
 
       function closeInviteLinkModal() {
         clearTimeout(inviteAutoPreviewTimer);
-        inviteAutoPreviewLastToken = null;
+        resetInviteLinkPreviewUi();
         document.getElementById("inviteLinkModal").classList.add("hidden");
       }
 
@@ -1698,6 +1902,7 @@
 
       let invitePreviewToken = null;
       let invitePreviewData = null;
+      let invitePreviewFetching = false;
 
       function renderInvitePreview(preview) {
         const team = preview?.team || {};
@@ -1738,32 +1943,39 @@
         const input = document.getElementById("inviteLinkInput").value;
         const token = extractInviteToken(input);
         if (!token) return showInviteLinkModalError("Paste a valid invite link.");
+        if (invitePreviewFetching) return;
+        if (invitePreviewToken === token) {
+          showInviteLinkPreviewReady();
+          return;
+        }
 
-        const joinBtn = document.getElementById("inviteLinkJoinBtn");
-        if (joinBtn) joinBtn.disabled = true;
-        document.getElementById("inviteLinkModalError").classList.add("hidden");
-        document.getElementById("inviteLinkPreview").classList.add("hidden");
-        document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
+        invitePreviewFetching = true;
+        showInviteLinkPreviewLoading();
 
-        const r = await apiFetch(`/api/invite/${token}`);
-        const d = await parseJsonResponse(r);
+        try {
+          const r = await apiFetch(`/api/invite/${token}`);
+          const d = await parseJsonResponse(r);
 
-        if (!r.ok) return showInviteLinkModalError(d.error || "Could not load invite.");
+          if (!r.ok) {
+            resetInviteLinkPreviewUi();
+            return showInviteLinkModalError(d.error || "Could not load invite.");
+          }
 
-        invitePreviewToken = token;
-        invitePreviewData = d;
-        renderInvitePreview(d);
-        document.getElementById("inviteLinkPreview").classList.remove("hidden");
-
-        if (joinBtn) joinBtn.disabled = false;
+          invitePreviewToken = token;
+          invitePreviewData = d;
+          renderInvitePreview(d);
+          showInviteLinkPreviewReady();
+        } finally {
+          invitePreviewFetching = false;
+        }
       }
 
       async function joinByInviteLink() {
-        const input = document.getElementById("inviteLinkInput").value;
-        const token = extractInviteToken(input);
+        const token =
+          invitePreviewToken ||
+          extractInviteToken(document.getElementById("inviteLinkInput").value);
         if (!token) return showInviteLinkModalError("Paste a valid invite link.");
 
-        // If the user hasn't waited for auto-preview, try to load it once.
         if (!invitePreviewToken || invitePreviewToken !== token) {
           await previewInviteLink();
           if (!invitePreviewToken || invitePreviewToken !== token) return;
@@ -1782,7 +1994,7 @@
 
         if (!r.ok) return showInviteLinkModalError(d.error || "Could not join team.");
         if (d.team_id) {
-          showNavigationLoading("Joining team…");
+          setNavigatingAway(true);
           window.location = `/board/${d.team_id}`;
         }
       }
@@ -1802,33 +2014,42 @@
         const inputEl = document.getElementById("inviteLinkInput");
         if (!inputEl) return;
 
-        // Reset preview UI while typing.
-        invitePreviewToken = null;
-        invitePreviewData = null;
-        document.getElementById("inviteLinkPreview").classList.add("hidden");
-        document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
-        const joinBtn = document.getElementById("inviteLinkJoinBtn");
-        if (joinBtn) joinBtn.disabled = true;
+        clearTimeout(inviteAutoPreviewTimer);
         document.getElementById("inviteLinkModalError").classList.add("hidden");
 
         const token = extractInviteToken(inputEl.value);
-        if (token) {
-          const normalized = buildInviteUrlFromToken(token);
-          if (normalized && inputEl.value.trim() !== normalized) {
-            inputEl.value = normalized;
-          }
+        if (!token) {
+          resetInviteLinkPreviewUi();
+          return;
         }
 
-        clearTimeout(inviteAutoPreviewTimer);
+        if (token !== inviteAutoPreviewLastToken) {
+          invitePreviewToken = null;
+          invitePreviewData = null;
+          document.getElementById("inviteLinkPreview").classList.add("hidden");
+          document.getElementById("inviteLinkPreviewLoading").classList.add("hidden");
+          document.getElementById("inviteLinkInputWrap")?.classList.remove("hidden");
+          const joinBtn = document.getElementById("inviteLinkJoinBtn");
+          if (joinBtn) joinBtn.classList.add("hidden");
+        }
+
+        const normalized = buildInviteUrlFromToken(token);
+        if (normalized && inputEl.value.trim() !== normalized) {
+          inputEl.value = normalized;
+        }
+
         inviteAutoPreviewTimer = setTimeout(async () => {
           const token2 = extractInviteToken(inputEl.value);
-          if (!token2) return;
-          if (token2 === inviteAutoPreviewLastToken) return;
+          if (!token2) {
+            resetInviteLinkPreviewUi();
+            return;
+          }
+          if (token2 === inviteAutoPreviewLastToken && invitePreviewToken === token2) return;
           inviteAutoPreviewLastToken = token2;
           try {
             await previewInviteLink();
           } catch (_) {
-            // Errors are rendered via showInviteLinkModalError.
+            resetInviteLinkPreviewUi();
           }
         }, 350);
       }
@@ -2345,6 +2566,7 @@
 
       // Mobile back: close the top-most closable popup instead of leaving the page.
       window.addEventListener("popstate", () => {
+        hideNavigationLoading();
         if (!TF_VIEWPORT?.isMobile?.()) return;
         if (dashboardHistoryPopping) {
           dashboardHistoryPopping = false;
@@ -2448,7 +2670,439 @@
         setTimeout(closeProfileModal, 1200);
       }
 
+      let featurePostsList = [];
+      let featurePostsAdmin = false;
+      let featurePostCommentsCache = new Map();
+      let featurePostOpenComments = new Set();
+      let featurePostSaving = false;
+      let featurePostReactionPicker = null;
+
+      const FEATURE_POST_REACTION_EMOJIS = {
+        love: "❤️",
+        money: "🤑",
+        ok: "👍",
+        haha: "😂",
+        sad: "😢",
+        angry: "😠",
+        fire: "🔥",
+        clap: "👏",
+        think: "🤔",
+        party: "🎉",
+        eyes: "👀",
+        hundred: "💯",
+      };
+
+      function featurePostReactionSymbol(emoji) {
+        return FEATURE_POST_REACTION_EMOJIS[emoji] || emoji;
+      }
+
+      function formatFeaturePostDate(iso) {
+        try {
+          return new Intl.DateTimeFormat(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }).format(new Date(iso));
+        } catch (_) {
+          return iso;
+        }
+      }
+
+      function featurePostTypeBadge(postType) {
+        if (postType === "completed") {
+          return '<span class="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Shipped</span>';
+        }
+        return '<span class="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-brand-500/15 text-brand-200 border border-brand-500/25">In progress</span>';
+      }
+
+      function closeFeaturePostReactionPicker() {
+        featurePostReactionPicker = null;
+        const layer = document.getElementById("featurePostReactionLayer");
+        if (layer) layer.innerHTML = "";
+      }
+
+      function openFeaturePostReactionPicker(postId, anchorEl) {
+        if (currentUser?.is_guest) return;
+        if (featurePostReactionPicker?.postId === postId) {
+          closeFeaturePostReactionPicker();
+          return;
+        }
+        featurePostReactionPicker = { postId, anchor: anchorEl };
+        const layer = document.getElementById("featurePostReactionLayer");
+        if (!layer) return;
+        const picker = document.createElement("div");
+        picker.className =
+          "reaction-picker pointer-events-auto absolute flex flex-wrap gap-0.5 p-2 rounded-xl bg-ink-700 border border-white/15 max-w-[240px]";
+        picker.onclick = (e) => e.stopPropagation();
+        picker.innerHTML = Object.entries(FEATURE_POST_REACTION_EMOJIS)
+          .map(
+            ([key, sym]) =>
+              `<button type="button" data-fp-reaction="${key}" class="text-lg hover:scale-110 transition p-1 rounded-lg hover:bg-white/10" title="${key}">${sym}</button>`,
+          )
+          .join("");
+        picker.querySelectorAll("[data-fp-reaction]").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            toggleFeaturePostReaction(postId, btn.dataset.fpReaction);
+          });
+        });
+        layer.innerHTML = "";
+        layer.appendChild(picker);
+        const rect = anchorEl.getBoundingClientRect();
+        picker.style.left = `${Math.min(rect.left, window.innerWidth - 260)}px`;
+        picker.style.top = `${rect.bottom + 6}px`;
+      }
+
+      function renderFeaturePostReactions(post) {
+        const pills = (post.reactions || [])
+          .map((r) => {
+            const mine = (r.users || []).some(
+              (u) => String(u.id) === String(currentUser?.id),
+            );
+            return `<button type="button" data-fp-pill data-post-id="${post.id}" data-emoji="${r.emoji}"
+            class="reaction-pill inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 ${mine ? "reaction-pill-active" : ""}">
+            <span>${featurePostReactionSymbol(r.emoji)}</span>
+            <span class="text-gray-400">${r.count}</span>
+          </button>`;
+          })
+          .join("");
+        const addBtn = currentUser?.is_guest
+          ? ""
+          : `<button type="button" data-fp-add data-post-id="${post.id}"
+          class="text-xs text-gray-500 hover:text-white px-1.5 py-0.5 rounded-full hover:bg-white/10 transition" title="Add reaction">+</button>`;
+        return `<div class="flex flex-wrap items-center gap-1.5 mt-3">${pills}${addBtn}</div>`;
+      }
+
+      function renderFeaturePostComments(postId) {
+        const comments = featurePostCommentsCache.get(postId) || [];
+        const list = comments
+          .map(
+            (c) => `<div class="flex gap-2.5 py-2.5 border-b border-white/5 last:border-0">
+            ${userAvatarHtml(c.user, "w-8 h-8 text-xs shrink-0")}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
+                <span class="text-sm font-medium text-white">${escHtml(c.user?.username || "User")}</span>
+                <span class="text-xs text-gray-500">${escHtml(formatFeaturePostDate(c.created_at))}</span>
+              </div>
+              <p class="text-sm text-gray-300 mt-0.5 whitespace-pre-wrap break-words">${escHtml(c.content)}</p>
+            </div>
+          </div>`,
+          )
+          .join("");
+        const composer = currentUser?.is_guest
+          ? `<p class="text-xs text-gray-500 mt-3">Sign in with a registered account to comment.</p>`
+          : `<form class="flex gap-2 mt-3" onsubmit="submitFeaturePostComment(event, '${postId}')">
+            <input type="text" maxlength="2000" required placeholder="Write a comment…"
+              class="flex-1 bg-ink-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition" />
+            <button type="submit" class="text-sm text-white bg-brand-500 hover:bg-brand-600 px-3 py-2 rounded-xl transition shrink-0">Post</button>
+          </form>`;
+        return `<div class="mt-4 pt-4 border-t border-white/10">
+          <div class="space-y-0">${list || '<p class="text-sm text-gray-500 py-2">No comments yet.</p>'}</div>
+          ${composer}
+        </div>`;
+      }
+
+      function renderFeaturePostCard(post, index) {
+        const author = post.author || {};
+        const ref = post.checklist_ref
+          ? `<span class="text-xs text-gray-500 font-mono">${escHtml(post.checklist_ref)}</span>`
+          : "";
+        const adminActions = featurePostsAdmin
+          ? `<div class="flex gap-1 shrink-0">
+            <button type="button" onclick="openFeaturePostModal('${post.id}')"
+              class="text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition">Edit</button>
+            <button type="button" onclick="deleteFeaturePost('${post.id}')"
+              class="text-xs text-red-400/80 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-500/10 transition">Delete</button>
+          </div>`
+          : "";
+        const image = post.image_url
+          ? `<img src="${escHtml(post.image_url)}" alt="" class="w-full max-h-80 object-cover rounded-xl border border-white/10 mt-4" loading="lazy" />`
+          : "";
+        const commentsOpen = featurePostOpenComments.has(post.id);
+        const commentToggle = `<button type="button" onclick="toggleFeaturePostComments('${post.id}')"
+          class="text-sm text-gray-400 hover:text-white mt-3 transition">
+          ${commentsOpen ? "Hide" : "View"} comments (${post.comment_count || 0})
+        </button>`;
+        const commentsBlock = commentsOpen
+          ? `<div id="featurePostComments-${post.id}">${renderFeaturePostComments(post.id)}</div>`
+          : "";
+
+        return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-5 fade-up" style="animation-delay:${index * 0.05}s" data-post-id="${post.id}">
+          <div class="flex items-start justify-between gap-3 mb-3">
+            <div class="flex items-center gap-3 min-w-0">
+              ${userAvatarHtml(author, "w-10 h-10 text-sm shrink-0")}
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm font-medium text-white">${escHtml(author.username || "TaskFlow")}</span>
+                  ${featurePostTypeBadge(post.post_type)}
+                  ${ref}
+                </div>
+                <p class="text-xs text-gray-500 mt-0.5">${escHtml(formatFeaturePostDate(post.created_at))}</p>
+              </div>
+            </div>
+            ${adminActions}
+          </div>
+          <h3 class="text-lg font-semibold text-white">${escHtml(post.title)}</h3>
+          <p class="text-sm text-gray-300 mt-2 whitespace-pre-wrap leading-relaxed">${escHtml(post.caption)}</p>
+          ${image}
+          ${renderFeaturePostReactions(post)}
+          ${commentToggle}
+          ${commentsBlock}
+        </article>`;
+      }
+
+      function bindFeaturePostInteractions() {
+        document.querySelectorAll("[data-fp-pill]").forEach((pill) => {
+          pill.onclick = () =>
+            toggleFeaturePostReaction(pill.dataset.postId, pill.dataset.emoji);
+        });
+        document.querySelectorAll("[data-fp-add]").forEach((btn) => {
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            openFeaturePostReactionPicker(btn.dataset.postId, btn);
+          };
+        });
+      }
+
+      function renderFeaturePostsList() {
+        const list = document.getElementById("featurePostsList");
+        if (!list) return;
+        if (!featurePostsList.length) {
+          list.innerHTML =
+            '<p class="text-sm text-gray-500">No roadmap posts yet.</p>';
+          return;
+        }
+        list.innerHTML = featurePostsList
+          .map((post, i) => renderFeaturePostCard(post, i))
+          .join("");
+        bindFeaturePostInteractions();
+      }
+
+      async function loadFeaturePosts() {
+        const r = await apiFetch("/api/feature-posts");
+        if (!r.ok) return;
+        const data = await parseJsonResponse(r);
+        if (!data?.posts) return;
+        featurePostsList = data.posts;
+        featurePostsAdmin = !!data.is_admin;
+        document
+          .getElementById("featurePostNewBtn")
+          ?.classList.toggle("hidden", !featurePostsAdmin);
+        renderFeaturePostsList();
+      }
+
+      async function toggleFeaturePostReaction(postId, emoji) {
+        if (currentUser?.is_guest) return;
+        closeFeaturePostReactionPicker();
+        const r = await apiFetch("/api/reactions/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messageType: "feature_post",
+            messageId: postId,
+            emoji,
+          }),
+        });
+        const data = await parseJsonResponse(r);
+        if (!r.ok) return showAlert(data.error || "Failed to react");
+        const idx = featurePostsList.findIndex((p) => p.id === postId);
+        if (idx !== -1) {
+          featurePostsList[idx] = {
+            ...featurePostsList[idx],
+            reactions: data.reactions || [],
+          };
+          renderFeaturePostsList();
+        }
+      }
+
+      async function toggleFeaturePostComments(postId) {
+        if (featurePostOpenComments.has(postId)) {
+          featurePostOpenComments.delete(postId);
+        } else {
+          featurePostOpenComments.add(postId);
+          if (!featurePostCommentsCache.has(postId)) {
+            const r = await apiFetch(`/api/feature-posts/${postId}/comments`);
+            if (r.ok) {
+              const comments = await parseJsonResponse(r);
+              featurePostCommentsCache.set(
+                postId,
+                Array.isArray(comments) ? comments : [],
+              );
+            }
+          }
+        }
+        renderFeaturePostsList();
+      }
+
+      async function submitFeaturePostComment(e, postId) {
+        e.preventDefault();
+        if (currentUser?.is_guest) return;
+        const input = e.target.querySelector("input");
+        const content = input?.value?.trim();
+        if (!content) return;
+        const r = await apiFetch(`/api/feature-posts/${postId}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        });
+        const data = await parseJsonResponse(r);
+        if (!r.ok) return showAlert(data.error || "Failed to comment");
+        const cached = featurePostCommentsCache.get(postId) || [];
+        cached.push(data);
+        featurePostCommentsCache.set(postId, cached);
+        const idx = featurePostsList.findIndex((p) => p.id === postId);
+        if (idx !== -1) {
+          featurePostsList[idx] = {
+            ...featurePostsList[idx],
+            comment_count: (featurePostsList[idx].comment_count || 0) + 1,
+          };
+        }
+        input.value = "";
+        renderFeaturePostsList();
+      }
+
+      function showFeaturePostModalError(msg) {
+        const el = document.getElementById("featurePostModalError");
+        if (!msg) {
+          el.classList.add("hidden");
+          el.textContent = "";
+          return;
+        }
+        el.textContent = msg;
+        el.classList.remove("hidden");
+      }
+
+      function closeFeaturePostModal() {
+        document.getElementById("featurePostModal")?.classList.add("hidden");
+        showFeaturePostModalError("");
+        featurePostSaving = false;
+      }
+
+      function openFeaturePostModal(editId) {
+        if (!featurePostsAdmin) return;
+        const post = editId
+          ? featurePostsList.find((p) => p.id === editId)
+          : null;
+        document.getElementById("featurePostEditId").value = post?.id || "";
+        document.getElementById("featurePostTitle").value = post?.title || "";
+        document.getElementById("featurePostCaption").value = post?.caption || "";
+        document.getElementById("featurePostType").value =
+          post?.post_type || "in_progress";
+        document.getElementById("featurePostChecklistRef").value =
+          post?.checklist_ref || "";
+        document.getElementById("featurePostImage").value = "";
+        const preview = document.getElementById("featurePostImagePreview");
+        const hint = document.getElementById("featurePostImageHint");
+        if (post?.image_url) {
+          preview.src = post.image_url;
+          preview.classList.remove("hidden");
+          hint.textContent = "Leave empty to keep the current image.";
+          hint.classList.remove("hidden");
+        } else {
+          preview.classList.add("hidden");
+          preview.removeAttribute("src");
+          hint.classList.add("hidden");
+        }
+        document.getElementById("featurePostModalTitle").textContent = post
+          ? "Edit roadmap post"
+          : "New roadmap post";
+        document.getElementById("featurePostSubmitBtn").textContent = post
+          ? "Save changes"
+          : "Publish";
+        showFeaturePostModalError("");
+        document.getElementById("featurePostModal").classList.remove("hidden");
+      }
+
+      async function submitFeaturePost(e) {
+        e.preventDefault();
+        if (featurePostSaving || !featurePostsAdmin) return;
+        featurePostSaving = true;
+        const btn = document.getElementById("featurePostSubmitBtn");
+        const prevText = btn.textContent;
+        btn.textContent = "Saving…";
+        btn.classList.add("btn-loading");
+
+        const editId = document.getElementById("featurePostEditId").value;
+        const formData = new FormData();
+        formData.append("title", document.getElementById("featurePostTitle").value);
+        formData.append(
+          "caption",
+          document.getElementById("featurePostCaption").value,
+        );
+        formData.append("post_type", document.getElementById("featurePostType").value);
+        formData.append(
+          "checklist_ref",
+          document.getElementById("featurePostChecklistRef").value,
+        );
+        const fileInput = document.getElementById("featurePostImage");
+        if (fileInput?.files?.[0]) formData.append("image", fileInput.files[0]);
+
+        const url = editId ? `/api/feature-posts/${editId}` : "/api/feature-posts";
+        const method = editId ? "PATCH" : "POST";
+        const r = await apiFetch(url, { method, body: formData });
+        const data = await parseJsonResponse(r);
+
+        btn.textContent = prevText;
+        btn.classList.remove("btn-loading");
+        featurePostSaving = false;
+
+        if (!r.ok) return showFeaturePostModalError(data.error || "Failed to save");
+        closeFeaturePostModal();
+        if (editId) {
+          const idx = featurePostsList.findIndex((p) => p.id === editId);
+          if (idx !== -1) featurePostsList[idx] = data;
+        } else {
+          featurePostsList.unshift(data);
+        }
+        renderFeaturePostsList();
+      }
+
+      async function deleteFeaturePost(postId) {
+        if (!featurePostsAdmin) return;
+        const post = featurePostsList.find((p) => p.id === postId);
+        if (
+          !(await showConfirm(
+            `Delete “${post?.title || "this post"}”? This cannot be undone.`,
+          ))
+        )
+          return;
+        const r = await apiFetch(`/api/feature-posts/${postId}`, {
+          method: "DELETE",
+        });
+        if (!r.ok) {
+          const data = await parseJsonResponse(r);
+          return showAlert(data.error || "Failed to delete");
+        }
+        featurePostsList = featurePostsList.filter((p) => p.id !== postId);
+        featurePostCommentsCache.delete(postId);
+        featurePostOpenComments.delete(postId);
+        renderFeaturePostsList();
+      }
+
+      document
+        .getElementById("featurePostImage")
+        ?.addEventListener("change", (e) => {
+          const file = e.target.files?.[0];
+          const preview = document.getElementById("featurePostImagePreview");
+          if (!file) {
+            preview.classList.add("hidden");
+            return;
+          }
+          preview.src = URL.createObjectURL(file);
+          preview.classList.remove("hidden");
+        });
+
+      document.addEventListener("click", (e) => {
+        if (
+          featurePostReactionPicker &&
+          !e.target.closest("#featurePostReactionLayer") &&
+          !e.target.closest("[data-fp-add]")
+        ) {
+          closeFeaturePostReactionPicker();
+        }
+      });
+
       async function init() {
+        hideNavigationLoading();
         const r = await apiFetch("/api/me");
         const meData = await parseJsonResponse(r);
         if (!r.ok) {
@@ -2472,6 +3126,7 @@
         applyGuestTeamAvatarUploadUi();
         loadTeams();
         loadTeamInvites();
+        loadFeaturePosts();
         if (isFeedbackAdmin()) {
           document
             .getElementById("feedbackAdminSection")
@@ -2599,6 +3254,37 @@
         </div>`;
       }
 
+      const TEAM_CARD_BODY_SKELETON_HTML = `
+        <div class="flex items-start justify-between mb-4">
+          <div class="skeleton w-11 h-11 rounded-xl"></div>
+          <div class="skeleton w-14 h-5 rounded-full"></div>
+        </div>
+        <div class="skeleton w-2/3 h-4 mb-2"></div>
+        <div class="skeleton w-full h-3 mb-1.5"></div>
+        <div class="skeleton w-4/5 h-3 mb-5"></div>
+        <div class="flex items-center justify-between">
+          <div class="skeleton w-16 h-3"></div>
+          <div class="skeleton w-4 h-4 rounded"></div>
+        </div>`;
+
+      function beginOpeningTeam(teamId, cardEl) {
+        const grid = document.getElementById("teamsGrid");
+        if (cardEl) {
+          cardEl.classList.remove(
+            "hover:border-white/20",
+            "hover:bg-ink-700",
+            "cursor-pointer",
+          );
+          cardEl.classList.add("pointer-events-none");
+          cardEl.innerHTML = TEAM_CARD_BODY_SKELETON_HTML;
+        }
+        grid?.querySelectorAll(".team-card[data-team-id]").forEach((c) => {
+          if (c !== cardEl) c.classList.add("pointer-events-none", "opacity-60");
+        });
+        setNavigatingAway(true);
+        window.location = `/board/${teamId}`;
+      }
+
       const TEAMS_GRID_SKELETON_HTML = `
       <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
         <div class="flex items-start justify-between mb-4">
@@ -2671,10 +3357,7 @@
             "team-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-2xl p-5 cursor-pointer transition-all hover:bg-ink-700 fade-up";
           card.style.animationDelay = `${i * 0.07}s`;
           card.dataset.teamId = team.id;
-          card.onclick = () => {
-            showNavigationLoading("Opening team…");
-            window.location = `/board/${team.id}`;
-          };
+          card.onclick = () => beginOpeningTeam(team.id, card);
           card.innerHTML = `
           <div class="flex items-start justify-between mb-4">
             ${teamAvatarWithPresenceHtml(team)}
@@ -2964,7 +3647,7 @@
         createTeamSaving = false;
         setCreateTeamBtnLoading(false);
         closeCreateModal();
-        showNavigationLoading("Opening team…");
+        setNavigatingAway(true);
         window.location = `/board/${d.id}`;
       }
 
