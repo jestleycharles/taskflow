@@ -11,11 +11,13 @@
   <link rel="stylesheet" href="/portrait-orientation.css" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <meta name="theme-color" content="#4f6ef7" />
+  <script src="/viewport-breakpoints.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
+        screens: window.TF_VIEWPORT.TAILWIND_SCREENS,
         extend: {
           fontFamily: { mono: ['Space Mono', 'monospace'], sans: ['DM Sans', 'sans-serif'] },
           colors: {
@@ -556,7 +558,7 @@
     #boardContainer.board-panning .board-pan-surface {
       cursor: grabbing;
     }
-    @media (min-width: 768px) {
+    @media (min-width: 768px) and (min-height: 768px) {
       #boardContainer {
         overflow: auto;
       }
@@ -586,13 +588,13 @@
         pointer-events: none;
       }
     }
-    @media (max-width: 767px) {
+    @media (max-width: 767px), (max-height: 767px) {
       .drop-zone {
         overflow-y: auto;
         min-height: 0;
       }
     }
-    @media (max-width: 767px) {
+    @media (max-width: 767px), (max-height: 767px) {
       #chatPanel:not(.hidden),
       #activityPanel:not(.hidden),
       #teamPanel:not(.hidden),
@@ -3946,7 +3948,7 @@
 
     // Team Chat
     function isMobileBoardLayout() {
-      return window.matchMedia('(max-width: 767px)').matches;
+      return TF_VIEWPORT.isMobile();
     }
 
     function setChatPanelOpenUi(open) {
@@ -5630,7 +5632,7 @@
 
     function initBoardZoom() {
       const container = document.getElementById('boardContainer');
-      const mobileMq = window.matchMedia('(max-width: 767px)');
+      const mobileMq = window.matchMedia(TF_VIEWPORT.MOBILE_MQ);
       if (!container) return;
 
       preventBrowserPinchZoom();
@@ -5732,7 +5734,7 @@
       const el = document.getElementById('boardContainer');
       if (!el) return;
       const PAN_THRESHOLD = 4;
-      const desktopMq = window.matchMedia('(min-width: 768px)');
+      const desktopMq = window.matchMedia(TF_VIEWPORT.DESKTOP_MQ);
       let pan = null;
 
       function isBoardPanTarget(target) {

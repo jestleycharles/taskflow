@@ -1,6 +1,6 @@
 /* Counter-rotate UI on mobile landscape so content stays portrait-oriented.
    Works without Screen Orientation API — including iOS Safari. */
-@media screen and (max-width: 767px) and (orientation: landscape) {
+@media screen and (orientation: landscape) and (max-height: 767px) {
   html {
     overflow: hidden;
     height: 100%;

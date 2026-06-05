@@ -12,6 +12,9 @@ const PRECACHE_STATIC = [
   '/auth-oauth.js',
   '/avatar-utils.js',
   '/pwa-install.js',
+  '/viewport-breakpoints.js',
+  '/portrait-orientation.css',
+  '/mobile-orientation.js',
 ];
 
 self.addEventListener('install', (event) => {

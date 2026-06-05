@@ -12,11 +12,13 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <script src="/viewport-breakpoints.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
+        screens: window.TF_VIEWPORT.TAILWIND_SCREENS,
         extend: {
           fontFamily: { mono: ['Space Mono', 'monospace'], sans: ['DM Sans', 'sans-serif'] },
           colors: {
