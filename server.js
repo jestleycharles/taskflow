@@ -2,9 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
-const dns = require('node:dns');
-const { Pool } = require('pg');
 const PgSession = require('connect-pg-simple')(session);
+const { createSessionPool } = require('./lib/pg-session-pool');
 
 const authRoutes = require('./routes/auth');
 const teamRoutes = require('./routes/teams');
@@ -23,13 +22,6 @@ const { requireAuth } = require('./middleware/auth');
 
 const app = express();
 
-const forcePgIpv4 = process.env.PG_FORCE_IPV4 === 'true'
-  || (process.env.NODE_ENV === 'production' && process.env.PG_FORCE_IPV4 !== 'false');
-if (forcePgIpv4 && typeof dns.setDefaultResultOrder === 'function') {
-  // Some hosts (like Render) may fail on IPv6 routes for external Postgres.
-  dns.setDefaultResultOrder('ipv4first');
-}
-
 // Render terminates TLS at the edge; without this, secure session cookies are never set.
 app.set('trust proxy', 1);
 
@@ -37,27 +29,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const sessionDbUrl = process.env.SESSION_DATABASE_URL || process.env.DATABASE_URL;
-const sessionPool = sessionDbUrl
-  ? new Pool({
-      connectionString: sessionDbUrl,
-      // Common for managed Postgres (e.g. Render/Fly/Heroku) where SSL is required.
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-    })
-  : null;
+async function start() {
+  const sessionDbUrl = process.env.SESSION_DATABASE_URL || process.env.DATABASE_URL;
+  const sessionPool = await createSessionPool(sessionDbUrl);
 
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  store: sessionPool ? new PgSession({ pool: sessionPool, tableName: 'session' }) : undefined,
-  cookie: {
-    secure: 'auto',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  },
-}));
+  app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: sessionPool ? new PgSession({ pool: sessionPool, tableName: 'session' }) : undefined,
+    cookie: {
+      secure: 'auto',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+  }));
 
 // Health check (dummy table wakes Postgres without touching app data)
 app.get('/health', async (req, res) => {
@@ -128,5 +115,11 @@ app.get('/api/me', requireAuth, async (req, res) => {
   res.json(req.session.user);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`TaskFlow running on port ${PORT}`));
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`TaskFlow running on port ${PORT}`));
+}
+
+start().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});
