@@ -63,7 +63,7 @@ Use this document to pick **one feature per PR/agent session**. Each section is 
 
 ## 2. Invite by link & invite-before-register
 
-**Status:** `[ ]` Not started
+**Status:** `[x]` Done
 
 ### Goal
 
@@ -78,25 +78,25 @@ Use this document to pick **one feature per PR/agent session**. Each section is 
 
 ### Schema / API
 
-- [ ] New table e.g. `team_invite_links` (`id`, `team_id`, `token` unique, `created_by`, `expires_at`, `max_uses`, `use_count`, `revoked_at`).
-- [ ] `POST /api/teams/:id/invite-links` (owner, non-guest-owned team).
-- [ ] `DELETE /api/teams/:id/invite-links/:linkId` (revoke).
-- [ ] `GET /api/invite/:token` — public metadata (team name, avatar; no secrets).
-- [ ] `POST /api/invite/:token/accept` — authenticated; adds member or completes pending invite.
-- [ ] On register: if session/cookie stores pending `invite_token`, accept after user row created.
-- [ ] Rate-limit token validation; tokens are long random (e.g. 32+ bytes hex).
+- [x] New table e.g. `team_invite_links` (`id`, `team_id`, `token` unique, `created_by`, `expires_at`, `max_uses`, `use_count`, `revoked_at`).
+- [x] `POST /api/teams/:id/invite-links` (owner, non-guest-owned team).
+- [x] `DELETE /api/teams/:id/invite-links/:linkId` (revoke).
+- [x] `GET /api/invite/:token` — public metadata (team name, avatar; no secrets).
+- [x] `POST /api/invite/:token/accept` — authenticated; adds member or completes pending invite.
+- [x] On register: if session/cookie stores pending `invite_token`, accept after user row created.
+- [x] Rate-limit token validation; tokens are long random (e.g. 32+ bytes hex).
 
 ### UI
 
-- [ ] Board team panel: “Copy invite link” + expiry/uses (optional).
-- [ ] `public/register.html` + `public/login.html`: read `?invite=`, show team name, redirect to `/board/:teamId` after auth.
+- [x] Board team panel: “Copy invite link” + expiry/uses (optional).
+- [x] `public/register.html` + `public/login.html`: read `?invite=`, show team name, redirect to `/board/:teamId` after auth.
 
 ### Acceptance criteria
 
-- [ ] Guest-owned teams cannot create invite links (same rule as email invite).
-- [ ] Expired/revoked/max-used links fail with clear errors.
-- [ ] Existing email invite flow still works.
-- [ ] `FEATURES.md` updated.
+- [x] Guest-owned teams cannot create invite links (same rule as email invite).
+- [x] Expired/revoked/max-used links fail with clear errors.
+- [x] Existing email invite flow still works.
+- [x] `FEATURES.md` updated.
 
 ---
 

@@ -13,6 +13,12 @@ const {
 } = require('../lib/user');
 const { getKanbanPreset } = require('../lib/kanban-presets');
 const { seedTeamColumns, ensureTeamColumns } = require('../lib/team-columns');
+const {
+  createInviteLink,
+  listTeamInviteLinks,
+  revokeInviteLink,
+  buildInviteUrl,
+} = require('../lib/invite-links');
 const router = express.Router();
 
 const AVATAR_BUCKET = 'avatars';
@@ -685,6 +691,97 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
 
   await logActivity(id, userId, 'member_invited', `Invited ${invitee.username} to the team (pending)`);
   res.json({ success: true, user: invitee, invite_id: invite.id, pending: true });
+});
+
+// GET /api/teams/:id/invite-links — active invite links (owner only)
+router.get('/api/teams/:id/invite-links', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
+  if (!membership || membership.role !== 'owner') {
+    return res.status(403).json({ error: 'Only the team owner can view invite links' });
+  }
+
+  try {
+    const links = await listTeamInviteLinks(id);
+    const withUrls = links.map((link) => ({
+      ...link,
+      url: buildInviteUrl(req, link.token),
+    }));
+    res.json(withUrls);
+  } catch (err) {
+    return sendError(res, 500, err, 'load');
+  }
+});
+
+// POST /api/teams/:id/invite-links — create shareable invite link (owner only)
+router.post('/api/teams/:id/invite-links', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
+  if (!membership || membership.role !== 'owner') {
+    return res.status(403).json({ error: 'Only the team owner can create invite links' });
+  }
+
+  if (await isTeamOwnerGuest(id)) {
+    return res.status(403).json({
+      error: 'Teams owned by a guest account cannot create invite links. The owner needs a registered account.',
+    });
+  }
+
+  const maxUses = req.body?.max_uses != null ? Number(req.body.max_uses) : null;
+  const expiresAt = req.body?.expires_at || null;
+
+  try {
+    const result = await createInviteLink(id, userId, {
+      max_uses: Number.isFinite(maxUses) && maxUses > 0 ? maxUses : null,
+      expires_at: expiresAt,
+    });
+
+    if (result.status !== 200) {
+      return res.status(result.status).json({ error: result.error });
+    }
+
+    await logActivity(id, userId, 'invite_link_created', 'Created a shareable invite link');
+
+    res.json({
+      success: true,
+      link: {
+        ...result.link,
+        url: buildInviteUrl(req, result.link.token),
+      },
+    });
+  } catch (err) {
+    return sendError(res, 500, err, 'save');
+  }
+});
+
+// DELETE /api/teams/:id/invite-links/:linkId — revoke invite link (owner only)
+router.delete('/api/teams/:id/invite-links/:linkId', requireAuth, async (req, res) => {
+  const { id, linkId } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: membership } = await supabaseAdmin
+    .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
+  if (!membership || membership.role !== 'owner') {
+    return res.status(403).json({ error: 'Only the team owner can revoke invite links' });
+  }
+
+  try {
+    const result = await revokeInviteLink(id, linkId);
+    if (result.status !== 200) {
+      return res.status(result.status).json({ error: result.error });
+    }
+
+    await logActivity(id, userId, 'invite_link_revoked', 'Revoked a shareable invite link');
+    res.json({ success: true });
+  } catch (err) {
+    return sendError(res, 500, err, 'load');
+  }
 });
 
 // DELETE /api/teams/:id/invites/:uid — cancel a pending invite (owner only)

@@ -6,6 +6,7 @@
   <title>TaskFlow — Login</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/portrait-orientation.css" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <meta name="theme-color" content="#4f6ef7" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -39,7 +40,7 @@
     input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #1a1d2e inset !important; -webkit-text-fill-color: #fff !important; }
   </style>
 </head>
-<body class="grid-bg min-h-screen flex items-center justify-center px-4">
+<body class="grid-bg min-h-screen flex items-center justify-center px-4 portrait-locked">
   <div class="w-full max-w-md fade-up">
     <!-- Logo -->
     <div class="text-center mb-10">
@@ -58,6 +59,7 @@
     <div class="bg-ink-800 border border-white/10 rounded-2xl p-8 glow">
       <h1 class="text-white font-semibold text-xl mb-6">Sign in to your account</h1>
 
+      <div id="inviteBanner" class="hidden"></div>
       <div id="error" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-5"></div>
 
       <div class="space-y-4">
@@ -113,7 +115,7 @@
 
       <p class="text-center text-gray-500 text-sm mt-6">
         Don't have an account?
-        <a href="/register" class="text-brand-500 hover:text-brand-400 font-medium ml-1">Create one</a>
+        <a id="registerLink" href="/register" class="text-brand-500 hover:text-brand-400 font-medium ml-1">Create one</a>
       </p>
     </div>
   </div>
@@ -122,8 +124,11 @@
   <script src="/pwa-install.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/api.js"></script>
+  <script src="/invite-flow.js"></script>
   <script src="/auth-oauth.js"></script>
   <script>
+    initInviteBanner({ bannerId: 'inviteBanner', registerLinkId: 'registerLink' });
+
     async function login() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
@@ -134,7 +139,7 @@
         body: JSON.stringify({ email, password })
       });
       const d = await parseJsonResponse(r);
-      if (d.success) return window.location = '/dashboard';
+      if (d.success) return window.location = authRedirectUrl(d);
       showError(d.error || 'Sign in failed');
       btn.textContent = 'Sign In'; btn.disabled = false;
     }

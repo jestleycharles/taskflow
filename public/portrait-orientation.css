@@ -1,0 +1,48 @@
+/* Counter-rotate UI on mobile landscape so content stays portrait-oriented.
+   Works without Screen Orientation API — including iOS Safari. */
+@media screen and (max-width: 767px) and (orientation: landscape) {
+  html {
+    overflow: hidden;
+    height: 100%;
+  }
+
+  body.portrait-locked:not(.use-portrait-overlay-fallback) {
+    transform: rotate(-90deg);
+    transform-origin: left top;
+    width: 100vh;
+    height: 100vw;
+    position: fixed;
+    top: 100%;
+    left: 0;
+    overflow: hidden;
+    margin: 0;
+  }
+
+  /* Counter-rotation handles layout — hide the blocking overlay */
+  body.portrait-locked:not(.use-portrait-overlay-fallback) #portraitLockOverlay {
+    display: none !important;
+  }
+
+  /* Fallback: show overlay and hide app when counter-rotation is insufficient */
+  body.portrait-locked.use-portrait-overlay-fallback #portraitLockOverlay {
+    display: flex !important;
+  }
+
+  body.portrait-locked.use-portrait-overlay-fallback > *:not(#portraitLockOverlay) {
+    display: none !important;
+  }
+}
+
+#portraitLockOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #0f1117;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}

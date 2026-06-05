@@ -6,7 +6,37 @@ const { toSessionUser, randomColor } = require('../lib/user');
 const { ensureAppUser } = require('../lib/auth-user');
 const { MIN_PASSWORD_LENGTH } = require('../lib/constants');
 const { formatAuthError, sendError } = require('../lib/errors');
+const { tryAcceptPendingInvite, validateTokenFormat, acceptInviteLink } = require('../lib/invite-links');
 const router = express.Router();
+
+async function handleInviteLanding(req, res, page) {
+  const token = String(req.query.invite || '').trim();
+  if (req.session?.user && validateTokenFormat(token)) {
+    req.session.pending_invite_token = token;
+    try {
+      const result = await acceptInviteLink({
+        token,
+        userId: req.session.user.id,
+        username: req.session.user.username,
+      });
+      if (result.success) return res.redirect(`/board/${result.team_id}`);
+      if (result.team_id) return res.redirect(`/board/${result.team_id}`);
+    } catch (err) {
+      console.error('[auth] invite landing', err);
+    }
+    delete req.session.pending_invite_token;
+    return res.redirect('/dashboard');
+  }
+  if (req.session?.user) return res.redirect('/dashboard');
+  res.sendFile(page, { root: './public' });
+}
+
+async function finishAuthWithInvite(req, res, username) {
+  const invite = await tryAcceptPendingInvite(req.session, req.session.user.id, username);
+  const payload = { success: true };
+  if (invite?.team_id) payload.invite_team_id = invite.team_id;
+  res.json(payload);
+}
 
 // GET /api/auth/config — public Supabase keys for client OAuth
 router.get('/api/auth/config', (req, res) => {
@@ -20,14 +50,10 @@ router.get('/api/auth/config', (req, res) => {
 });
 
 // GET /login
-router.get('/login', redirectIfAuth, (req, res) => {
-  res.sendFile('login.html', { root: './public' });
-});
+router.get('/login', (req, res) => handleInviteLanding(req, res, 'login.html'));
 
 // GET /register
-router.get('/register', redirectIfAuth, (req, res) => {
-  res.sendFile('register.html', { root: './public' });
-});
+router.get('/register', (req, res) => handleInviteLanding(req, res, 'register.html'));
 
 // GET /auth/callback — OAuth redirect target
 router.get('/auth/callback', redirectIfAuth, (req, res) => {
@@ -88,7 +114,7 @@ router.post('/api/auth/register', async (req, res) => {
   }
 
   req.session.user = toSessionUser(appUser);
-  res.json({ success: true });
+  await finishAuthWithInvite(req, res, username);
 });
 
 // POST /api/auth/login
@@ -109,7 +135,7 @@ router.post('/api/auth/login', async (req, res) => {
     try {
       const appUser = await ensureAppUser(authData.user);
       req.session.user = toSessionUser(appUser);
-      return res.json({ success: true });
+      return finishAuthWithInvite(req, res, appUser.username);
     } catch (err) {
       return sendError(res, 500, err, 'save');
     }
@@ -130,7 +156,7 @@ router.post('/api/auth/login', async (req, res) => {
   if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
   req.session.user = toSessionUser(user);
-  res.json({ success: true });
+  await finishAuthWithInvite(req, res, user.username);
 });
 
 // POST /api/auth/oauth — exchange Supabase session for app session
@@ -150,7 +176,7 @@ router.post('/api/auth/oauth', async (req, res) => {
   try {
     const appUser = await ensureAppUser(userData.user);
     req.session.user = toSessionUser(appUser);
-    res.json({ success: true });
+    await finishAuthWithInvite(req, res, appUser.username);
   } catch (err) {
     return sendError(res, 500, err, 'save');
   }

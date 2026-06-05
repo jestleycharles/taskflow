@@ -18,6 +18,10 @@ async function getSupabaseAuthClient() {
 }
 
 async function signInWithProvider(provider) {
+  if (typeof readStoredInviteToken === 'function') {
+    const token = readStoredInviteToken();
+    if (token) persistInviteToken(token);
+  }
   const client = await getSupabaseAuthClient();
   const redirectTo = `${window.location.origin}/auth/callback`;
   const { error } = await client.auth.signInWithOAuth({

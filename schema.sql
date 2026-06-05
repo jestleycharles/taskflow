@@ -75,6 +75,21 @@ CREATE TABLE IF NOT EXISTS team_invites (
 
 CREATE INDEX IF NOT EXISTS team_invites_user_id_idx ON team_invites (user_id);
 
+CREATE TABLE IF NOT EXISTS team_invite_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  created_by UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ,
+  max_uses INTEGER,
+  use_count INTEGER NOT NULL DEFAULT 0,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS team_invite_links_team_id_idx ON team_invite_links (team_id);
+CREATE INDEX IF NOT EXISTS team_invite_links_token_idx ON team_invite_links (token);
+
 -- =============================================================================
 -- Kanban columns (per-team; tasks.status stores column slug)
 -- =============================================================================
@@ -293,6 +308,7 @@ ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE team_invite_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_columns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_attachments ENABLE ROW LEVEL SECURITY;

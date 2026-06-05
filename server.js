@@ -13,6 +13,7 @@ const dmChatRoutes = require('./routes/dm-chat');
 const dmSettingsRoutes = require('./routes/dm-settings');
 const { router: reactionRoutes } = require('./routes/reactions');
 const feedbackRoutes = require('./routes/feedback');
+const inviteLinkRoutes = require('./routes/invite-links');
 const { supabaseAdmin } = require('./lib/supabase');
 const { toSessionUser } = require('./lib/user');
 const { requireAuth } = require('./middleware/auth');
@@ -75,6 +76,7 @@ app.use(dmChatRoutes);
 app.use(dmSettingsRoutes);
 app.use(reactionRoutes);
 app.use(feedbackRoutes);
+app.use(inviteLinkRoutes);
 
 app.get('/features.md', (req, res) => {
   res.sendFile(path.join(__dirname, 'FEATURES.md'));

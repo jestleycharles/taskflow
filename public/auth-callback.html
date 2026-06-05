@@ -18,6 +18,7 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/api.js"></script>
+  <script src="/invite-flow.js"></script>
   <script>
     async function finish() {
       const status = document.getElementById('status');
@@ -56,6 +57,9 @@
 
         if (!access_token) throw new Error('Sign-in was cancelled or expired. Please try again.');
 
+        const inviteToken = readStoredInviteToken();
+        if (inviteToken) await storePendingInviteOnServer(inviteToken);
+
         const r = await apiFetch('/api/auth/oauth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -63,7 +67,7 @@
         });
         const d = await parseJsonResponse(r);
         if (d.success) {
-          window.location.replace('/dashboard');
+          window.location.replace(authRedirectUrl(d));
           return;
         }
         throw new Error(d.error || 'Sign-in failed');

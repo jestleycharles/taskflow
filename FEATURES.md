@@ -31,8 +31,9 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **@mentions** — Mention teammates in task comments and team chat.
 - **Full task editing** — Edit task title and description and delete tasks (guests have limited task editing in the UI).
 - **Team invites by email** — Receive invitations at your email and accept or decline them on the dashboard.
+- **Team invite links** — Join a team via a shareable link after registering or signing in.
 - **Team avatar upload** — Upload a custom team image when you own the team (guests can only use presets).
-- **Invite teammates from the board** — Send email invitations when you are owner and the team owner is registered.
+- **Invite teammates from the board** — Send email invitations or copy a shareable invite link when you are owner and the team owner is registered.
 - **OAuth sign-in** — Sign in with Google or GitHub in addition to email and password.
 - **Manage your own messages** — Edit or delete messages you sent in team chat and direct messages.
 
@@ -96,7 +97,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Custom display roles** — Create, rename, reorder, and delete custom role labels; assign them to members; toggle “separate members by role” in the member list.
 - **Remove members** — Remove non-owner members.
 - **Delete team** — Permanently delete the team.
-- **Cannot send email invites** — Invites are disabled while the team owner is a guest account; UI explains that a registered owner is required.
+- **Cannot send email invites or invite links** — Invites are disabled while the team owner is a guest account; UI explains that a registered owner is required.
 
 ### Guest users — as team **member**
 
@@ -108,12 +109,13 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Everything guest owners have**, plus:
 - **Upload team avatar** — Custom image to Supabase Storage (replaces stored file when changing avatar).
 - **Email invites** — Invite registered users by email; pending invites appear until accepted. Guest accounts cannot be invited.
+- **Invite links** — Generate a tokenized shareable link (7-day expiry by default). New users open the link, register or sign in, and land on the team board. Owners can revoke links. Guest-owned teams cannot create links.
 - **Cancel pending invites** — Remove a pending invitation.
 - **Transfer ownership** — Assign another registered member as owner (you become a member). Guest accounts cannot receive ownership. Recorded in the activity log.
 
 ### Registered users — as team **member**
 
-- **Join via invite** — Accept invite from dashboard; decline to dismiss.
+- **Join via invite** — Accept email invite from dashboard; decline to dismiss. Or join via invite link (auto-join after sign-in/register).
 - **Board access** — Full Kanban participation (see Tasks).
 - **Leave team** — Voluntarily leave from the team panel on the board (pending invites for you on that team are cleared).
 - **No administration** — No team settings or invites unless you are the team owner.
@@ -164,7 +166,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 
 ### Team **owner** (registered)
 
-- **Invite panel on board** — Email invite UI (disabled if team owner is guest; guest accounts cannot be invited).
+- **Invite panel on board** — Email invite and “Copy invite link” (disabled if team owner is guest; guest accounts cannot be invited).
 - **Team settings panel** — Edit team info, avatar (disabled if team owner is guest), custom roles, member roles, and remove members.
 
 ---
