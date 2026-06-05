@@ -10,6 +10,7 @@ const {
   fetchReactionsForMessages,
   attachReactionsToItems,
 } = require('../lib/reactions');
+const { stripHtml, sanitizeRichTextHtml } = require('../lib/rich-text');
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ const upload = multer({
 });
 
 const POST_SELECT =
-  'id, title, caption, image_url, post_type, checklist_ref, created_at, updated_at, author:created_by(id, username, avatar_color, avatar_url)';
+  'id, title, caption, image_url, post_type, created_at, updated_at, author:created_by(id, username, avatar_color, avatar_url)';
 
 function requirePostAdmin(req, res, next) {
   if (!isFeedbackAdmin(req.session.user)) {
@@ -85,18 +86,18 @@ async function uploadPostImage(postId, file) {
 
 function parsePostFields(body) {
   const title = String(body?.title || '').trim();
-  const caption = String(body?.caption || '').trim();
+  const caption = sanitizeRichTextHtml(String(body?.caption || '').trim());
   const postType = body?.post_type === 'completed' ? 'completed' : 'in_progress';
-  const checklistRef = String(body?.checklist_ref || '').trim() || null;
   const imageUrl = String(body?.image_url || '').trim() || null;
-  return { title, caption, postType, checklistRef, imageUrl };
+  return { title, caption, postType, imageUrl };
 }
 
 function validatePostFields({ title, caption }) {
+  const captionLen = stripHtml(caption).length;
   if (title.length < 3) return 'Title must be at least 3 characters';
   if (title.length > MAX_TITLE_LEN) return `Title must be ${MAX_TITLE_LEN} characters or fewer`;
-  if (caption.length < 10) return 'Caption must be at least 10 characters';
-  if (caption.length > MAX_CAPTION_LEN) return `Caption must be ${MAX_CAPTION_LEN} characters or fewer`;
+  if (captionLen < 10) return 'Caption must be at least 10 characters';
+  if (captionLen > MAX_CAPTION_LEN) return `Caption must be ${MAX_CAPTION_LEN} characters or fewer`;
   return null;
 }
 
@@ -161,7 +162,6 @@ router.post(
         title: fields.title,
         caption: fields.caption,
         post_type: fields.postType,
-        checklist_ref: fields.checklistRef,
         image_url: fields.imageUrl,
         created_by: req.session.user.id,
       })
@@ -206,7 +206,6 @@ router.patch(
       title: req.body?.title ?? existing.title,
       caption: req.body?.caption ?? existing.caption,
       post_type: req.body?.post_type ?? existing.post_type,
-      checklist_ref: req.body?.checklist_ref ?? existing.checklist_ref,
       image_url: req.body?.image_url ?? existing.image_url,
     });
     const validationError = validatePostFields(fields);
@@ -230,7 +229,6 @@ router.patch(
         title: fields.title,
         caption: fields.caption,
         post_type: fields.postType,
-        checklist_ref: fields.checklistRef,
         image_url: imageUrl,
         updated_at: new Date().toISOString(),
       })

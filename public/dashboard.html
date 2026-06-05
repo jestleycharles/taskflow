@@ -241,7 +241,56 @@
         z-index: 200;
       }
       main {
-        padding-bottom: 5rem;
+        padding-bottom: 7rem;
+      }
+      body.dashboard-has-dm-fab main {
+        padding-bottom: 11rem;
+      }
+      .rich-text-editor:empty::before {
+        content: attr(data-placeholder);
+        color: #6b7280;
+        pointer-events: none;
+      }
+      .rich-text-btn.rich-text-btn-active {
+        color: #fff;
+        background: rgba(79, 110, 247, 0.25);
+      }
+      .rich-text-content h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #fff;
+        margin: 0.75rem 0 0.35rem;
+      }
+      .rich-text-content h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #e5e7eb;
+        margin: 0.5rem 0 0.25rem;
+      }
+      .rich-text-content p {
+        margin: 0.35rem 0;
+      }
+      .rich-text-content ul,
+      .rich-text-content ol {
+        margin: 0.35rem 0;
+        padding-left: 1.25rem;
+      }
+      .rich-text-content ul {
+        list-style: disc;
+      }
+      .rich-text-content ol {
+        list-style: decimal;
+      }
+      .rich-text-content blockquote {
+        border-left: 3px solid rgba(79, 110, 247, 0.45);
+        padding-left: 0.75rem;
+        color: #9ca3af;
+        margin: 0.5rem 0;
+      }
+      .rich-text-content a {
+        color: #4f6ef7;
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
       #feedbackFabWrap {
         bottom: 1rem;
@@ -1165,7 +1214,7 @@
           <button
             type="button"
             onclick="changeInviteLink()"
-            class="mt-3 text-xs text-gray-500 hover:text-gray-300 transition"
+            class="mt-3 text-xs text-brand-500 hover:text-brand-600 transition font-medium"
           >
             Use a different link
           </button>
@@ -1200,6 +1249,7 @@
     <script src="/pwa-install.js"></script>
     <script src="/avatar-utils.js"></script>
     <script src="/message-format.js"></script>
+    <script src="/rich-text-editor.js"></script>
     <script src="/api.js"></script>
     <script src="/message-batch.js"></script>
     <!-- Confirm Modal (DM delete, etc.) -->
@@ -2294,6 +2344,22 @@
         return feedbackTurnstileScriptPromise;
       }
 
+      function getFeedbackCaptchaToken() {
+        if (feedbackCaptchaToken) return feedbackCaptchaToken;
+        if (feedbackTurnstileWidgetId != null && window.turnstile?.getResponse) {
+          try {
+            const token = turnstile.getResponse(feedbackTurnstileWidgetId);
+            if (token) {
+              feedbackCaptchaToken = token;
+              return token;
+            }
+          } catch (_) {
+            /* ignore */
+          }
+        }
+        return null;
+      }
+
       function resetFeedbackTurnstile() {
         feedbackCaptchaToken = null;
         if (feedbackTurnstileWidgetId != null && window.turnstile) {
@@ -2371,10 +2437,11 @@
           errEl.classList.remove("hidden");
           return;
         }
+        const captchaToken = getFeedbackCaptchaToken();
         if (
           currentUser?.is_guest &&
           feedbackCaptchaConfig.guestCaptchaRequired &&
-          !feedbackCaptchaToken
+          !captchaToken
         ) {
           errEl.textContent = "Please complete the verification check below.";
           errEl.classList.remove("hidden");
@@ -2391,7 +2458,7 @@
           currentUser?.is_guest &&
           feedbackCaptchaConfig.guestCaptchaRequired
         ) {
-          body.captchaToken = feedbackCaptchaToken;
+          body.captchaToken = captchaToken;
         }
         const r = await apiFetch("/api/feedback", {
           method: "POST",
@@ -2863,9 +2930,6 @@
 
       function renderFeaturePostCard(post, index) {
         const author = post.author || {};
-        const ref = post.checklist_ref
-          ? `<span class="text-xs text-gray-500 font-mono">${escHtml(post.checklist_ref)}</span>`
-          : "";
         const adminActions = featurePostsAdmin
           ? `<div class="flex gap-1 shrink-0">
             <button type="button" onclick="openFeaturePostModal('${post.id}')"
@@ -2896,7 +2960,6 @@
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-sm font-medium text-white">${escHtml(author.username || "TaskFlow")}</span>
                   ${featurePostTypeBadge(post.post_type)}
-                  ${ref}
                 </div>
                 <p class="text-xs text-gray-500 mt-0.5">${escHtml(formatFeaturePostDate(post.created_at))}</p>
               </div>
@@ -2904,7 +2967,7 @@
             ${adminActions}
           </div>
           <h3 class="text-lg font-semibold text-white">${escHtml(post.title)}</h3>
-          <p class="text-sm text-gray-300 mt-2 whitespace-pre-wrap leading-relaxed">${escHtml(post.caption)}</p>
+          ${RichTextEditor.renderCaptionHtml(post.caption)}
           ${image}
           ${renderFeaturePostReactions(post)}
           ${commentToggle}
@@ -3070,6 +3133,7 @@
         document.getElementById("featurePostModal")?.classList.add("hidden");
         showFeaturePostModalError("");
         featurePostSaving = false;
+        RichTextEditor.clear("featurePostCaptionEditor");
       }
 
       function openFeaturePostModal(editId) {
@@ -3079,11 +3143,9 @@
           : null;
         document.getElementById("featurePostEditId").value = post?.id || "";
         document.getElementById("featurePostTitle").value = post?.title || "";
-        document.getElementById("featurePostCaption").value = post?.caption || "";
+        RichTextEditor.setContent("featurePostCaptionEditor", post?.caption || "");
         document.getElementById("featurePostType").value =
           post?.post_type || "in_progress";
-        document.getElementById("featurePostChecklistRef").value =
-          post?.checklist_ref || "";
         document.getElementById("featurePostImage").value = "";
         const preview = document.getElementById("featurePostImagePreview");
         const hint = document.getElementById("featurePostImageHint");
@@ -3117,17 +3179,17 @@
         btn.classList.add("btn-loading");
 
         const editId = document.getElementById("featurePostEditId").value;
+        const caption = RichTextEditor.syncHidden("featurePostCaptionEditor");
+        if (RichTextEditor.getPlainTextLength("featurePostCaptionEditor") < 10) {
+          featurePostSaving = false;
+          btn.textContent = prevText;
+          btn.classList.remove("btn-loading");
+          return showFeaturePostModalError("Caption must be at least 10 characters");
+        }
         const formData = new FormData();
         formData.append("title", document.getElementById("featurePostTitle").value);
-        formData.append(
-          "caption",
-          document.getElementById("featurePostCaption").value,
-        );
+        formData.append("caption", caption);
         formData.append("post_type", document.getElementById("featurePostType").value);
-        formData.append(
-          "checklist_ref",
-          document.getElementById("featurePostChecklistRef").value,
-        );
         const fileInput = document.getElementById("featurePostImage");
         if (fileInput?.files?.[0]) formData.append("image", fileInput.files[0]);
 
@@ -3198,6 +3260,10 @@
 
       async function init() {
         hideNavigationLoading();
+        RichTextEditor.mount("featurePostCaptionEditor", {
+          hiddenInputId: "featurePostCaption",
+          placeholder: "What are we building or what shipped?",
+        });
         const r = await apiFetch("/api/me");
         const meData = await parseJsonResponse(r);
         if (!r.ok) {

@@ -56,11 +56,6 @@ async function initInviteBanner({ bannerId, loginLinkId, registerLinkId } = {}) 
   const r = await fetch(`/api/invite/${token}`);
   const data = await parseJsonResponse(r);
   if (!r.ok) {
-    if (banner) {
-      banner.className = 'bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm rounded-lg px-4 py-3 mb-5';
-      banner.textContent = data.error || 'This invite link is no longer valid.';
-      banner.classList.remove('hidden');
-    }
     clearStoredInviteToken();
     return null;
   }
