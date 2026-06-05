@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const dns = require('node:dns');
 const { Pool } = require('pg');
 const PgSession = require('connect-pg-simple')(session);
 
@@ -21,6 +22,13 @@ const { toSessionUser } = require('./lib/user');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
+
+const forcePgIpv4 = process.env.PG_FORCE_IPV4 === 'true'
+  || (process.env.NODE_ENV === 'production' && process.env.PG_FORCE_IPV4 !== 'false');
+if (forcePgIpv4 && typeof dns.setDefaultResultOrder === 'function') {
+  // Some hosts (like Render) may fail on IPv6 routes for external Postgres.
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 // Render terminates TLS at the edge; without this, secure session cookies are never set.
 app.set('trust proxy', 1);
