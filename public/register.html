@@ -120,8 +120,11 @@
   <script src="/pwa-install.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/api.js"></script>
+  <script src="/invite-flow.js"></script>
   <script src="/auth-oauth.js"></script>
   <script>
+    initInviteBanner({ bannerId: 'inviteBanner', loginLinkId: 'loginLink' });
+
     async function register() {
       const username = document.getElementById('username').value;
       const email = document.getElementById('email').value;

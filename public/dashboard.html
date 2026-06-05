@@ -388,25 +388,49 @@
             Select a team to view its Kanban board.
           </p>
         </div>
-        <button
-          onclick="openCreateModal()"
-          class="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition shrink-0"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+          <button
+            id="joinByInviteLinkBtn"
+            onclick="openInviteLinkModal()"
+            class="hidden flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-sm font-medium px-5 py-2.5 rounded-xl transition"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          New Team
-        </button>
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13.828 10.172a4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5m-1.5-10.5l1.5-1.5a4 4 0 115.656 5.656l-3 3a4 4 0 01-5.656 0"
+              />
+            </svg>
+            Join via invite link
+          </button>
+          <button
+            onclick="openCreateModal()"
+            class="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            New Team
+          </button>
+        </div>
       </div>
 
       <!-- Teams grid -->
@@ -1018,6 +1042,101 @@
       </div>
     </div>
 
+    <!-- Join by Invite Link Modal -->
+    <div
+      id="inviteLinkModal"
+      class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inviteLinkModalTitle"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeInviteLinkModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto"
+      >
+        <h2 id="inviteLinkModalTitle" class="text-lg font-semibold text-white mb-1">
+          Join a team
+        </h2>
+        <p class="text-gray-500 text-sm mb-5">
+          Paste an invite link you received to join the team.
+        </p>
+        <div
+          id="inviteLinkModalError"
+          class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
+        ></div>
+
+        <div
+          id="inviteLinkPreview"
+          class="hidden border border-white/10 bg-white/[0.02] rounded-2xl px-4 py-4 mb-4"
+        >
+          <div class="flex items-start gap-3 mb-3">
+            <div id="inviteLinkPreviewAvatar" class="w-11 h-11"></div>
+            <div class="min-w-0 flex-1">
+              <h3 id="inviteLinkPreviewName" class="text-white font-semibold truncate">
+                Team
+              </h3>
+              <p id="inviteLinkPreviewDesc" class="text-gray-500 text-sm mt-1 line-clamp-2">
+                No description
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+            <span id="inviteLinkPreviewCreated"></span>
+            <span id="inviteLinkPreviewCounts"></span>
+            <span id="inviteLinkPreviewOwner"></span>
+          </div>
+
+          <p id="inviteLinkPreviewUsage" class="text-xs text-gray-400 mt-3 hidden"></p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">
+              Invite link
+            </label>
+            <input
+              id="inviteLinkInput"
+              type="text"
+              placeholder="https://…/register?invite=…"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+            />
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button
+              type="button"
+              onclick="closeInviteLinkModal()"
+              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              id="inviteLinkPreviewBtn"
+              onclick="previewInviteLink()"
+              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Preview invite
+            </button>
+          </div>
+
+          <button
+            type="button"
+            id="inviteLinkJoinBtn"
+            onclick="joinByInviteLink()"
+            disabled
+            class="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white font-medium py-2.5 rounded-xl transition text-sm"
+          >
+            Join team
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="/mobile-orientation.js"></script>
     <script src="/pwa-install.js"></script>
     <script src="/avatar-utils.js"></script>
@@ -1442,6 +1561,156 @@
 
       function closeAlertModal() {
         document.getElementById("alertModal").classList.add("hidden");
+      }
+
+      function openInviteLinkModal() {
+        if (currentUser?.is_guest) {
+          return showAlert("Invite links require a registered account.", "Sign in required");
+        }
+        document.getElementById("inviteLinkModalError").classList.add("hidden");
+        document.getElementById("inviteLinkInput").value = "";
+        document.getElementById("inviteLinkPreview").classList.add("hidden");
+        document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
+        invitePreviewToken = null;
+        invitePreviewData = null;
+        const joinBtn = document.getElementById("inviteLinkJoinBtn");
+        if (joinBtn) {
+          joinBtn.disabled = true;
+          joinBtn.textContent = "Join team";
+        }
+        document.getElementById("inviteLinkModal").classList.remove("hidden");
+        const input = document.getElementById("inviteLinkInput");
+        if (input) {
+          input.oninput = () => {
+            invitePreviewToken = null;
+            invitePreviewData = null;
+            document.getElementById("inviteLinkPreview").classList.add("hidden");
+            document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
+            const b = document.getElementById("inviteLinkJoinBtn");
+            if (b) b.disabled = true;
+          };
+        }
+        setTimeout(() => document.getElementById("inviteLinkInput")?.focus(), 50);
+      }
+
+      function closeInviteLinkModal() {
+        document.getElementById("inviteLinkModal").classList.add("hidden");
+      }
+
+      function showInviteLinkModalError(msg) {
+        const el = document.getElementById("inviteLinkModalError");
+        el.textContent = msg;
+        el.classList.remove("hidden");
+      }
+
+      function extractInviteToken(input) {
+        const raw = String(input || "").trim();
+        if (!raw) return null;
+        if (/^[a-f0-9]{64}$/i.test(raw)) return raw.toLowerCase();
+        try {
+          const u = new URL(raw);
+          const token = u.searchParams.get("invite");
+          if (token && /^[a-f0-9]{64}$/i.test(token)) return token.toLowerCase();
+        } catch {
+          // Not a URL; ignore.
+        }
+        return null;
+      }
+
+      let invitePreviewToken = null;
+      let invitePreviewData = null;
+
+      function renderInvitePreview(preview) {
+        const team = preview?.team || {};
+        const avatarEl = document.getElementById("inviteLinkPreviewAvatar");
+        const nameEl = document.getElementById("inviteLinkPreviewName");
+        const descEl = document.getElementById("inviteLinkPreviewDesc");
+        const createdEl = document.getElementById("inviteLinkPreviewCreated");
+        const countsEl = document.getElementById("inviteLinkPreviewCounts");
+        const ownerEl = document.getElementById("inviteLinkPreviewOwner");
+        const usageEl = document.getElementById("inviteLinkPreviewUsage");
+
+        if (avatarEl) avatarEl.innerHTML = teamAvatarHtml(team, "w-11 h-11 text-sm");
+        if (nameEl) nameEl.textContent = team.name || "Team";
+        if (descEl) descEl.textContent = team.description || "No description";
+
+        const createdAt = team.created_at ? new Date(team.created_at).toLocaleDateString() : null;
+        if (createdEl) createdEl.textContent = createdAt ? `Created ${createdAt}` : "";
+
+        const online = team.online_count ?? 0;
+        const memberCount = team.member_count ?? 0;
+        if (countsEl) countsEl.textContent = `${online}/${memberCount} online`;
+
+        const ownerName = team.owner?.username || "Unknown";
+        if (ownerEl) ownerEl.textContent = `Owner: ${ownerName}`;
+
+        const expiry = preview?.expires_at ? new Date(preview.expires_at).toLocaleDateString() : null;
+        const usesRemaining = preview?.uses_remaining;
+        if (usageEl) {
+          usageEl.classList.remove("hidden");
+          const parts = [];
+          if (expiry) parts.push(`Expires ${expiry}`);
+          if (usesRemaining != null) parts.push(`${usesRemaining} uses remaining`);
+          usageEl.textContent = parts.length ? parts.join(" · ") : "";
+        }
+      }
+
+      async function previewInviteLink() {
+        const input = document.getElementById("inviteLinkInput").value;
+        const token = extractInviteToken(input);
+        if (!token) return showInviteLinkModalError("Paste a valid invite link.");
+
+        const previewBtn = document.getElementById("inviteLinkPreviewBtn");
+        const joinBtn = document.getElementById("inviteLinkJoinBtn");
+        if (previewBtn) {
+          previewBtn.disabled = true;
+          previewBtn.textContent = "Loading…";
+        }
+        if (joinBtn) joinBtn.disabled = true;
+        document.getElementById("inviteLinkModalError").classList.add("hidden");
+        document.getElementById("inviteLinkPreview").classList.add("hidden");
+        document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
+
+        const r = await apiFetch(`/api/invite/${token}`);
+        const d = await parseJsonResponse(r);
+
+        if (previewBtn) {
+          previewBtn.disabled = false;
+          previewBtn.textContent = "Preview invite";
+        }
+
+        if (!r.ok) return showInviteLinkModalError(d.error || "Could not load invite.");
+
+        invitePreviewToken = token;
+        invitePreviewData = d;
+        renderInvitePreview(d);
+        document.getElementById("inviteLinkPreview").classList.remove("hidden");
+
+        if (joinBtn) joinBtn.disabled = false;
+      }
+
+      async function joinByInviteLink() {
+        const input = document.getElementById("inviteLinkInput").value;
+        const token = extractInviteToken(input);
+        if (!token) return showInviteLinkModalError("Paste a valid invite link.");
+
+        if (!invitePreviewToken || invitePreviewToken !== token) {
+          return showInviteLinkModalError("Preview the invite first.");
+        }
+
+        const btn = document.getElementById("inviteLinkJoinBtn");
+        btn.disabled = true;
+        btn.textContent = "Joining…";
+        document.getElementById("inviteLinkModalError").classList.add("hidden");
+
+        const r = await apiFetch(`/api/invite/${token}/accept`, { method: "POST" });
+        const d = await parseJsonResponse(r);
+
+        btn.disabled = false;
+        btn.textContent = "Join team";
+
+        if (!r.ok) return showInviteLinkModalError(d.error || "Could not join team.");
+        if (d.team_id) window.location = `/board/${d.team_id}`;
       }
 
       let currentUser = null;
@@ -2028,6 +2297,9 @@
         if (currentUser.error) return;
         await loadFeedbackCaptchaConfig();
         renderNavUser();
+        if (!currentUser.is_guest) {
+          document.getElementById("joinByInviteLinkBtn")?.classList.remove("hidden");
+        }
         if (!currentUser.is_guest) {
           document.getElementById("profileBtn").onclick = openProfileModal;
           loadAvatarPresets();
