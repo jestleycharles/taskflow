@@ -542,6 +542,7 @@
     $('dmBlockedEmailAddError')?.classList.add('hidden');
     $('dmBlockedEmailAddInput').value = '';
     $('dmBlockedEmailsModal')?.classList.remove('hidden');
+    window.pushDashboardOverlay?.('dmBlockedEmails');
   }
 
   function closeBlockedEmailsModal() {
@@ -646,6 +647,7 @@
       msg.textContent = `${email} is in your block list. Unblock it to start a chat.`;
     }
     $('dmBlockedEmailStartModal')?.classList.remove('hidden');
+    window.pushDashboardOverlay?.('dmBlockedEmailStart');
   }
 
   function closeBlockedEmailStartModal() {

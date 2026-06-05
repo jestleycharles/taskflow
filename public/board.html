@@ -861,13 +861,13 @@
       <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 p-4">
         <div id="settingsDangerZone" class="mt-auto shrink-0 border-t border-white/10 pt-4">
           <button type="button" id="dangerZoneToggleBtn" onclick="toggleSettingsDangerZone()" aria-expanded="false" aria-controls="dangerZoneContent"
-            class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+            class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
             <span id="dangerZoneToggleLabel">Danger zone</span>
             <svg id="dangerZoneChevron" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
           </button>
-          <div id="dangerZoneContent" class="hidden mt-3 space-y-4 rounded-xl border border-red-500/25 bg-red-500/5 p-3">
+          <div id="dangerZoneContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-3">
             <div id="transferOwnershipSection" class="hidden space-y-2">
-              <p class="text-xs text-red-400/90 font-medium">Transfer ownership</p>
+              <p class="text-xs text-gray-400 font-medium">Transfer ownership</p>
               <p class="text-xs text-gray-500 leading-relaxed">Make another registered member the owner. You will become a regular member and keep access to this board.</p>
               <select id="transferOwnershipSelect" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500/50 transition">
                 <option value="">Select a member…</option>
@@ -877,7 +877,7 @@
               </button>
             </div>
             <div id="dangerZoneDeleteBlock" class="space-y-2">
-              <p class="text-xs text-red-400/90 font-medium">Delete team</p>
+              <p class="text-xs text-gray-400 font-medium">Delete team</p>
               <p class="text-xs text-gray-500 leading-relaxed">Permanently delete this team, all tasks, comments, chat, and activity. This cannot be undone.</p>
               <button type="button" onclick="deleteTeam()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium">
                 Delete team
@@ -904,7 +904,7 @@
   <!-- Board zoom (bottom-right; same layer as chat FAB, below toasts) -->
   <div id="boardZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Board zoom">
     <button type="button" id="boardZoomIn" class="board-zoom-btn" aria-label="Zoom in (closer view)">+</button>
-    <input type="range" id="boardZoomSlider" class="max-md:hidden" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom (100% normal, 500% zoomed out)" />
+    <input type="range" id="boardZoomSlider" class="hidden md:block" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom (100% normal, 500% zoomed out)" />
     <button type="button" id="boardZoomPct" class="board-zoom-btn" aria-label="Set zoom level">100%</button>
     <button type="button" id="boardZoomOut" class="board-zoom-btn" aria-label="Zoom out (wider view)">−</button>
   </div>
@@ -932,35 +932,45 @@
       <p class="text-gray-500 text-sm mb-5">Update your team name, description, and avatar.</p>
       <div id="editTeamError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
 
-      <div class="mb-6">
-        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
-        <div class="flex items-center gap-4 mb-4">
-          <div id="editTeamAvatarPreview" class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"></div>
-          <div>
-            <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
-            <p class="text-xs text-gray-500 mt-0.5">JPEG, PNG, WebP, or GIF — max 2 MB</p>
-          </div>
-        </div>
-        <div id="editTeamAvatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
-        <label id="editTeamAvatarUploadLabel" class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          Upload custom image
-          <input id="editTeamAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
-        </label>
-        <p id="editTeamAvatarUploadGuestNote" class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed">Custom team images are only available with a registered account. Choose a preset above.</p>
-      </div>
-
-      <div class="space-y-4 border-t border-white/10 pt-5">
+      <div class="space-y-4">
         <div>
           <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Team name</label>
           <input id="editTeamName" type="text" placeholder="e.g. Engineering"
             class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
         </div>
+
         <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
-          <input id="editTeamDesc" type="text" placeholder="What does this team work on?"
-            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+          <button type="button" id="editTeamDetailsToggleBtn" onclick="toggleEditTeamDetails()" aria-expanded="false" aria-controls="editTeamDetailsContent"
+            class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+            <span id="editTeamDetailsLabel">Avatar &amp; description</span>
+            <svg id="editTeamDetailsChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div id="editTeamDetailsContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div>
+              <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
+              <div class="flex items-center gap-4 mb-4">
+                <div id="editTeamAvatarPreview" class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"></div>
+                <div>
+                  <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
+                  <p class="text-xs text-gray-500 mt-0.5">JPEG, PNG, WebP, or GIF — max 2 MB</p>
+                </div>
+              </div>
+              <div id="editTeamAvatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
+              <label id="editTeamAvatarUploadLabel" class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                Upload custom image
+                <input id="editTeamAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+              </label>
+              <p id="editTeamAvatarUploadGuestNote" class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed">Custom team images are only available with a registered account. Choose a preset above.</p>
+            </div>
+            <div>
+              <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
+              <input id="editTeamDesc" type="text" placeholder="What does this team work on?"
+                class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+            </div>
+          </div>
         </div>
+
         <div class="flex gap-3 pt-2">
           <button type="button" onclick="closeEditTeamModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
           <button type="button" id="editTeamSaveBtn" onclick="saveEditTeam()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Save changes</button>
@@ -992,26 +1002,33 @@
         <p id="teamRolesEmpty" class="hidden text-xs text-gray-600 text-center py-4">No custom roles yet. Create one below.</p>
       </div>
 
-      <div class="border-t border-white/10 pt-5 space-y-4">
-        <p id="teamRoleFormTitle" class="text-xs text-gray-400 font-medium uppercase tracking-wider">Add role</p>
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Role name</label>
-          <input id="teamRoleNameInput" type="text" placeholder="e.g. Developer"
-            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
-        </div>
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Color</label>
-          <div id="teamRoleColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
-          <div class="flex items-center gap-3">
-            <input id="teamRoleColorPicker" type="color" value="#4f6ef7"
-              class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
-            <input id="teamRoleHexInput" type="text" placeholder="#4f6ef7" maxlength="7"
-              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm font-mono uppercase" />
+      <div class="border-t border-white/10 pt-5">
+        <button type="button" id="teamRoleAddToggleBtn" onclick="toggleTeamRoleAddDrawer()" aria-expanded="false" aria-controls="teamRoleAddContent"
+          class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+          <span id="teamRoleAddLabel">Add role</span>
+          <svg id="teamRoleAddChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        <div id="teamRoleAddContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <p id="teamRoleFormTitle" class="text-xs text-gray-400 font-medium uppercase tracking-wider">Add role</p>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Role name</label>
+            <input id="teamRoleNameInput" type="text" placeholder="e.g. Developer"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
           </div>
-        </div>
-        <div class="flex gap-3 pt-1">
-          <button type="button" id="teamRoleFormCancelBtn" onclick="resetTeamRoleForm()" class="hidden flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel edit</button>
-          <button type="button" id="teamRoleSaveBtn" onclick="saveTeamRole()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add role</button>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Color</label>
+            <div id="teamRoleColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
+            <div class="flex items-center gap-3">
+              <input id="teamRoleColorPicker" type="color" value="#4f6ef7"
+                class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
+              <input id="teamRoleHexInput" type="text" placeholder="#4f6ef7" maxlength="7"
+                class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm font-mono uppercase" />
+            </div>
+          </div>
+          <div class="flex gap-3 pt-1">
+            <button type="button" id="teamRoleFormCancelBtn" onclick="resetTeamRoleForm()" class="hidden flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel edit</button>
+            <button type="button" id="teamRoleSaveBtn" onclick="saveTeamRole()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add role</button>
+          </div>
         </div>
       </div>
 
@@ -1032,26 +1049,33 @@
         <div id="columnMgmtList" class="space-y-2 min-h-[2rem] max-h-[min(16rem,40vh)] overflow-y-auto"></div>
         <p id="columnMgmtEmpty" class="hidden text-xs text-gray-600 text-center py-4">No columns.</p>
       </div>
-      <div class="border-t border-white/10 pt-5 space-y-4">
-        <p id="columnFormTitle" class="text-xs text-gray-400 font-medium uppercase tracking-wider">Add column</p>
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Column name</label>
-          <input id="columnNameInput" type="text" placeholder="e.g. In Review"
-            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm" />
-        </div>
-        <div>
-          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Color</label>
-          <div id="columnColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
-          <div class="flex items-center gap-3">
-            <input id="columnColorPicker" type="color" value="#4f6ef7"
-              class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
-            <input id="columnHexInput" type="text" placeholder="#4f6ef7" maxlength="7"
-              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm font-mono uppercase" />
+      <div class="border-t border-white/10 pt-5">
+        <button type="button" id="columnAddToggleBtn" onclick="toggleColumnAddDrawer()" aria-expanded="false" aria-controls="columnAddContent"
+          class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+          <span id="columnAddLabel">Add column</span>
+          <svg id="columnAddChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        <div id="columnAddContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <p id="columnFormTitle" class="text-xs text-gray-400 font-medium uppercase tracking-wider">Add column</p>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Column name</label>
+            <input id="columnNameInput" type="text" placeholder="e.g. In Review"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm" />
           </div>
-        </div>
-        <div class="flex gap-3 pt-1">
-          <button type="button" id="columnFormCancelBtn" onclick="resetColumnForm()" class="hidden flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel edit</button>
-          <button type="button" id="columnSaveBtn" onclick="saveColumn()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add column</button>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Color</label>
+            <div id="columnColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
+            <div class="flex items-center gap-3">
+              <input id="columnColorPicker" type="color" value="#4f6ef7"
+                class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
+              <input id="columnHexInput" type="text" placeholder="#4f6ef7" maxlength="7"
+                class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm font-mono uppercase" />
+            </div>
+          </div>
+          <div class="flex gap-3 pt-1">
+            <button type="button" id="columnFormCancelBtn" onclick="resetColumnForm()" class="hidden flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel edit</button>
+            <button type="button" id="columnSaveBtn" onclick="saveColumn()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add column</button>
+          </div>
         </div>
       </div>
       <button type="button" onclick="closeColumnMgmtModal()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
@@ -1078,6 +1102,36 @@
       <h2 id="alertTitle" class="text-base font-semibold text-white mb-2">Something went wrong</h2>
       <p id="alertMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
       <button type="button" onclick="closeAlertModal()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+    </div>
+  </div>
+
+  <!-- Zoom Level Modal -->
+  <div id="zoomLevelModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeZoomLevelModal()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl fade-up">
+      <h2 class="text-base font-semibold text-white mb-2">Set zoom level</h2>
+      <p class="text-sm text-gray-400 leading-relaxed mb-4">Zoom level (100% = normal, 500% = zoomed out)</p>
+      <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5" for="zoomLevelInput">
+        Zoom %
+      </label>
+      <input
+        id="zoomLevelInput"
+        type="number"
+        inputmode="numeric"
+        min="100"
+        max="500"
+        step="10"
+        class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm mb-5"
+        aria-label="Zoom level in percent"
+      />
+      <div class="flex gap-3">
+        <button type="button" onclick="closeZoomLevelModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">
+          Cancel
+        </button>
+        <button type="button" id="zoomLevelApplyBtn" onclick="applyZoomLevelFromModal()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">
+          Set
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1442,6 +1496,12 @@
     }
 
     function getTopBoardOverlay() {
+      if (!document.getElementById('zoomLevelModal')?.classList.contains('hidden')) return 'zoomLevel';
+      if (!document.getElementById('confirmModal')?.classList.contains('hidden')) return 'confirm';
+      if (!document.getElementById('alertModal')?.classList.contains('hidden')) return 'alert';
+      if (!document.getElementById('editTeamModal')?.classList.contains('hidden')) return 'editTeam';
+      if (!document.getElementById('teamRolesModal')?.classList.contains('hidden')) return 'teamRoles';
+      if (!document.getElementById('columnMgmtModal')?.classList.contains('hidden')) return 'columnMgmt';
       if (!document.getElementById('attachmentPreviewModal')?.classList.contains('hidden')) return 'attachmentPreview';
       if (!document.getElementById('taskModal')?.classList.contains('hidden')) return 'task';
       if (!document.getElementById('addTaskModal')?.classList.contains('hidden')) return 'addTask';
@@ -1466,11 +1526,16 @@
       closeBoardOverlayUi(prevOverlay);
       boardHistoryPopping = true;
       history.back();
-      boardHistoryPopping = false;
     }
 
     async function closeBoardOverlayUi(overlay) {
       switch (overlay) {
+        case 'zoomLevel': closeZoomLevelModal(); break;
+        case 'confirm': closeConfirmModal(); break;
+        case 'alert': closeAlertModal(); break;
+        case 'editTeam': closeEditTeamModal(); break;
+        case 'teamRoles': closeTeamRolesModal(); break;
+        case 'columnMgmt': closeColumnMgmtModal(); break;
         case 'attachmentPreview': closeAttachmentPreviewUi(); break;
         case 'task': await closeTaskModalUi(); break;
         case 'addTask': closeAddTaskUi(); break;
@@ -2117,6 +2182,7 @@
       showTeamRolesError('');
       syncSeparateRoleToggleUi();
       resetTeamRoleForm();
+      resetTeamRoleAddDrawer();
       renderTeamRolesList();
       document.getElementById('teamRolesModal').classList.remove('hidden');
     }
@@ -2124,6 +2190,7 @@
     function closeTeamRolesModal() {
       document.getElementById('teamRolesModal').classList.add('hidden');
       resetTeamRoleForm();
+      resetTeamRoleAddDrawer();
     }
 
     function showColumnMgmtError(msg) {
@@ -2228,6 +2295,7 @@
     function openColumnMgmtModal() {
       if (teamData?.userRole !== 'owner') return;
       resetColumnForm();
+      resetColumnAddDrawer();
       renderColumnMgmtList();
       document.getElementById('columnMgmtModal').classList.remove('hidden');
     }
@@ -2235,6 +2303,7 @@
     function closeColumnMgmtModal() {
       document.getElementById('columnMgmtModal').classList.add('hidden');
       resetColumnForm();
+      resetColumnAddDrawer();
     }
 
     function editColumn(columnId) {
@@ -2247,6 +2316,7 @@
       document.getElementById('columnSaveBtn').textContent = 'Save column';
       document.getElementById('columnFormCancelBtn').classList.remove('hidden');
       showColumnMgmtError('');
+      setColumnAddDrawerOpen(true);
     }
 
     async function saveColumn() {
@@ -2330,6 +2400,7 @@
       document.getElementById('teamRoleFormCancelBtn').classList.remove('hidden');
       renderTeamRoleColorSwatches(role.color_hex);
       showTeamRolesError('');
+      setTeamRoleAddDrawerOpen(true);
     }
 
     async function saveTeamRole() {
@@ -3099,10 +3170,13 @@
         }
         tasks.push(task);
         renderBoard({ animateNew: true });
-        boardHistoryPopping = true;
         closeAddTaskUi();
-        if (history.state?.tfBoardOverlay) history.back();
-        boardHistoryPopping = false;
+        if (history.state?.tfBoardOverlay) {
+          boardHistoryPopping = true;
+          history.back();
+        } else {
+          boardHistoryPopping = false;
+        }
       } finally {
         taskSubmitSaving = false;
         setButtonLoading(submitBtn, false);
@@ -4627,9 +4701,9 @@
       if (!content || !btn) return;
       content.classList.toggle('hidden', !open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      btn.classList.toggle('danger-zone-open', open);
+      btn.classList.toggle('drawer-open', open);
       if (label) label.textContent = open ? 'Close danger zone' : 'Danger zone';
-      chevron?.classList.toggle('hidden', open);
+      if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
     }
 
     function toggleSettingsDangerZone() {
@@ -4686,6 +4760,77 @@
       if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('drawer-open'); }
       if (label) label.textContent = 'Details';
       if (chevron) chevron.style.transform = '';
+    }
+
+    function setEditTeamDetailsDrawerOpen(open) {
+      const content = document.getElementById('editTeamDetailsContent');
+      const btn = document.getElementById('editTeamDetailsToggleBtn');
+      const label = document.getElementById('editTeamDetailsLabel');
+      const chevron = document.getElementById('editTeamDetailsChevron');
+      if (!content || !btn) return;
+      content.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('drawer-open', open);
+      if (label) label.textContent = open ? 'Hide avatar & description' : 'Avatar & description';
+      if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+    }
+
+    function toggleEditTeamDetails() {
+      const content = document.getElementById('editTeamDetailsContent');
+      if (!content) return;
+      setEditTeamDetailsDrawerOpen(content.classList.contains('hidden'));
+    }
+
+    function resetEditTeamDetailsDrawer() {
+      setEditTeamDetailsDrawerOpen(false);
+    }
+
+    function setTeamRoleAddDrawerOpen(open) {
+      const content = document.getElementById('teamRoleAddContent');
+      const btn = document.getElementById('teamRoleAddToggleBtn');
+      const label = document.getElementById('teamRoleAddLabel');
+      const chevron = document.getElementById('teamRoleAddChevron');
+      if (!content || !btn) return;
+      content.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('drawer-open', open);
+      const editing = !!editingTeamRoleId;
+      if (label) label.textContent = open ? (editing ? 'Hide role editor' : 'Hide add role') : (editing ? 'Edit role' : 'Add role');
+      if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+    }
+
+    function toggleTeamRoleAddDrawer() {
+      const content = document.getElementById('teamRoleAddContent');
+      if (!content) return;
+      setTeamRoleAddDrawerOpen(content.classList.contains('hidden'));
+    }
+
+    function resetTeamRoleAddDrawer() {
+      setTeamRoleAddDrawerOpen(false);
+    }
+
+    function setColumnAddDrawerOpen(open) {
+      const content = document.getElementById('columnAddContent');
+      const btn = document.getElementById('columnAddToggleBtn');
+      const label = document.getElementById('columnAddLabel');
+      const chevron = document.getElementById('columnAddChevron');
+      if (!content || !btn) return;
+      content.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('drawer-open', open);
+      const editing = !!editingColumnId;
+      if (label) label.textContent = open ? (editing ? 'Hide column editor' : 'Hide add column') : (editing ? 'Edit column' : 'Add column');
+      if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+    }
+
+    function toggleColumnAddDrawer() {
+      const content = document.getElementById('columnAddContent');
+      if (!content) return;
+      setColumnAddDrawerOpen(content.classList.contains('hidden'));
+    }
+
+    function resetColumnAddDrawer() {
+      setColumnAddDrawerOpen(false);
     }
 
     function applyTeamHeader() {
@@ -4764,6 +4909,7 @@
       renderEditTeamAvatarPresetGrid();
       updateEditTeamPreview();
       applyGuestTeamAvatarUploadUi();
+      resetEditTeamDetailsDrawer();
       document.getElementById('editTeamModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('editTeamName').focus(), 50);
     }
@@ -4771,6 +4917,7 @@
     function closeEditTeamModal() {
       document.getElementById('editTeamModal').classList.add('hidden');
       hideEditTeamError();
+      resetEditTeamDetailsDrawer();
     }
 
     function selectEditTeamPreset(presetId) {
@@ -5617,11 +5764,30 @@
     }
 
     function promptBoardZoomLevel() {
-      const raw = window.prompt('Zoom level (100% = normal, 500% = zoomed out)', String(boardZoomPct));
-      if (raw == null) return;
-      const parsed = parseInt(String(raw).replace(/%/g, '').trim(), 10);
+      showZoomLevelModal();
+    }
+
+    function showZoomLevelModal() {
+      const modal = document.getElementById('zoomLevelModal');
+      const input = document.getElementById('zoomLevelInput');
+      if (!modal || !input) return;
+      input.value = String(boardZoomPct);
+      modal.classList.remove('hidden');
+      if (TF_VIEWPORT.isMobile()) pushBoardOverlay('zoomLevel');
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function applyZoomLevelFromModal() {
+      const input = document.getElementById('zoomLevelInput');
+      if (!input) return;
+      const parsed = parseInt(String(input.value).replace(/%/g, '').trim(), 10);
       if (!Number.isFinite(parsed)) return;
       setBoardZoom(parsed);
+      closeZoomLevelModal();
+    }
+
+    function closeZoomLevelModal() {
+      document.getElementById('zoomLevelModal')?.classList.add('hidden');
     }
 
     function preventBrowserPinchZoom() {
@@ -5807,7 +5973,10 @@
     initAttachmentDropZone('taskCoverDropZone', 'taskCoverFile');
 
     window.addEventListener('popstate', () => {
-      if (boardHistoryPopping) return;
+      if (boardHistoryPopping) {
+        boardHistoryPopping = false;
+        return;
+      }
       const overlay = getTopBoardOverlay();
       if (overlay) closeBoardOverlayUi(overlay);
     });

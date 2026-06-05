@@ -1057,9 +1057,19 @@
       <div
         class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto"
       >
-        <h2 id="inviteLinkModalTitle" class="text-lg font-semibold text-white mb-1">
-          Join a team
-        </h2>
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <h2 id="inviteLinkModalTitle" class="text-lg font-semibold text-white">
+            Join a team
+          </h2>
+          <button
+            type="button"
+            onclick="closeInviteLinkModal()"
+            class="text-gray-400 hover:text-white transition p-1.5 -m-1.5 rounded-lg hover:bg-white/10 shrink-0"
+            aria-label="Close"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
         <p class="text-gray-500 text-sm mb-5">
           Paste an invite link you received to join the team.
         </p>
@@ -1104,24 +1114,6 @@
               placeholder="https://…/register?invite=…"
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
             />
-          </div>
-
-          <div class="flex gap-3 pt-2">
-            <button
-              type="button"
-              onclick="closeInviteLinkModal()"
-              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              id="inviteLinkPreviewBtn"
-              onclick="previewInviteLink()"
-              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
-            >
-              Preview invite
-            </button>
           </div>
 
           <button
@@ -1307,15 +1299,26 @@
           registered account.
         </p>
         <div class="mb-5">
-          <p
-            class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2"
+          <button
+            type="button"
+            id="guestNoticeFeaturesToggleBtn"
+            onclick="toggleGuestNoticeFeatures()"
+            aria-expanded="false"
+            aria-controls="guestNoticeFeaturesContent"
+            class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2"
           >
-            With a registered account you get
-          </p>
-          <ul
-            id="guestNoticeFeaturesList"
-            class="text-sm text-gray-300 space-y-2 list-disc list-inside marker:text-brand-500/80"
-          ></ul>
+            <span id="guestNoticeFeaturesLabel">Registered account features</span>
+            <svg id="guestNoticeFeaturesChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div id="guestNoticeFeaturesContent" class="hidden mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <p class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">
+              With a registered account you get
+            </p>
+            <ul
+              id="guestNoticeFeaturesList"
+              class="text-sm text-gray-300 space-y-2 list-disc list-inside marker:text-brand-500/80"
+            ></ul>
+          </div>
         </div>
         <div class="flex flex-col sm:flex-row gap-3">
           <a
@@ -1523,6 +1526,74 @@
     <script src="/direct-chat.js"></script>
     <script>
       let confirmCallback = null;
+      let dashboardHistoryPopping = false;
+
+      function getTopDashboardOverlay() {
+        // Order matters: top-most overlays first.
+        if (!document.getElementById("confirmModal")?.classList.contains("hidden"))
+          return "confirm";
+        if (!document.getElementById("alertModal")?.classList.contains("hidden"))
+          return "alert";
+        if (!document.getElementById("inviteLinkModal")?.classList.contains("hidden"))
+          return "inviteLink";
+        if (!document.getElementById("guestNoticeModal")?.classList.contains("hidden"))
+          return "guestNotice";
+        if (!document.getElementById("feedbackModal")?.classList.contains("hidden"))
+          return "feedback";
+        if (!document.getElementById("profileModal")?.classList.contains("hidden"))
+          return "profile";
+        if (!document.getElementById("createModal")?.classList.contains("hidden"))
+          return "createTeam";
+        if (!document.getElementById("dmBlockedEmailsModal")?.classList.contains("hidden"))
+          return "dmBlockedEmails";
+        if (!document.getElementById("dmBlockedEmailStartModal")?.classList.contains("hidden"))
+          return "dmBlockedEmailStart";
+        return null;
+      }
+
+      function pushDashboardOverlay(name) {
+        if (!TF_VIEWPORT?.isMobile?.()) return;
+        if (dashboardHistoryPopping) return;
+        history.pushState({ tfDashOverlay: name, t: Date.now() }, "");
+      }
+
+      function requestCloseDashboardOverlay() {
+        if (!TF_VIEWPORT?.isMobile?.()) return;
+        if (getTopDashboardOverlay()) history.back();
+      }
+
+      async function closeDashboardOverlayUi(overlay) {
+        switch (overlay) {
+          case "confirm":
+            closeConfirmModal();
+            break;
+          case "alert":
+            closeAlertModal();
+            break;
+          case "inviteLink":
+            closeInviteLinkModal();
+            break;
+          case "guestNotice":
+            dismissGuestNotice();
+            break;
+          case "feedback":
+            closeFeedbackModal();
+            break;
+          case "profile":
+            closeProfileModal();
+            break;
+          case "createTeam":
+            closeCreateModal();
+            break;
+          case "dmBlockedEmails":
+            // Provided by direct-chat.js
+            window.closeBlockedEmailsModal?.();
+            break;
+          case "dmBlockedEmailStart":
+            window.closeBlockedEmailStartModal?.();
+            break;
+        }
+      }
 
       function showConfirm({
         title,
@@ -1540,6 +1611,7 @@
           : "flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm";
         confirmCallback = onConfirm;
         document.getElementById("confirmModal").classList.remove("hidden");
+        pushDashboardOverlay("confirm");
       }
 
       function closeConfirmModal() {
@@ -1557,6 +1629,7 @@
         document.getElementById("alertTitle").textContent = title;
         document.getElementById("alertMessage").textContent = message;
         document.getElementById("alertModal").classList.remove("hidden");
+        pushDashboardOverlay("alert");
       }
 
       function closeAlertModal() {
@@ -1579,16 +1652,12 @@
           joinBtn.textContent = "Join team";
         }
         document.getElementById("inviteLinkModal").classList.remove("hidden");
+        pushDashboardOverlay("inviteLink");
         const input = document.getElementById("inviteLinkInput");
         if (input) {
-          input.oninput = () => {
-            invitePreviewToken = null;
-            invitePreviewData = null;
-            document.getElementById("inviteLinkPreview").classList.add("hidden");
-            document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
-            const b = document.getElementById("inviteLinkJoinBtn");
-            if (b) b.disabled = true;
-          };
+          // Auto-preview as the user pastes/types a valid link/token.
+          input.oninput = () => scheduleInviteAutoPreview();
+          input.onpaste = () => setTimeout(() => scheduleInviteAutoPreview(), 0);
         }
         setTimeout(() => document.getElementById("inviteLinkInput")?.focus(), 50);
       }
@@ -1607,6 +1676,12 @@
         const raw = String(input || "").trim();
         if (!raw) return null;
         if (/^[a-f0-9]{64}$/i.test(raw)) return raw.toLowerCase();
+        // Accept pasting the query arg or token and normalize it:
+        // - "invite=<token>"
+        // - "?invite=<token>"
+        // - "&invite=<token>"
+        const m = raw.match(/(?:^|[?&]|^)invite=([a-f0-9]{64})$/i);
+        if (m) return m[1].toLowerCase();
         try {
           const u = new URL(raw);
           const token = u.searchParams.get("invite");
@@ -1660,12 +1735,7 @@
         const token = extractInviteToken(input);
         if (!token) return showInviteLinkModalError("Paste a valid invite link.");
 
-        const previewBtn = document.getElementById("inviteLinkPreviewBtn");
         const joinBtn = document.getElementById("inviteLinkJoinBtn");
-        if (previewBtn) {
-          previewBtn.disabled = true;
-          previewBtn.textContent = "Loading…";
-        }
         if (joinBtn) joinBtn.disabled = true;
         document.getElementById("inviteLinkModalError").classList.add("hidden");
         document.getElementById("inviteLinkPreview").classList.add("hidden");
@@ -1673,11 +1743,6 @@
 
         const r = await apiFetch(`/api/invite/${token}`);
         const d = await parseJsonResponse(r);
-
-        if (previewBtn) {
-          previewBtn.disabled = false;
-          previewBtn.textContent = "Preview invite";
-        }
 
         if (!r.ok) return showInviteLinkModalError(d.error || "Could not load invite.");
 
@@ -1694,8 +1759,10 @@
         const token = extractInviteToken(input);
         if (!token) return showInviteLinkModalError("Paste a valid invite link.");
 
+        // If the user hasn't waited for auto-preview, try to load it once.
         if (!invitePreviewToken || invitePreviewToken !== token) {
-          return showInviteLinkModalError("Preview the invite first.");
+          await previewInviteLink();
+          if (!invitePreviewToken || invitePreviewToken !== token) return;
         }
 
         const btn = document.getElementById("inviteLinkJoinBtn");
@@ -1711,6 +1778,52 @@
 
         if (!r.ok) return showInviteLinkModalError(d.error || "Could not join team.");
         if (d.team_id) window.location = `/board/${d.team_id}`;
+      }
+
+      function buildInviteUrlFromToken(token) {
+        if (!token) return null;
+        try {
+          return `${window.location.origin}/register?invite=${token}`;
+        } catch {
+          return `/register?invite=${token}`;
+        }
+      }
+
+      let inviteAutoPreviewTimer = null;
+      let inviteAutoPreviewLastToken = null;
+      function scheduleInviteAutoPreview() {
+        const inputEl = document.getElementById("inviteLinkInput");
+        if (!inputEl) return;
+
+        // Reset preview UI while typing.
+        invitePreviewToken = null;
+        invitePreviewData = null;
+        document.getElementById("inviteLinkPreview").classList.add("hidden");
+        document.getElementById("inviteLinkPreviewUsage").classList.add("hidden");
+        const joinBtn = document.getElementById("inviteLinkJoinBtn");
+        if (joinBtn) joinBtn.disabled = true;
+        document.getElementById("inviteLinkModalError").classList.add("hidden");
+
+        const token = extractInviteToken(inputEl.value);
+        if (token) {
+          const normalized = buildInviteUrlFromToken(token);
+          if (normalized && inputEl.value.trim() !== normalized) {
+            inputEl.value = normalized;
+          }
+        }
+
+        clearTimeout(inviteAutoPreviewTimer);
+        inviteAutoPreviewTimer = setTimeout(async () => {
+          const token2 = extractInviteToken(inputEl.value);
+          if (!token2) return;
+          if (token2 === inviteAutoPreviewLastToken) return;
+          inviteAutoPreviewLastToken = token2;
+          try {
+            await previewInviteLink();
+          } catch (_) {
+            // Errors are rendered via showInviteLinkModalError.
+          }
+        }, 350);
       }
 
       let currentUser = null;
@@ -1819,6 +1932,7 @@
         if (!currentUser?.is_guest || hasGuestDashboardNoticeDismissed())
           return;
         await renderGuestNoticeFeatures();
+        resetGuestNoticeFeaturesDrawer();
         applyGuestNoticeActions();
         document.getElementById("guestNoticeModal").classList.remove("hidden");
       }
@@ -1826,6 +1940,35 @@
       function dismissGuestNotice() {
         setGuestDashboardNoticeDismissed();
         document.getElementById("guestNoticeModal").classList.add("hidden");
+        resetGuestNoticeFeaturesDrawer();
+      }
+
+      function toggleGuestNoticeFeatures() {
+        const content = document.getElementById("guestNoticeFeaturesContent");
+        const btn = document.getElementById("guestNoticeFeaturesToggleBtn");
+        const label = document.getElementById("guestNoticeFeaturesLabel");
+        const chevron = document.getElementById("guestNoticeFeaturesChevron");
+        if (!content || !btn) return;
+        const open = content.classList.contains("hidden");
+        content.classList.toggle("hidden", !open);
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.classList.toggle("drawer-open", open);
+        if (label) label.textContent = open ? "Hide features" : "Registered account features";
+        if (chevron) chevron.style.transform = open ? "rotate(180deg)" : "";
+      }
+
+      function resetGuestNoticeFeaturesDrawer() {
+        const content = document.getElementById("guestNoticeFeaturesContent");
+        const btn = document.getElementById("guestNoticeFeaturesToggleBtn");
+        const label = document.getElementById("guestNoticeFeaturesLabel");
+        const chevron = document.getElementById("guestNoticeFeaturesChevron");
+        if (content) content.classList.add("hidden");
+        if (btn) {
+          btn.setAttribute("aria-expanded", "false");
+          btn.classList.remove("drawer-open");
+        }
+        if (label) label.textContent = "Registered account features";
+        if (chevron) chevron.style.transform = "";
       }
 
       let feedbackCaptchaConfig = {
@@ -1915,6 +2058,7 @@
           .getElementById("feedbackGuestNotice")
           ?.classList.toggle("hidden", !currentUser?.is_guest);
         document.getElementById("feedbackModal").classList.remove("hidden");
+        pushDashboardOverlay("feedback");
         await mountFeedbackTurnstile();
         setTimeout(
           () => document.getElementById("feedbackMessage")?.focus(),
@@ -2180,6 +2324,7 @@
         renderAvatarPresetGrid();
         updateProfileAvatarPreview();
         document.getElementById("profileModal").classList.remove("hidden");
+        pushDashboardOverlay("profile");
         setTimeout(
           () => document.getElementById("profileUsername").focus(),
           50,
@@ -2190,6 +2335,17 @@
         document.getElementById("profileModal").classList.add("hidden");
         hideProfileMessages();
       }
+
+      // Mobile back: close the top-most closable popup instead of leaving the page.
+      window.addEventListener("popstate", () => {
+        if (!TF_VIEWPORT?.isMobile?.()) return;
+        if (dashboardHistoryPopping) {
+          dashboardHistoryPopping = false;
+          return;
+        }
+        const overlay = getTopDashboardOverlay();
+        if (overlay) closeDashboardOverlayUi(overlay);
+      });
 
       async function selectAvatarPreset(presetId) {
         hideProfileMessages();
@@ -2699,6 +2855,7 @@
         applyGuestTeamAvatarUploadUi();
         resetCreateTeamOptionalDrawer();
         document.getElementById("createModal").classList.remove("hidden");
+        pushDashboardOverlay("createTeam");
         setTimeout(() => document.getElementById("teamName").focus(), 50);
       }
 

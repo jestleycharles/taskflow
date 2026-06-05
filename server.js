@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const { Pool } = require('pg');
+const PgSession = require('connect-pg-simple')(session);
 
 const authRoutes = require('./routes/auth');
 const teamRoutes = require('./routes/teams');
@@ -27,10 +29,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const sessionDbUrl = process.env.SESSION_DATABASE_URL || process.env.DATABASE_URL;
+const sessionPool = sessionDbUrl
+  ? new Pool({
+      connectionString: sessionDbUrl,
+      // Common for managed Postgres (e.g. Render/Fly/Heroku) where SSL is required.
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    })
+  : null;
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  store: sessionPool ? new PgSession({ pool: sessionPool, tableName: 'session' }) : undefined,
   cookie: {
     secure: 'auto',
     httpOnly: true,
