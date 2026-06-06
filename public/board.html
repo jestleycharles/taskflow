@@ -2528,7 +2528,6 @@
         return;
       }
       await loadTeam();
-      if (tasks.length) renderBoard();
     }
 
     async function init() {
@@ -2634,6 +2633,7 @@
       captureTeamRoleStateSig();
       initMentionComposers();
       applyInviteSectionState();
+      if (tasks.length) renderBoard();
       return true;
     }
 
@@ -5134,6 +5134,8 @@
     }
 
     async function executeLeaveTeam() {
+      closeSettingsPanelUi();
+      closeTeamPanelUi();
       stopBoardBackgroundWork();
       setNavigatingAway(true);
       showNavigationLoading('Leaving team…');
@@ -5196,6 +5198,8 @@
     }
 
     async function executeDeleteTeam() {
+      closeSettingsPanelUi();
+      closeTeamPanelUi();
       stopBoardBackgroundWork();
       setNavigatingAway(true);
       showNavigationLoading('Deleting team…');
@@ -6033,7 +6037,7 @@
     };
 
     window.addEventListener('popstate', () => {
-      resetTransientNavigationUi();
+      if (!boardHistoryPopping) resetTransientNavigationUi();
       if (boardHistoryPopping) {
         boardHistoryPopping = false;
         return;

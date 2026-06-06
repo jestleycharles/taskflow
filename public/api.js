@@ -101,6 +101,8 @@ function showNavigationLoading(message = 'Loading…') {
   }
   const label = navigationLoadingEl.querySelector('[data-tf-nav-label]');
   if (label) label.textContent = message;
+  // Keep as last child of <html> so nothing stacks above the overlay.
+  document.documentElement.appendChild(navigationLoadingEl);
   navigationLoadingEl.dataset.visible = 'true';
 }
 

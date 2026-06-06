@@ -1085,7 +1085,7 @@ router.post('/api/teams/:id/transfer-ownership', requireAuth, async (req, res) =
 
   const { error: promoteErr } = await supabaseAdmin
     .from('team_members')
-    .update({ role: 'owner' })
+    .update({ role: 'owner', custom_role_id: null })
     .eq('team_id', id)
     .eq('user_id', targetUserId);
   if (promoteErr) {

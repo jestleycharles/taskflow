@@ -2675,7 +2675,8 @@
 
       // Mobile back: close the top-most closable popup instead of leaving the page.
       window.addEventListener("popstate", () => {
-        resetTransientNavigationUi();
+        if (window.DirectChat?.handlePopState?.()) return;
+        if (!dashboardHistoryPopping) resetTransientNavigationUi();
         if (!TF_VIEWPORT?.isMobile?.()) return;
         if (dashboardHistoryPopping) {
           dashboardHistoryPopping = false;

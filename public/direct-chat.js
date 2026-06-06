@@ -120,6 +120,47 @@
   let appPresenceInterval = null;
   let dmOnlinePollInterval = null;
   let appPresenceLeft = false;
+  let dmHistoryPopping = false;
+
+  function pushDmHistory(name) {
+    if (dmHistoryPopping) return;
+    history.pushState({ tfDm: name, t: Date.now() }, '');
+  }
+
+  function dismissDmHistorySilent() {
+    const dm = history.state?.tfDm;
+    if (!dm) return;
+    dmHistoryPopping = true;
+    history.go(dm === 'thread' ? -2 : -1);
+  }
+
+  function requestDmBack() {
+    if (!panelOpen) return;
+    if (history.state?.tfDm) {
+      history.back();
+      return;
+    }
+    if (view === 'thread') goToListCore();
+    else closePanelCore();
+  }
+
+  function handleDmPopState() {
+    if (dmHistoryPopping) {
+      dmHistoryPopping = false;
+      return true;
+    }
+    if (!panelOpen) return false;
+    const dm = history.state?.tfDm;
+    if (view === 'thread' && dm === 'panel') {
+      goToListCore();
+      return true;
+    }
+    if (view === 'list' && !dm) {
+      closePanelCore();
+      return true;
+    }
+    return false;
+  }
 
   function $(id) {
     return document.getElementById(id);
@@ -368,6 +409,7 @@
     $('dmChatPanel')?.classList.remove('hidden');
     setPanelOpenUi(true);
     syncView();
+    pushDmHistory(view === 'thread' ? 'thread' : 'panel');
     if (view === 'thread' && activeConversationId) {
       showDmMessagesLoading();
       loadDmMessages().then(() => markDmRead());
@@ -377,7 +419,7 @@
     updateUnreadBadge();
   }
 
-  async function closePanel() {
+  async function closePanelCore() {
     await flushDmReadState();
     closeReactionFloats();
     dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
@@ -392,7 +434,12 @@
     updateUnreadBadge();
   }
 
-  async function goToList() {
+  async function closePanel() {
+    await closePanelCore();
+    dismissDmHistorySilent();
+  }
+
+  async function goToListCore() {
     await flushDmReadState();
     dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
     view = 'list';
@@ -406,6 +453,14 @@
     if (!conversationsLoaded) showConversationListLoading();
     await loadConversations();
     updateUnreadBadge();
+  }
+
+  async function goToList() {
+    await goToListCore();
+    if (history.state?.tfDm === 'thread') {
+      dmHistoryPopping = true;
+      history.back();
+    }
   }
 
   function closeHeaderAvatarMenu() {
@@ -724,6 +779,7 @@
     activeConversation = conv;
     view = 'thread';
     syncView();
+    pushDmHistory('thread');
     dmLastReadAt = dmReadByConv.get(conv.id) || 0;
     dmMessages = [];
     resetDmMessageSearch();
@@ -1346,7 +1402,7 @@
     $('dmChatFab')?.addEventListener('click', openPanel);
     $('dmChatCloseBtn')?.addEventListener('click', closePanel);
     $('dmChatBackdrop')?.addEventListener('click', closePanel);
-    $('dmChatBackBtn')?.addEventListener('click', goToList);
+    $('dmChatBackBtn')?.addEventListener('click', requestDmBack);
     $('dmNewConvBtn')?.addEventListener('click', startNewConversation);
     $('dmSelfChatBtn')?.addEventListener('click', startSelfChat);
     $('dmBlockedEmailsBtn')?.addEventListener('click', openBlockedEmailsModal);
@@ -1513,5 +1569,5 @@
 
   window.addEventListener('pagehide', leaveAppPresence);
 
-  window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence };
+  window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence, handlePopState };
 })();
