@@ -93,7 +93,7 @@ cp .env.example .env
 ### 3. Supabase setup
 
 1. Open **SQL Editor** in your Supabase project and run **[schema.sql](schema.sql)** (creates all tables, enables RLS, and seeds the guest user).
-2. In **Storage**, create a public bucket named **`avatars`** (profile images under `{userId}/`, team images under `teams/{teamId}/`).
+2. In **Storage**, create a public bucket named **`avatars`** and other buckets listed in **[CONTRIBUTING.md](CONTRIBUTING.md)** and **[schema.sql](schema.sql)**.
 3. In **Authentication**, enable Email and any OAuth providers you want (Google, GitHub).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more setup detail.
@@ -158,8 +158,8 @@ The **`public/`** folder is the web client. Express serves it as static files an
 
 1. **Register** or use **Continue as guest** on the login page.
 2. From the **Dashboard**, create a **New Team** and open its board.
-3. Add tasks with column **+** buttons; **drag and drop** between columns.
-4. **Click a task** to edit details, comments, and reactions (registered users get full edit/delete).
+3. Add tasks with **New task** button; **drag and drop** between columns.
+4. **Click a task** to edit details and add comments (registered users get full edit/delete).
 5. Open **Team** on the board to invite members (registered owner; not for guest-owned teams).
 6. Use **Activity** for the team feed and the **chat** button for team-wide messages.
 7. Registered users: **Direct messages** from the dashboard FAB and **profile** from the header.
@@ -173,10 +173,10 @@ The **`public/`** folder is the web client. Express serves it as static files an
 | Backend    | Node.js, Express                    |
 | Database   | Supabase (PostgreSQL)               |
 | Auth       | Supabase Auth + express-session     |
-| Storage    | Supabase Storage (`avatars` bucket) |
+| Storage    | Supabase Storage                    |
 | Frontend   | HTML, Tailwind CSS (CDN), vanilla JS|
 | Real-time  | 5-second polling                    |
-| Deployment | Render (example)                    |
+| Deployment | Render                              |
 
 ---
 

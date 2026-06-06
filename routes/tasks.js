@@ -14,6 +14,7 @@ const {
   validateTeamStatus,
   getTeamColumnSlugs,
 } = require('../lib/team-columns');
+const { deleteStoredTaskFiles } = require('../lib/storage-cleanup');
 const router = express.Router();
 
 const TASK_FILES_BUCKET = 'task-files';
@@ -66,14 +67,6 @@ function mimeToExt(mime) {
     'text/plain': '.txt',
   };
   return map[mime] || '.bin';
-}
-
-async function deleteStoredTaskFiles(taskId) {
-  const prefix = `tasks/${taskId}`;
-  const { data: files } = await supabaseAdmin.storage.from(TASK_FILES_BUCKET).list(prefix);
-  if (!files?.length) return;
-  const paths = files.map((f) => `${prefix}/${f.name}`);
-  await supabaseAdmin.storage.from(TASK_FILES_BUCKET).remove(paths);
 }
 
 async function isMember(teamId, userId) {

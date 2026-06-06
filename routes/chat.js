@@ -14,6 +14,7 @@ const {
   attachAttachmentsToItems,
   uploadMessageAttachment,
 } = require('../lib/message-attachments');
+const { deleteMessageAttachments } = require('../lib/storage-cleanup');
 
 const router = express.Router();
 
@@ -272,6 +273,8 @@ router.delete('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
+
+  await deleteMessageAttachments('chat', [messageId]);
   res.json(await enrichSingleChatMessage(data));
 });
 

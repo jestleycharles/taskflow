@@ -3,6 +3,12 @@
  * Retries transient failures so users are not kicked to login or see parse errors.
  */
 const WAKE_RETRY_DELAYS_MS = [2000, 4000, 8000];
+const WARMUP_COUNTDOWN_SEC = 60;
+
+let warmupRefCount = 0;
+let warmupOverlayEl = null;
+let warmupCountdownTimer = null;
+let warmupEndsAt = 0;
 
 function isServiceWaking(status, bodyText) {
   const body = bodyText.trim();
@@ -111,9 +117,144 @@ function hideNavigationLoading() {
   setNavigatingAway(false);
 }
 
+function ensureWarmupOverlayStyles() {
+  if (document.getElementById('tfWarmupStyles')) return;
+  const style = document.createElement('style');
+  style.id = 'tfWarmupStyles';
+  style.textContent = `
+    #tfServiceWarmup {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 2147483647;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      padding: 2rem 1.5rem;
+      box-sizing: border-box;
+      background: #0f1117;
+      font-family: "DM Sans", sans-serif;
+      pointer-events: auto;
+      text-align: center;
+    }
+    #tfServiceWarmup[data-visible="true"] { display: flex; }
+    #tfServiceWarmup .tf-warmup-logo {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.875rem;
+      background: linear-gradient(135deg, #4f6ef7, #3a57e8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.25rem;
+      box-shadow: 0 8px 32px rgba(79, 110, 247, 0.35);
+    }
+    #tfServiceWarmup .tf-warmup-spinner {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 9999px;
+      border: 2px solid rgba(79, 110, 247, 0.25);
+      border-top-color: #4f6ef7;
+      animation: tfNavSpin 0.8s linear infinite;
+    }
+    #tfServiceWarmup .tf-warmup-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+    }
+    #tfServiceWarmup .tf-warmup-desc {
+      font-size: 0.875rem;
+      color: #9ca3af;
+      margin: 0;
+      max-width: 22rem;
+      line-height: 1.5;
+    }
+    #tfServiceWarmup .tf-warmup-countdown {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #4f6ef7;
+      font-variant-numeric: tabular-nums;
+      margin: 0;
+      line-height: 1;
+    }
+    #tfServiceWarmup .tf-warmup-countdown-label {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function syncWarmupCountdown() {
+  if (!warmupOverlayEl) return;
+  const el = warmupOverlayEl.querySelector('[data-tf-warmup-sec]');
+  if (!el) return;
+  const sec = Math.max(0, Math.ceil((warmupEndsAt - Date.now()) / 1000));
+  el.textContent = String(sec);
+}
+
+function showServiceWarmup() {
+  ensureWarmupOverlayStyles();
+  if (!warmupOverlayEl) {
+    warmupOverlayEl = document.createElement('div');
+    warmupOverlayEl.id = 'tfServiceWarmup';
+    warmupOverlayEl.setAttribute('role', 'status');
+    warmupOverlayEl.setAttribute('aria-live', 'polite');
+    warmupOverlayEl.setAttribute('aria-label', 'Server is warming up');
+    warmupOverlayEl.innerHTML = `
+      <div class="tf-warmup-logo" aria-hidden="true">TF</div>
+      <div class="tf-warmup-spinner" aria-hidden="true"></div>
+      <p class="tf-warmup-title">Warming up TaskFlow</p>
+      <p class="tf-warmup-desc">The server was resting after inactivity and is starting back up. Hang tight — you will be connected automatically.</p>
+      <p class="tf-warmup-countdown" data-tf-warmup-sec>${WARMUP_COUNTDOWN_SEC}</p>
+      <p class="tf-warmup-countdown-label">seconds remaining</p>`;
+    if (document.body) {
+      document.documentElement.insertBefore(warmupOverlayEl, document.body);
+    } else {
+      document.documentElement.appendChild(warmupOverlayEl);
+    }
+  }
+  warmupEndsAt = Date.now() + WARMUP_COUNTDOWN_SEC * 1000;
+  syncWarmupCountdown();
+  if (!warmupCountdownTimer) {
+    warmupCountdownTimer = setInterval(syncWarmupCountdown, 250);
+  }
+  document.documentElement.appendChild(warmupOverlayEl);
+  warmupOverlayEl.dataset.visible = 'true';
+}
+
+function hideServiceWarmup() {
+  if (warmupOverlayEl) warmupOverlayEl.dataset.visible = 'false';
+  if (warmupCountdownTimer) {
+    clearInterval(warmupCountdownTimer);
+    warmupCountdownTimer = null;
+  }
+}
+
+function acquireServiceWarmup() {
+  warmupRefCount += 1;
+  if (warmupRefCount === 1) showServiceWarmup();
+}
+
+function releaseServiceWarmup() {
+  warmupRefCount = Math.max(0, warmupRefCount - 1);
+  if (warmupRefCount === 0) hideServiceWarmup();
+}
+
 /** Clear full-page overlays and page-specific nav UI before bfcache / after restore. */
 function resetTransientNavigationUi() {
   hideNavigationLoading();
+  warmupRefCount = 0;
+  hideServiceWarmup();
   if (typeof window.tfResetPageNavigationUi === 'function') {
     window.tfResetPageNavigationUi();
   }
@@ -159,41 +300,50 @@ async function apiFetch(url, options = {}) {
   const opts = { credentials: 'same-origin', ...options };
   let lastResponse = null;
   let lastBody = '';
+  let sawWaking = false;
 
-  for (let attempt = 0; attempt <= WAKE_RETRY_DELAYS_MS.length; attempt++) {
-    let response;
-    try {
-      response = await fetch(url, opts);
-    } catch (err) {
-      if (attempt >= WAKE_RETRY_DELAYS_MS.length) throw err;
+  try {
+    for (let attempt = 0; attempt <= WAKE_RETRY_DELAYS_MS.length; attempt++) {
+      let response;
+      try {
+        response = await fetch(url, opts);
+      } catch (err) {
+        if (attempt >= WAKE_RETRY_DELAYS_MS.length) throw err;
+        await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAYS_MS[attempt]));
+        continue;
+      }
+
+      const body = await response.text();
+      if (response.ok) {
+        return new Response(body, { status: response.status, headers: response.headers });
+      }
+
+      lastResponse = response;
+      lastBody = body;
+
+      if (!isServiceWaking(response.status, body) || attempt >= WAKE_RETRY_DELAYS_MS.length) {
+        break;
+      }
+
+      if (!sawWaking) {
+        sawWaking = true;
+        acquireServiceWarmup();
+      }
       await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAYS_MS[attempt]));
-      continue;
     }
 
-    const body = await response.text();
-    if (response.ok) {
-      return new Response(body, { status: response.status, headers: response.headers });
+    if (!suppressUnauthorizedModal && isUnauthorizedUpdateError(lastResponse.status, lastBody)) {
+      showUpdateRequiredModal();
     }
 
-    lastResponse = response;
-    lastBody = body;
-
-    if (!isServiceWaking(response.status, body) || attempt >= WAKE_RETRY_DELAYS_MS.length) {
-      break;
-    }
-
-    await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAYS_MS[attempt]));
+    return new Response(lastBody, {
+      status: lastResponse.status,
+      statusText: lastResponse.statusText,
+      headers: lastResponse.headers,
+    });
+  } finally {
+    if (sawWaking) releaseServiceWarmup();
   }
-
-  if (!suppressUnauthorizedModal && isUnauthorizedUpdateError(lastResponse.status, lastBody)) {
-    showUpdateRequiredModal();
-  }
-
-  return new Response(lastBody, {
-    status: lastResponse.status,
-    statusText: lastResponse.statusText,
-    headers: lastResponse.headers,
-  });
 }
 
 async function parseJsonResponse(response) {
@@ -211,6 +361,28 @@ async function parseJsonResponse(response) {
 function isApiUnauthorizedUpdate(response, data) {
   return response.status === 401
     && String(data?.error || '').toLowerCase() === 'unauthorized';
+}
+
+/** Full direct-messages side panel skeleton (first open). */
+function dmPanelSkeletonHtml() {
+  return `<div class="flex flex-col h-full min-h-0" aria-hidden="true">
+    <div class="shrink-0 px-4 py-3 border-b border-white/10 flex items-center gap-3">
+      <div class="skeleton h-5 w-24 rounded"></div>
+      <div class="flex-1"></div>
+      <div class="skeleton w-8 h-8 rounded-lg"></div>
+    </div>
+    <div class="flex-1 min-h-0 overflow-hidden p-4 space-y-4">
+      <div class="space-y-2">
+        <div class="skeleton h-3 w-20 rounded"></div>
+        <div class="skeleton h-10 w-full rounded-xl"></div>
+        <div class="flex gap-2">
+          <div class="skeleton h-9 flex-1 rounded-xl"></div>
+          <div class="skeleton h-9 w-28 rounded-xl"></div>
+        </div>
+      </div>
+      ${conversationListSkeletonHtml(5)}
+    </div>
+  </div>`;
 }
 
 /** Shimmer rows for conversation lists (direct messages). */

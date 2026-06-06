@@ -395,13 +395,6 @@ CREATE INDEX IF NOT EXISTS idx_session_expire ON session (expire);
 --   task-files — tasks/{taskId}/...
 --   chat-files — chat/{messageId}/..., dm/{messageId}/... (unguessable filenames)
 --   feature-posts — posts/{postId}/...
---
--- Migration (existing DBs): create message_attachments table (see CREATE above).
---
--- Migration (existing DBs): extend message_reactions.message_type CHECK:
---   ALTER TABLE message_reactions DROP CONSTRAINT IF EXISTS message_reactions_message_type_check;
---   ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_message_type_check
---     CHECK (message_type IN ('chat', 'comment', 'dm', 'feature_post'));
 -- =============================================================================
 
 -- =============================================================================

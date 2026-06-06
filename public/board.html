@@ -2692,7 +2692,7 @@
         if (mime.startsWith('image/')) {
           return `<div class="chat-msg-attachment">
             <img src="${escHtml(previewUrl)}" alt="${name}" class="chat-msg-attachment-thumb"
-              data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" />
+              data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" ${storageImageOnErrorAttr()} />
           </div>`;
         }
         return `<div class="chat-msg-attachment">
@@ -3052,7 +3052,7 @@
       const pc = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
       const attCount = task.attachment_count || 0;
       const coverHtml = task.cover_image_url
-        ? `<div class="task-card-cover" data-preview-cover data-url="${escHtml(task.cover_image_url)}" data-mime="image/jpeg" data-name="Cover" role="button" tabindex="0" title="Preview cover"><img src="${escHtml(task.cover_image_url)}" alt="" loading="lazy" /></div>`
+        ? `<div class="task-card-cover" data-preview-cover data-url="${escHtml(task.cover_image_url)}" data-mime="image/jpeg" data-name="Cover" role="button" tabindex="0" title="Preview cover"><img src="${escHtml(task.cover_image_url)}" alt="" loading="lazy" ${storageImageOnErrorAttr()} /></div>`
         : '';
 
       el.innerHTML = `
@@ -3814,7 +3814,7 @@
               ? `<button type="button" class="attachment-icon-btn danger" onclick="deleteTaskAttachment('${a.id}')" title="Remove" aria-label="Remove ${escHtml(a.file_name)}">${ICON_TRASH}</button>`
               : '';
             const thumb = isImg
-              ? `<img src="${escHtml(a.file_url)}" alt="" class="attachment-file-thumb" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" />`
+              ? `<img src="${escHtml(a.file_url)}" alt="" class="attachment-file-thumb" data-preview-attachment data-url="${escHtml(a.file_url)}" data-mime="${escHtml(a.mime_type || '')}" data-name="${escHtml(a.file_name || '')}" ${storageImageOnErrorAttr()} />`
               : `<div class="attachment-file-icon">${attachmentFileIconHtml(a.mime_type)}</div>`;
             return `<div class="attachment-file-row">
               ${thumb}
@@ -3826,7 +3826,7 @@
       }
       if (coverPreview) {
         if (hasCover) {
-          coverPreview.innerHTML = `<img src="${escHtml(task.cover_image_url)}" alt="" class="w-full h-32 object-cover" data-preview-cover data-url="${escHtml(task.cover_image_url)}" />`;
+          coverPreview.innerHTML = `<img src="${escHtml(task.cover_image_url)}" alt="" class="w-full h-32 object-cover" data-preview-cover data-url="${escHtml(task.cover_image_url)}" ${storageImageOnErrorAttr()} />`;
           coverPreview.classList.add('cursor-pointer');
           coverPreview.title = 'Preview cover';
         } else {
@@ -3843,7 +3843,7 @@
       const inlineCoverPreview = document.getElementById('taskDetailCoverPreviewInline');
       if (inlineCoverBlock && inlineCoverPreview) {
         if (hasCover) {
-          inlineCoverPreview.innerHTML = `<img src="${escHtml(task.cover_image_url)}" alt="" class="w-full object-cover max-h-48" data-preview-cover data-url="${escHtml(task.cover_image_url)}" />`;
+          inlineCoverPreview.innerHTML = `<img src="${escHtml(task.cover_image_url)}" alt="" class="w-full object-cover max-h-48" data-preview-cover data-url="${escHtml(task.cover_image_url)}" ${storageImageOnErrorAttr()} />`;
           inlineCoverPreview.classList.add('cursor-pointer');
           inlineCoverBlock.classList.remove('hidden');
         } else {

@@ -19,6 +19,7 @@ const {
   revokeInviteLink,
   buildInviteUrl,
 } = require('../lib/invite-links');
+const { deleteStoredTeamFiles } = require('../lib/storage-cleanup');
 const router = express.Router();
 
 const AVATAR_BUCKET = 'avatars';
@@ -1203,7 +1204,16 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
   if (!team) return res.status(404).json({ error: 'Team not found' });
 
   const { data: teamTasks } = await supabaseAdmin.from('tasks').select('id').eq('team_id', id);
-  const taskIds = (teamTasks || []).map(t => t.id);
+  const taskIds = (teamTasks || []).map((t) => t.id);
+
+  const { data: chatMessages } = await supabaseAdmin
+    .from('team_chat_messages')
+    .select('id')
+    .eq('team_id', id);
+  const chatMessageIds = (chatMessages || []).map((m) => m.id);
+
+  await deleteStoredTeamFiles(id, taskIds, chatMessageIds);
+
   if (taskIds.length) {
     await supabaseAdmin.from('comments').delete().in('task_id', taskIds);
     await supabaseAdmin.from('tasks').delete().eq('team_id', id);

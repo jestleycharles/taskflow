@@ -10,6 +10,7 @@ const {
   fetchReactionsForMessages,
   attachReactionsToItems,
 } = require('../lib/reactions');
+const { deleteStoredPostImages } = require('../lib/storage-cleanup');
 const { stripHtml, sanitizeRichTextHtml } = require('../lib/rich-text');
 
 const router = express.Router();
@@ -236,6 +237,10 @@ router.patch(
 
     if (error) return sendError(res, 500, error, 'save');
 
+    if (req.file) {
+      await deleteStoredPostImages(id, imageUrl);
+    }
+
     const post = await fetchPostById(id);
     const [withMeta] = await attachReactionsAndCounts([post]);
     res.json(withMeta);
@@ -250,6 +255,8 @@ router.delete('/api/feature-posts/:id', requireAuth, requirePostAdmin, async (re
 
   const { error } = await supabaseAdmin.from('feature_posts').delete().eq('id', id);
   if (error) return sendError(res, 500, error, 'save');
+
+  await deleteStoredPostImages(id);
   res.json({ success: true });
 });
 

@@ -883,8 +883,13 @@
     <!-- Direct messages panel (full viewport overlay) -->
     <div
       id="dmChatPanel"
-      class="hidden fixed inset-0 bg-ink-800 border border-white/10 flex flex-col min-h-0"
+      class="hidden fixed inset-0 bg-ink-800 border border-white/10 flex flex-col min-h-0 relative"
     >
+      <div
+        id="dmPanelLoadingOverlay"
+        class="hidden absolute inset-0 z-20 bg-ink-800 flex flex-col min-h-0 overflow-hidden"
+        aria-hidden="true"
+      ></div>
       <div
         class="shrink-0 px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-ink-800"
       >
@@ -3035,7 +3040,7 @@
           : "";
         const image = post.image_url
           ? `<button type="button" class="block w-full mt-4 rounded-xl overflow-hidden border border-white/10 hover:border-white/20 transition focus:outline-none focus:ring-2 focus:ring-brand-500/40" data-fp-image data-image-url="${escHtml(post.image_url)}" data-image-title="${escHtml(post.title)}" aria-label="View image: ${escHtml(post.title)}">
-              <img src="${escHtml(post.image_url)}" alt="" class="w-full max-h-80 object-cover pointer-events-none" loading="lazy" />
+              <img src="${escHtml(post.image_url)}" alt="" class="w-full max-h-80 object-cover pointer-events-none" loading="lazy" ${storageImageOnErrorAttr()} />
             </button>`
           : "";
         const commentsOpen = featurePostOpenComments.has(post.id);

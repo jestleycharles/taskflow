@@ -33,6 +33,8 @@
   let reactionPress = null;
   let newConvError = '';
   let conversationsLoaded = false;
+  let conversationsRefreshing = false;
+  let dmNavBusy = false;
   let eventsBound = false;
   let dmSettings = { blocked_emails: [], blocked_user_ids: [], ignored_user_ids: [] };
   let blockedEmailStartTarget = null;
@@ -214,7 +216,7 @@
       if (mime.startsWith('image/')) {
         return `<div class="chat-msg-attachment">
           <img src="${escHtml(previewUrl)}" alt="${name}" class="chat-msg-attachment-thumb"
-            data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" />
+            data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" ${storageImageOnErrorAttr()} />
         </div>`;
       }
       return `<div class="chat-msg-attachment">
@@ -533,6 +535,28 @@
     if (list) list.innerHTML = conversationListSkeletonHtml();
   }
 
+  function setDmPanelLoading(loading) {
+    const overlay = $('dmPanelLoadingOverlay');
+    if (!overlay) return;
+    overlay.classList.toggle('hidden', !loading);
+    if (loading && !overlay.dataset.ready) {
+      overlay.innerHTML = dmPanelSkeletonHtml();
+      overlay.dataset.ready = '1';
+    }
+  }
+
+  function setDmNavBusy(busy) {
+    dmNavBusy = busy;
+    const backBtn = $('dmChatBackBtn');
+    const closeBtn = $('dmChatCloseBtn');
+    backBtn?.classList.toggle('pointer-events-none', busy);
+    closeBtn?.classList.toggle('pointer-events-none', busy);
+    backBtn?.classList.toggle('opacity-50', busy);
+    closeBtn?.classList.toggle('opacity-50', busy);
+    backBtn?.setAttribute('aria-busy', busy ? 'true' : 'false');
+    closeBtn?.setAttribute('aria-busy', busy ? 'true' : 'false');
+  }
+
   function showDmMessagesLoading() {
     const list = $('dmMessagesList');
     if (list) list.innerHTML = messageListSkeletonHtml();
@@ -547,16 +571,23 @@
     syncView();
     pushDmHistory(view === 'thread' ? 'thread' : 'panel');
     if (view === 'thread' && activeConversationId) {
+      setDmPanelLoading(false);
       showDmMessagesLoading();
       loadDmMessages().then(() => markDmRead());
+    } else if (!conversationsLoaded) {
+      setDmPanelLoading(true);
+      loadConversations().finally(() => setDmPanelLoading(false));
     } else {
-      loadConversations();
+      setDmPanelLoading(false);
+      renderConversationList();
+      loadConversations({ background: true });
     }
     updateUnreadBadge();
   }
 
   async function closePanelCore() {
-    await flushDmReadState();
+    const flushConvId = activeConversationId;
+    const flushReadAt = dmLastReadAt;
     closeReactionFloats();
     dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
     clearDmPendingFile();
@@ -567,7 +598,11 @@
     editingDmId = null;
     dmEditDraft = '';
     dmViewingOriginalId = null;
-    await loadConversations();
+    setDmNavBusy(true);
+    Promise.all([
+      flushConvId ? flushDmReadStateFor(flushConvId, flushReadAt) : Promise.resolve(),
+      loadConversations({ background: true }),
+    ]).finally(() => setDmNavBusy(false));
     updateUnreadBadge();
   }
 
@@ -577,7 +612,8 @@
   }
 
   async function goToListCore() {
-    await flushDmReadState();
+    const flushConvId = activeConversationId;
+    const flushReadAt = dmLastReadAt;
     dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
     clearDmPendingFile();
     view = 'list';
@@ -588,9 +624,17 @@
     editingDmId = null;
     resetDmMessageSearch();
     syncView();
-    if (!conversationsLoaded) showConversationListLoading();
-    await loadConversations();
+    if (conversationsLoaded) {
+      renderConversationList();
+    } else {
+      showConversationListLoading();
+    }
     updateUnreadBadge();
+    setDmNavBusy(true);
+    Promise.all([
+      flushConvId ? flushDmReadStateFor(flushConvId, flushReadAt) : Promise.resolve(),
+      loadConversations({ background: true }),
+    ]).finally(() => setDmNavBusy(false));
   }
 
   async function goToList() {
@@ -929,20 +973,28 @@
     setTimeout(() => $('dmChatInput')?.focus(), 50);
   }
 
-  async function loadConversations() {
-    if (!conversationsLoaded && panelOpen && view === 'list') {
+  async function loadConversations(opts = {}) {
+    const { background = false } = opts;
+    if (!background && !conversationsLoaded && panelOpen && view === 'list') {
       showConversationListLoading();
     }
-    const r = await apiFetch('/api/dm/conversations');
-    if (!r.ok) return;
-    const data = await parseJsonResponse(r);
-    if (!Array.isArray(data)) return;
-    conversations = data;
-    conversationsLoaded = true;
-    renderConversationList();
-    updateUnreadBadge();
-    if (view === 'list') $('dmChatHeaderTitle').textContent = listViewTitle();
-    fetchDmOnlineUsers();
+    if (conversationsRefreshing) return;
+    conversationsRefreshing = true;
+    try {
+      const r = await apiFetch('/api/dm/conversations');
+      if (!r.ok) return;
+      const data = await parseJsonResponse(r);
+      if (!Array.isArray(data)) return;
+      conversations = data;
+      conversationsLoaded = true;
+      setDmPanelLoading(false);
+      if (panelOpen && view === 'list') renderConversationList();
+      updateUnreadBadge();
+      if (view === 'list') $('dmChatHeaderTitle').textContent = listViewTitle();
+      fetchDmOnlineUsers();
+    } finally {
+      conversationsRefreshing = false;
+    }
   }
 
   function renderConversationList() {
@@ -1067,19 +1119,24 @@
     }
   }
 
-  async function flushDmReadState() {
-    if (!activeConversationId || dmLastReadAt <= 0) return;
+  async function flushDmReadStateFor(convId, readAt) {
+    if (!convId || readAt <= 0) return;
     clearTimeout(dmReadPersistTimer);
     dmReadPersistTimer = null;
-    const lastReadAt = new Date(dmLastReadAt).toISOString();
-    dmReadByConv.set(activeConversationId, dmLastReadAt);
-    await apiFetch(`/api/dm/conversations/${activeConversationId}/read`, {
+    const lastReadAt = new Date(readAt).toISOString();
+    dmReadByConv.set(convId, readAt);
+    await apiFetch(`/api/dm/conversations/${convId}/read`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ last_read_at: lastReadAt }),
     });
-    const conv = conversations.find((c) => c.id === activeConversationId);
+    const conv = conversations.find((c) => c.id === convId);
     if (conv) conv.unread_count = 0;
+  }
+
+  async function flushDmReadState() {
+    if (!activeConversationId || dmLastReadAt <= 0) return;
+    await flushDmReadStateFor(activeConversationId, dmLastReadAt);
   }
 
   function scheduleDmReadPersist() {

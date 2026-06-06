@@ -21,6 +21,7 @@ const {
   attachAttachmentsToItems,
   uploadMessageAttachment,
 } = require('../lib/message-attachments');
+const { deleteMessageAttachments } = require('../lib/storage-cleanup');
 
 const router = express.Router();
 
@@ -509,6 +510,8 @@ router.delete('/api/dm/conversations/:conversationId/messages/:messageId', requi
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
+
+  await deleteMessageAttachments('dm', [messageId]);
   res.json(await enrichSingleDmMessage(data));
 });
 

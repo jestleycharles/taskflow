@@ -11,6 +11,7 @@ const PRECACHE_STATIC = [
   '/api.js',
   '/auth-oauth.js',
   '/avatar-utils.js',
+  '/images/unavailable.svg',
   '/pwa-install.js',
   '/viewport-breakpoints.js',
   '/portrait-orientation.css',
