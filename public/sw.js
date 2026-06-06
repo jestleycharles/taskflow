@@ -1,5 +1,5 @@
-const SHELL_CACHE = 'taskflow-shell-v1';
-const STATIC_CACHE = 'taskflow-static-v1';
+const SHELL_CACHE = 'taskflow-shell-v2';
+const STATIC_CACHE = 'taskflow-static-v2';
 
 const SHELL_URLS = ['/login', '/register', '/dashboard'];
 

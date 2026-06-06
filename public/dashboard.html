@@ -1773,7 +1773,7 @@
       aria-hidden="true"
     ></div>
 
-    <script src="/direct-chat.js"></script>
+    <script src="/direct-chat.js?v=2"></script>
     <script>
       let confirmCallback = null;
       let dashboardHistoryPopping = false;
@@ -2159,6 +2159,7 @@
       let kanbanPresets = [];
       let teamsList = [];
       let teamInvitesList = [];
+      const TEAM_INVITES_HINT_KEY = "taskflow_dashboard_team_invites";
       let onlineTeamIds = new Set();
       let teamOnlinePollInterval = null;
       const TEAM_ONLINE_POLL_MS = 4000;
@@ -3289,7 +3290,7 @@
       }
 
       async function loadTeamInvites() {
-        if (!currentUser?.is_guest) showTeamInvitesLoading();
+        if (!currentUser?.is_guest && hasKnownTeamInvites()) showTeamInvitesLoading();
         const r = await apiFetch("/api/team-invites");
         if (!r.ok) {
           hideTeamInvitesSection();
@@ -3301,7 +3302,35 @@
           return;
         }
         teamInvitesList = invites;
+        setKnownTeamInvites(teamInvitesList.length > 0);
         renderTeamInvitesSection();
+      }
+
+      function teamInvitesHintStorageKey() {
+        return currentUser?.id
+          ? `${TEAM_INVITES_HINT_KEY}:${currentUser.id}`
+          : null;
+      }
+
+      function hasKnownTeamInvites() {
+        const key = teamInvitesHintStorageKey();
+        if (!key) return false;
+        try {
+          return sessionStorage.getItem(key) === "1";
+        } catch {
+          return false;
+        }
+      }
+
+      function setKnownTeamInvites(hasInvites) {
+        const key = teamInvitesHintStorageKey();
+        if (!key) return;
+        try {
+          if (hasInvites) sessionStorage.setItem(key, "1");
+          else sessionStorage.removeItem(key);
+        } catch {
+          /* ignore */
+        }
       }
 
       const TEAM_INVITE_CARD_SKELETON_HTML = `

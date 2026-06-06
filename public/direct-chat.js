@@ -144,7 +144,7 @@
     else closePanelCore();
   }
 
-  function handleDmPopState() {
+  function handlePopState() {
     if (dmHistoryPopping) {
       dmHistoryPopping = false;
       return true;
@@ -1569,5 +1569,5 @@
 
   window.addEventListener('pagehide', leaveAppPresence);
 
-  window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence, handlePopState: handleDmPopState };
+  window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence, handlePopState };
 })();
