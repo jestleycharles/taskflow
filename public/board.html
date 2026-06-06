@@ -1152,6 +1152,28 @@
     </div>
   </div>
 
+  <!-- Guest protected team delete lock -->
+  <div id="teamDeleteLockModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4" role="alertdialog" aria-modal="true" aria-labelledby="teamDeleteLockTitle">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
+      <div class="flex items-start gap-3 mb-4">
+        <div class="shrink-0 w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center" aria-hidden="true">
+          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+        </div>
+        <div class="min-w-0">
+          <h2 id="teamDeleteLockTitle" class="text-base font-semibold text-white mb-1">Demo team protected</h2>
+          <p class="text-sm text-gray-400 leading-relaxed">This is the default demo team for guest accounts. It cannot be deleted so new guests always have a workspace to explore.</p>
+        </div>
+      </div>
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-5">
+        <p class="text-sm text-amber-200/90 leading-relaxed">
+          Create a <a href="/register" class="text-brand-400 hover:text-brand-300 font-medium">free registered account</a> to manage your own teams, including deletion.
+        </p>
+      </div>
+      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+    </div>
+  </div>
+
   <!-- Zoom Level Modal -->
   <div id="zoomLevelModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
     <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeZoomLevelModal()"></div>
@@ -1463,7 +1485,10 @@
     let draggedTaskId = null;
     let dragOverTaskId = null;
     let dragOverTaskPlacement = null;
-    let dragPersistChain = Promise.resolve();
+    let layoutPersistTimer = null;
+    let layoutPersistInFlight = false;
+    let layoutPersistQueued = false;
+    const LAYOUT_PERSIST_DELAY_MS = 350;
     let addTaskStatus = 'todo';
     let pollInterval = null;
     let presenceInterval = null;
@@ -1553,6 +1578,7 @@
       if (!document.getElementById('zoomLevelModal')?.classList.contains('hidden')) return 'zoomLevel';
       if (!document.getElementById('confirmModal')?.classList.contains('hidden')) return 'confirm';
       if (!document.getElementById('alertModal')?.classList.contains('hidden')) return 'alert';
+      if (!document.getElementById('teamDeleteLockModal')?.classList.contains('hidden')) return 'teamDeleteLock';
       if (!document.getElementById('editTeamModal')?.classList.contains('hidden')) return 'editTeam';
       if (!document.getElementById('teamRolesModal')?.classList.contains('hidden')) return 'teamRoles';
       if (!document.getElementById('columnMgmtModal')?.classList.contains('hidden')) return 'columnMgmt';
@@ -1602,6 +1628,7 @@
         case 'zoomLevel': closeZoomLevelModal(); break;
         case 'confirm': closeConfirmModal(); break;
         case 'alert': closeAlertModal(); break;
+        case 'teamDeleteLock': closeTeamDeleteLockModal(); break;
         case 'editTeam': closeEditTeamModal(); break;
         case 'teamRoles': closeTeamRolesModal(); break;
         case 'columnMgmt': closeColumnMgmtModal(); break;
@@ -1749,6 +1776,15 @@
       document.getElementById('alertModal').classList.add('hidden');
     }
 
+    function showTeamDeleteLockModal() {
+      document.getElementById('teamDeleteLockModal').classList.remove('hidden');
+      pushBoardOverlay('teamDeleteLock');
+    }
+
+    function closeTeamDeleteLockModal() {
+      document.getElementById('teamDeleteLockModal').classList.add('hidden');
+    }
+
     const PRIORITY_CONFIG = {
       urgent: { label: '🔴 Urgent', color: 'text-red-400', bg: 'bg-red-500/10 text-red-400' },
       high:   { label: '🟠 High',   color: 'text-orange-400', bg: 'bg-orange-500/10 text-orange-400' },
@@ -1788,6 +1824,11 @@
     }
 
     const GUEST_EMAIL = 'guest@taskflow.app';
+    const GUEST_PROTECTED_TEAM_ID = '6acdf622-2137-4339-a910-d1e9ec5eac7f';
+
+    function isGuestProtectedTeam() {
+      return teamId === GUEST_PROTECTED_TEAM_ID;
+    }
 
     function isGuestAuthor(userId) {
       const member = getTeamMember(userId);
@@ -2887,6 +2928,10 @@
       if (detail) detail.innerHTML = opts;
       const addSel = document.getElementById('addTaskColumnSelect');
       if (addSel) addSel.innerHTML = opts;
+      if (activeTaskId && detail) {
+        const task = tasks.find((t) => t.id === activeTaskId);
+        if (task) detail.value = task.status;
+      }
     }
 
     function taskSkeletonHtml() {
@@ -3018,6 +3063,7 @@
         el.classList.remove('dragging');
         draggedTaskId = null;
         clearTaskDragIndicators();
+        if (layoutPersistQueued) flushLayoutPersist();
       });
       el.addEventListener('dragover', (e) => {
         if (!draggedTaskId || draggedTaskId === task.id) return;
@@ -3096,10 +3142,82 @@
         e.currentTarget.closest('.kanban-col')?.classList.remove('drag-over');
     }
 
-    function enqueueDragPersist(fn) {
-      const run = dragPersistChain.then(fn, fn);
-      dragPersistChain = run.catch(() => {});
-      return run;
+    function updateColumnTaskCount(status) {
+      const countEl = document.getElementById(`count-${status}`);
+      if (countEl) countEl.textContent = getSortedColumnTasks(status).length;
+    }
+
+    function patchBoardLayoutDom(statuses) {
+      const affected = statuses || getTeamColumns().map((c) => c.slug);
+      affected.forEach((status) => {
+        const zone = getColumnDropZone(status);
+        if (!zone) return;
+        updateColumnTaskCount(status);
+        getSortedColumnTasks(status).forEach((task) => {
+          let card = document.querySelector(`.task-card[data-id="${task.id}"]`);
+          if (!card) card = createTaskCard(task);
+          zone.appendChild(card);
+        });
+      });
+      scheduleBoardZoomRemeasure();
+    }
+
+    function collectFullLayoutPayload() {
+      const columns = {};
+      getTeamColumns().forEach((col) => {
+        const ids = getSortedColumnTasks(col.slug).map((t) => t.id);
+        if (ids.length) columns[col.slug] = ids;
+      });
+      return columns;
+    }
+
+    function hasLayoutPersistPending() {
+      return layoutPersistQueued || layoutPersistInFlight;
+    }
+
+    function scheduleLayoutPersist() {
+      layoutPersistQueued = true;
+      clearTimeout(layoutPersistTimer);
+      layoutPersistTimer = setTimeout(() => { flushLayoutPersist(); }, LAYOUT_PERSIST_DELAY_MS);
+    }
+
+    async function flushLayoutPersist(isRetry = false) {
+      clearTimeout(layoutPersistTimer);
+      if (layoutPersistInFlight) return;
+      if (!layoutPersistQueued && !isRetry) return;
+
+      const columns = collectFullLayoutPayload();
+      if (!Object.keys(columns).length) {
+        layoutPersistQueued = false;
+        return;
+      }
+
+      layoutPersistQueued = false;
+      layoutPersistInFlight = true;
+      let ok = false;
+      try {
+        const r = await apiFetch(`/api/teams/${teamId}/tasks/layout`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ columns }),
+        });
+        ok = r.ok;
+        if (!ok) {
+          const d = await r.json().catch(() => ({}));
+          if (!isRetry) {
+            await loadTasks();
+            layoutPersistQueued = true;
+            return flushLayoutPersist(true);
+          }
+          showAlert(d.error || 'Failed to save task order');
+          await loadTasks();
+          renderBoard();
+        }
+      } finally {
+        layoutPersistInFlight = false;
+        if (layoutPersistQueued) flushLayoutPersist();
+      }
+      return ok;
     }
 
     function applyColumnOrder(status, orderedIds) {
@@ -3112,39 +3230,7 @@
       });
     }
 
-    function buildLayoutPayload(columnEntries) {
-      const columns = {};
-      for (const { status, taskIds } of columnEntries) {
-        if (taskIds.length) columns[status] = taskIds;
-      }
-      return columns;
-    }
-
-    async function persistBoardLayout(columnEntries, isRetry = false) {
-      const columns = buildLayoutPayload(columnEntries);
-      if (!Object.keys(columns).length) return true;
-
-      const r = await apiFetch(`/api/teams/${teamId}/tasks/layout`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columns }),
-      });
-      if (r.ok) return true;
-
-      const d = await r.json().catch(() => ({}));
-      if (!isRetry) {
-        await loadTasks();
-        const retryEntries = columnEntries
-          .map(({ status }) => ({ status, taskIds: getSortedColumnTasks(status).map((t) => t.id) }))
-          .filter(({ taskIds }) => taskIds.length);
-        if (retryEntries.length) return persistBoardLayout(retryEntries, true);
-      }
-      showAlert(d.error || 'Failed to save task order');
-      await loadTasks();
-      return false;
-    }
-
-    async function reorderTasksInColumn(status, draggedId, targetId, placement) {
+    function reorderTasksInColumn(status, draggedId, targetId, placement) {
       const colTasks = getSortedColumnTasks(status);
       const from = colTasks.findIndex((t) => t.id === draggedId);
       let insertAt = colTasks.findIndex((t) => t.id === targetId);
@@ -3155,90 +3241,76 @@
       colTasks.splice(insertAt, 0, item);
       const taskIds = colTasks.map((t) => t.id);
       applyColumnOrder(status, taskIds);
-      renderBoard();
-      await persistBoardLayout([{ status, taskIds }]);
+      patchBoardLayoutDom([status]);
+      scheduleLayoutPersist();
     }
 
-    async function handleTaskCardDrop(targetTask, e) {
-      await enqueueDragPersist(async () => {
-        const col = e.currentTarget.closest('.kanban-col');
-        col?.classList.remove('drag-over');
-        const status = col?.dataset.status;
-        const draggedId = draggedTaskId;
-        const placement = dragOverTaskPlacement
-          || (e.clientY < e.currentTarget.getBoundingClientRect().top + e.currentTarget.getBoundingClientRect().height / 2
-            ? 'top' : 'bottom');
-        clearTaskDragIndicators();
-        if (!draggedId || !status || draggedId === targetTask.id) return;
+    function handleTaskCardDrop(targetTask, e) {
+      const col = e.currentTarget.closest('.kanban-col');
+      col?.classList.remove('drag-over');
+      const status = col?.dataset.status;
+      const draggedId = draggedTaskId;
+      const placement = dragOverTaskPlacement
+        || (e.clientY < e.currentTarget.getBoundingClientRect().top + e.currentTarget.getBoundingClientRect().height / 2
+          ? 'top' : 'bottom');
+      clearTaskDragIndicators();
+      if (!draggedId || !status || draggedId === targetTask.id) return;
 
-        const task = tasks.find((t) => t.id === draggedId);
-        if (!task) return;
+      const task = tasks.find((t) => t.id === draggedId);
+      if (!task) return;
 
-        if (task.status === status) {
-          await reorderTasksInColumn(status, draggedId, targetTask.id, placement);
-          return;
-        }
+      if (task.status === status) {
+        reorderTasksInColumn(status, draggedId, targetTask.id, placement);
+        return;
+      }
 
-        const oldStatus = task.status;
-        const colTasks = getSortedColumnTasks(status).filter((t) => t.id !== draggedId);
-        let insertAt = colTasks.findIndex((t) => t.id === targetTask.id);
-        if (insertAt < 0) insertAt = colTasks.length;
-        if (placement === 'bottom') insertAt += 1;
-        colTasks.splice(insertAt, 0, task);
-        const destIds = colTasks.map((t) => t.id);
+      const oldStatus = task.status;
+      const colTasks = getSortedColumnTasks(status).filter((t) => t.id !== draggedId);
+      let insertAt = colTasks.findIndex((t) => t.id === targetTask.id);
+      if (insertAt < 0) insertAt = colTasks.length;
+      if (placement === 'bottom') insertAt += 1;
+      colTasks.splice(insertAt, 0, task);
+      const destIds = colTasks.map((t) => t.id);
 
-        applyColumnOrder(status, destIds);
-        renderBoard();
-
-        const sourceIds = getSortedColumnTasks(oldStatus).map((t) => t.id);
-        const layoutEntries = [{ status, taskIds: destIds }];
-        if (sourceIds.length) layoutEntries.push({ status: oldStatus, taskIds: sourceIds });
-        const ok = await persistBoardLayout(layoutEntries);
-        if (!ok) return;
-        if (activeTaskId === draggedId) loadComments(activeTaskId);
-      });
+      applyColumnOrder(status, destIds);
+      patchBoardLayoutDom([status, oldStatus]);
+      scheduleLayoutPersist();
+      if (activeTaskId === draggedId) loadComments(activeTaskId);
     }
 
-    async function drop(e) {
+    function drop(e) {
       e.preventDefault();
-      await enqueueDragPersist(async () => {
-        const col = e.currentTarget.closest('.kanban-col');
-        col.classList.remove('drag-over');
-        clearTaskDragIndicators();
-        const newStatus = col.dataset.status;
-        const draggedId = draggedTaskId;
-        const task = tasks.find((t) => t.id === draggedId);
-        if (!task) return;
+      const col = e.currentTarget.closest('.kanban-col');
+      col.classList.remove('drag-over');
+      clearTaskDragIndicators();
+      const newStatus = col.dataset.status;
+      const draggedId = draggedTaskId;
+      const task = tasks.find((t) => t.id === draggedId);
+      if (!task) return;
 
-        if (task.status === newStatus) {
-          const colTasks = getSortedColumnTasks(newStatus);
-          const from = colTasks.findIndex((t) => t.id === draggedId);
-          if (from >= 0 && from < colTasks.length - 1) {
-            const [item] = colTasks.splice(from, 1);
-            colTasks.push(item);
-            const taskIds = colTasks.map((t) => t.id);
-            applyColumnOrder(newStatus, taskIds);
-            renderBoard();
-            await persistBoardLayout([{ status: newStatus, taskIds }]);
-          }
-          return;
+      if (task.status === newStatus) {
+        const colTasks = getSortedColumnTasks(newStatus);
+        const from = colTasks.findIndex((t) => t.id === draggedId);
+        if (from >= 0 && from < colTasks.length - 1) {
+          const [item] = colTasks.splice(from, 1);
+          colTasks.push(item);
+          const taskIds = colTasks.map((t) => t.id);
+          applyColumnOrder(newStatus, taskIds);
+          patchBoardLayoutDom([newStatus]);
+          scheduleLayoutPersist();
         }
+        return;
+      }
 
-        const oldStatus = task.status;
-        const colTasks = getSortedColumnTasks(newStatus).filter((t) => t.id !== draggedId);
-        colTasks.push(task);
-        const destIds = colTasks.map((t) => t.id);
+      const oldStatus = task.status;
+      const colTasks = getSortedColumnTasks(newStatus).filter((t) => t.id !== draggedId);
+      colTasks.push(task);
+      const destIds = colTasks.map((t) => t.id);
 
-        applyColumnOrder(newStatus, destIds);
-        renderBoard();
-
-        const sourceIds = getSortedColumnTasks(oldStatus).map((t) => t.id);
-        const layoutEntries = [{ status: newStatus, taskIds: destIds }];
-        if (sourceIds.length) layoutEntries.push({ status: oldStatus, taskIds: sourceIds });
-        const ok = await persistBoardLayout(layoutEntries);
-        if (!ok) return;
-        if (activeTaskId === draggedId) loadComments(activeTaskId);
-      });
+      applyColumnOrder(newStatus, destIds);
+      patchBoardLayoutDom([newStatus, oldStatus]);
+      scheduleLayoutPersist();
+      if (activeTaskId === draggedId) loadComments(activeTaskId);
     }
 
     // Add Task
@@ -3478,6 +3550,7 @@
         document.getElementById('taskEditBtn').classList.toggle('hidden', !canEdit);
         document.getElementById('taskEditDescBtn').classList.toggle('hidden', !canEdit);
         document.getElementById('taskDeleteBtn').classList.toggle('hidden', !canEdit);
+        populateStatusDropdowns();
         document.getElementById('detailStatus').value = task.status;
         document.getElementById('detailPriority').value = task.priority;
         document.getElementById('detailDue').value = task.due_date ? task.due_date.split('T')[0] : '';
@@ -3485,7 +3558,6 @@
         document.getElementById('detailCreator').innerHTML = task.creator
           ? memberNameHtml(task.creator, task.creator.id, 'text-sm text-gray-300')
           : '<span class="text-sm text-gray-300">Unknown</span>';
-        populateStatusDropdowns();
         await loadTaskAttachments(taskId);
         renderTaskAttachmentsUi(task);
         await loadTaskCommentReadState(taskId);
@@ -5413,6 +5485,10 @@
     }
 
     function deleteTeam() {
+      if (isGuest() && isGuestProtectedTeam()) {
+        showTeamDeleteLockModal();
+        return;
+      }
       const name = teamData?.name || 'this team';
       showConfirm({
         title: 'Delete team',
@@ -5716,19 +5792,29 @@
           return prev && (prev.unread_comment_count || 0) !== (t.unread_comment_count || 0);
         });
         if (boardDirty || unreadOnlyChange) {
-          tasks = merged;
-          if (boardDirty) {
-            renderBoard();
-            ensureBoardTasksRendered();
-            if (activeTaskId && !editingTaskField) {
-              const task = tasks.find(t => t.id === activeTaskId);
-              if (task) {
-                renderTaskTitleArea(task);
-                renderTaskDescArea(task);
-              }
-            }
+          if (boardDirty && hasLayoutPersistPending()) {
+            merged.forEach((t) => {
+              const local = tasks.find((p) => p.id === t.id);
+              if (local) local.unread_comment_count = t.unread_comment_count || 0;
+              updateTaskCardUnreadBadge(t.id, t.unread_comment_count || 0);
+            });
           } else {
-            merged.forEach((t) => updateTaskCardUnreadBadge(t.id, t.unread_comment_count || 0));
+            tasks = merged;
+            if (boardDirty) {
+              renderBoard();
+              ensureBoardTasksRendered();
+              if (activeTaskId && !editingTaskField) {
+                const task = tasks.find(t => t.id === activeTaskId);
+                if (task) {
+                  renderTaskTitleArea(task);
+                  renderTaskDescArea(task);
+                  const statusEl = document.getElementById('detailStatus');
+                  if (statusEl) statusEl.value = task.status;
+                }
+              }
+            } else {
+              merged.forEach((t) => updateTaskCardUnreadBadge(t.id, t.unread_comment_count || 0));
+            }
           }
           if (document.getElementById('activityPanel').offsetParent !== null) loadActivity({ background: true });
         }

@@ -8,6 +8,7 @@ const { ping, leave, getOnlineUserIds } = require('../lib/presence');
 const {
   AVATAR_PRESETS,
   isGuestUser,
+  isGuestProtectedTeamId,
   isStorageTeamAvatarUrl,
   randomColor,
 } = require('../lib/user');
@@ -1199,6 +1200,10 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
     .from('team_members').select('role').eq('team_id', id).eq('user_id', userId).single();
   if (!membership || membership.role !== 'owner')
     return res.status(403).json({ error: 'Only the team owner can delete this team' });
+
+  if (isGuestUser(req.session.user) && isGuestProtectedTeamId(id)) {
+    return res.status(403).json({ error: 'This demo team cannot be deleted on guest accounts.' });
+  }
 
   const { data: team } = await supabaseAdmin.from('teams').select('name, avatar_url').eq('id', id).single();
   if (!team) return res.status(404).json({ error: 'Team not found' });
