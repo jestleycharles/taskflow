@@ -191,6 +191,7 @@
   }
 
   function mount(rootId, options = {}) {
+    if (instances.has(rootId)) return instances.get(rootId);
     const root = document.getElementById(rootId);
     if (!root) return null;
 

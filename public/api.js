@@ -39,26 +39,73 @@ function setNavigatingAway(suppress = true) {
 
 let navigationLoadingEl = null;
 
+function ensureNavigationLoadingStyles() {
+  if (document.getElementById('tfNavLoadingStyles')) return;
+  const style = document.createElement('style');
+  style.id = 'tfNavLoadingStyles';
+  style.textContent = `
+    #tfNavigationLoading {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 2147483646;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      box-sizing: border-box;
+      background: rgba(15, 17, 23, 0.88);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      font-family: "DM Sans", sans-serif;
+      pointer-events: auto;
+    }
+    #tfNavigationLoading[data-visible="true"] {
+      display: flex;
+    }
+    #tfNavigationLoading .tf-nav-spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 9999px;
+      border: 2px solid rgba(79, 110, 247, 0.3);
+      border-top-color: #4f6ef7;
+      animation: tfNavSpin 0.8s linear infinite;
+    }
+    @keyframes tfNavSpin {
+      to { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function showNavigationLoading(message = 'Loading…') {
   setNavigatingAway(true);
+  ensureNavigationLoadingStyles();
   if (!navigationLoadingEl) {
     navigationLoadingEl = document.createElement('div');
     navigationLoadingEl.id = 'tfNavigationLoading';
-    navigationLoadingEl.className = 'fixed inset-0 flex flex-col items-center justify-center gap-4 px-6';
-    navigationLoadingEl.style.cssText =
-      'z-index: 10050; background: rgba(15,17,23,0.88); backdrop-filter: blur(6px); font-family: "DM Sans", sans-serif;';
+    navigationLoadingEl.setAttribute('role', 'status');
+    navigationLoadingEl.setAttribute('aria-live', 'polite');
     navigationLoadingEl.innerHTML = `
-      <div class="w-10 h-10 rounded-full border-2 border-brand-500/30 border-t-brand-500 animate-spin" aria-hidden="true"></div>
-      <p data-tf-nav-label class="text-sm text-gray-300 text-center"></p>`;
-    document.documentElement.appendChild(navigationLoadingEl);
+      <div class="tf-nav-spinner" aria-hidden="true"></div>
+      <p data-tf-nav-label style="font-size:0.875rem;color:#d1d5db;text-align:center;margin:0"></p>`;
+    // Direct child of <html>, before <body> — stays viewport-fixed when body is portrait-rotated.
+    if (document.body) {
+      document.documentElement.insertBefore(navigationLoadingEl, document.body);
+    } else {
+      document.documentElement.appendChild(navigationLoadingEl);
+    }
   }
   const label = navigationLoadingEl.querySelector('[data-tf-nav-label]');
   if (label) label.textContent = message;
-  navigationLoadingEl.classList.remove('hidden');
+  navigationLoadingEl.dataset.visible = 'true';
 }
 
 function hideNavigationLoading() {
-  navigationLoadingEl?.classList.add('hidden');
+  if (navigationLoadingEl) navigationLoadingEl.dataset.visible = 'false';
   setNavigatingAway(false);
 }
 
