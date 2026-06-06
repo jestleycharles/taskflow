@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
+    />
     <title>TaskFlow — Dashboard</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -89,12 +92,12 @@
         object-fit: contain;
       }
       .optional-drawer-btn.drawer-open {
-        background: rgba(255,255,255,0.05);
-        border-color: rgba(255,255,255,0.15);
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.15);
         color: #d1d5db;
       }
       .optional-drawer-btn.drawer-open:hover {
-        background: rgba(255,255,255,0.1);
+        background: rgba(255, 255, 255, 0.1);
         color: #fff;
       }
 
@@ -130,13 +133,15 @@
         box-shadow: 0 0 0 2px #4f6ef7;
       }
       @keyframes btnSpin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
       .btn-spinner {
         display: inline-block;
         width: 1rem;
         height: 1rem;
-        border: 2px solid rgba(255,255,255,0.35);
+        border: 2px solid rgba(255, 255, 255, 0.35);
         border-top-color: #fff;
         border-radius: 50%;
         animation: btnSpin 0.65s linear infinite;
@@ -228,12 +233,14 @@
         border-left: 2px solid rgba(79, 110, 247, 0.45);
         padding-left: 0.625rem;
       }
-      .chat-msg-attachment { margin-top: 0.5rem; }
+      .chat-msg-attachment {
+        margin-top: 0.5rem;
+      }
       .chat-msg-attachment-thumb {
         max-width: 12rem;
         max-height: 10rem;
         border-radius: 0.5rem;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         cursor: pointer;
         object-fit: cover;
       }
@@ -243,14 +250,16 @@
         gap: 0.5rem;
         padding: 0.5rem 0.75rem;
         border-radius: 0.5rem;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         font-size: 0.75rem;
         color: #d1d5db;
         cursor: pointer;
         max-width: 100%;
       }
-      .chat-msg-attachment-file:hover { border-color: rgba(79, 110, 247, 0.4); }
+      .chat-msg-attachment-file:hover {
+        border-color: rgba(79, 110, 247, 0.4);
+      }
       .chat-attach-preview {
         display: flex;
         align-items: center;
@@ -258,8 +267,8 @@
         margin-bottom: 0.5rem;
         padding: 0.5rem;
         border-radius: 0.5rem;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
       .attachment-icon-btn {
         display: inline-flex;
@@ -269,23 +278,31 @@
         height: 2.25rem;
         border-radius: 0.5rem;
         color: #9ca3af;
-        transition: background 0.15s, color 0.15s;
+        transition:
+          background 0.15s,
+          color 0.15s;
       }
-      .attachment-icon-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
-      .attachment-icon-btn.danger:hover { color: #f87171; background: rgba(239,68,68,0.12); }
+      .attachment-icon-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+      .attachment-icon-btn.danger:hover {
+        color: #f87171;
+        background: rgba(239, 68, 68, 0.12);
+      }
       .attachment-file-thumb {
         width: 2.5rem;
         height: 2.5rem;
         border-radius: 0.375rem;
         object-fit: cover;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
       .attachment-file-icon {
         width: 2.5rem;
         height: 2.5rem;
         border-radius: 0.375rem;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -388,10 +405,20 @@
     </style>
   </head>
   <body class="grid-bg min-h-screen text-white portrait-locked">
-
     <div id="portraitLockOverlay" aria-hidden="true">
-      <svg class="w-12 h-12 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      <svg
+        class="w-12 h-12 text-brand-500"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+        />
       </svg>
       <p class="text-white font-medium">Please rotate your device</p>
       <p class="text-gray-500 text-sm">TaskFlow works best in portrait mode</p>
@@ -624,9 +651,12 @@
           class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6"
         >
           <div>
-            <h2 class="text-2xl font-bold text-white mb-1">What we&apos;re building</h2>
+            <h2 class="text-2xl font-bold text-white mb-1">
+              What we&apos;re building
+            </h2>
             <p class="text-gray-400 text-sm">
-              Roadmap updates from the team — join the discussion with reactions, comments, and suggestions.
+              Roadmap updates from the team — join the discussion with
+              reactions, comments, and suggestions.
             </p>
           </div>
           <button
@@ -1019,92 +1049,150 @@
           aria-hidden="true"
         ></div>
 
-      <div
-        id="dmChatListView"
-        class="flex-1 flex flex-col min-h-0 overflow-hidden"
-      >
         <div
-          id="dmNewConvForm"
-          class="shrink-0 p-4 border-b border-white/10 space-y-3"
+          id="dmChatListView"
+          class="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
-          <p class="text-xs text-gray-400">
-            Start a chat with a registered user by email, or message yourself.
-          </p>
-          <div class="flex gap-2">
-            <input
-              id="dmNewConvEmail"
-              type="email"
-              placeholder="user@example.com"
-              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition"
-            />
-            <button
-              type="button"
-              id="dmNewConvBtn"
-              class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0"
-            >
-              Start chat
-            </button>
-          </div>
-          <button
-            type="button"
-            id="dmSelfChatBtn"
-            class="text-xs text-brand-500 hover:text-brand-400 transition"
+          <div
+            id="dmNewConvForm"
+            class="shrink-0 p-4 border-b border-white/10 space-y-3"
           >
-            Message yourself (note to self)
-          </button>
-          <p id="dmNewConvError" class="hidden text-xs text-red-400"></p>
-        </div>
-        <div
-          id="dmConversationList"
-          class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0"
-        ></div>
-      </div>
-
-      <div
-        id="dmChatThreadView"
-        class="hidden flex-1 flex flex-col min-h-0 overflow-hidden"
-      >
-        <div
-          id="dmMessagesList"
-          class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
-        ></div>
-        <div
-          id="dmChatComposer"
-          class="px-4 pt-4 pb-4 border-t border-white/10 shrink-0 bg-ink-800"
-        >
-          <div id="dmAttachPreview" class="chat-attach-preview hidden" role="status">
-            <div id="dmAttachPreviewThumb" class="shrink-0"></div>
-            <div class="min-w-0 flex-1">
-              <p id="dmAttachPreviewName" class="text-xs text-gray-200 truncate"></p>
-              <p id="dmAttachPreviewSize" class="text-[10px] text-gray-500"></p>
+            <p class="text-xs text-gray-400">
+              Start a chat with a registered user by email, or message yourself.
+            </p>
+            <div class="flex gap-2">
+              <input
+                id="dmNewConvEmail"
+                type="email"
+                placeholder="user@example.com"
+                class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition"
+              />
+              <button
+                type="button"
+                id="dmNewConvBtn"
+                class="bg-brand-500 hover:bg-brand-600 text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0"
+              >
+                Start chat
+              </button>
             </div>
-            <button type="button" id="dmAttachClearBtn" class="attachment-icon-btn danger shrink-0" title="Remove attachment" aria-label="Remove attachment">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </button>
-          </div>
-          <div class="flex gap-2">
-            <input type="file" id="dmAttachInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
-            <button type="button" id="dmAttachBtn" class="attachment-icon-btn shrink-0 self-center" title="Attach image or PDF" aria-label="Attach file">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-            </button>
-            <input
-              id="dmChatInput"
-              type="text"
-              placeholder="Write a message..."
-              data-mention-prefer-above="1"
-              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition"
-            />
             <button
               type="button"
-              id="dmChatSendBtn"
-              class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0"
+              id="dmSelfChatBtn"
+              class="text-xs text-brand-500 hover:text-brand-400 transition"
             >
-              Send
+              Message yourself (note to self)
             </button>
+            <p id="dmNewConvError" class="hidden text-xs text-red-400"></p>
           </div>
-          <p id="dmSendCooldown" class="hidden text-xs text-amber-400/90 mt-2 leading-snug" role="status" aria-live="polite"></p>
+          <div
+            id="dmConversationList"
+            class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0"
+          ></div>
         </div>
-      </div>
+
+        <div
+          id="dmChatThreadView"
+          class="hidden flex-1 flex flex-col min-h-0 overflow-hidden"
+        >
+          <div
+            id="dmMessagesList"
+            class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
+          ></div>
+          <div
+            id="dmChatComposer"
+            class="px-4 pt-4 pb-4 border-t border-white/10 shrink-0 bg-ink-800"
+          >
+            <div
+              id="dmAttachPreview"
+              class="chat-attach-preview hidden"
+              role="status"
+            >
+              <div id="dmAttachPreviewThumb" class="shrink-0"></div>
+              <div class="min-w-0 flex-1">
+                <p
+                  id="dmAttachPreviewName"
+                  class="text-xs text-gray-200 truncate"
+                ></p>
+                <p
+                  id="dmAttachPreviewSize"
+                  class="text-[10px] text-gray-500"
+                ></p>
+              </div>
+              <button
+                type="button"
+                id="dmAttachClearBtn"
+                class="attachment-icon-btn danger shrink-0"
+                title="Remove attachment"
+                aria-label="Remove attachment"
+              >
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <input
+                type="file"
+                id="dmAttachInput"
+                class="hidden"
+                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+              />
+              <button
+                type="button"
+                id="dmAttachBtn"
+                class="attachment-icon-btn shrink-0 self-center"
+                title="Attach image or PDF"
+                aria-label="Attach file"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+              </button>
+              <input
+                id="dmChatInput"
+                type="text"
+                placeholder="Write a message..."
+                data-mention-prefer-above="1"
+                class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition"
+              />
+              <button
+                type="button"
+                id="dmChatSendBtn"
+                class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0"
+              >
+                Send
+              </button>
+            </div>
+            <p
+              id="dmSendCooldown"
+              class="hidden text-xs text-amber-400/90 mt-2 leading-snug"
+              role="status"
+              aria-live="polite"
+            ></p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1145,45 +1233,102 @@
 
           <!-- Optional details drawer -->
           <div>
-            <button type="button" id="createTeamOptionalToggleBtn" onclick="toggleCreateTeamOptional()" aria-expanded="false" aria-controls="createTeamOptionalContent"
-              class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+            <button
+              type="button"
+              id="createTeamOptionalToggleBtn"
+              onclick="toggleCreateTeamOptional()"
+              aria-expanded="false"
+              aria-controls="createTeamOptionalContent"
+              class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2"
+            >
               <span id="createTeamOptionalLabel">More options</span>
-              <svg id="createTeamOptionalChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+              <svg
+                id="createTeamOptionalChevron"
+                class="w-4 h-4 shrink-0 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
             </button>
-            <div id="createTeamOptionalContent" class="hidden mt-3 space-y-5 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-
+            <div
+              id="createTeamOptionalContent"
+              class="hidden mt-3 space-y-5 rounded-xl border border-white/10 bg-white/[0.02] p-4"
+            >
               <!-- Avatar -->
               <div>
-                <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
+                <label
+                  class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3"
+                  >Avatar</label
+                >
                 <div class="flex items-center gap-4 mb-4">
                   <div
                     id="createTeamAvatarPreview"
                     class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"
                   ></div>
                   <div>
-                    <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
-                    <p class="text-xs text-gray-500 mt-0.5">JPEG, PNG, WebP, or GIF — max 2 MB</p>
+                    <p class="text-sm text-gray-300">
+                      Choose a preset or upload your own
+                    </p>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                      JPEG, PNG, WebP, or GIF — max 2 MB
+                    </p>
                   </div>
                 </div>
-                <div id="createTeamAvatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
+                <div
+                  id="createTeamAvatarPresetGrid"
+                  class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"
+                ></div>
                 <label
                   id="createTeamAvatarUploadLabel"
                   class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                   Upload custom image
-                  <input id="createTeamAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                  <input
+                    id="createTeamAvatarFile"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    class="hidden"
+                  />
                 </label>
-                <p id="createTeamAvatarUploadGuestNote" class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed">
-                  Custom team images are only available with a registered account. Choose a preset above.
+                <p
+                  id="createTeamAvatarUploadGuestNote"
+                  class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed"
+                >
+                  Custom team images are only available with a registered
+                  account. Choose a preset above.
                 </p>
               </div>
 
               <!-- Description -->
               <div class="border-t border-white/10 pt-4">
-                <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
+                <label
+                  class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+                  >Description
+                  <span class="normal-case text-gray-600"
+                    >(optional)</span
+                  ></label
+                >
                 <input
                   id="teamDesc"
                   type="text"
@@ -1191,7 +1336,6 @@
                   class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
                 />
               </div>
-
             </div>
           </div>
           <div>
@@ -1205,7 +1349,10 @@
             >
               <option value="classic">Classic — To Do, Doing, Done</option>
             </select>
-            <p id="teamKanbanPresetDesc" class="text-xs text-gray-500 mt-1.5 leading-relaxed"></p>
+            <p
+              id="teamKanbanPresetDesc"
+              class="text-xs text-gray-500 mt-1.5 leading-relaxed"
+            ></p>
           </div>
           <div class="flex gap-3 pt-2">
             <button
@@ -1244,7 +1391,10 @@
         class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto"
       >
         <div class="flex items-start justify-between gap-3 mb-1">
-          <h2 id="inviteLinkModalTitle" class="text-lg font-semibold text-white">
+          <h2
+            id="inviteLinkModalTitle"
+            class="text-lg font-semibold text-white"
+          >
             Join a team
           </h2>
           <button
@@ -1253,7 +1403,19 @@
             class="text-gray-400 hover:text-white transition p-1.5 -m-1.5 rounded-lg hover:bg-white/10 shrink-0"
             aria-label="Close"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
           </button>
         </div>
         <p class="text-gray-500 text-sm mb-5">
@@ -1291,10 +1453,16 @@
           <div class="flex items-start gap-3 mb-3">
             <div id="inviteLinkPreviewAvatar" class="w-11 h-11"></div>
             <div class="min-w-0 flex-1">
-              <h3 id="inviteLinkPreviewName" class="text-white font-semibold truncate">
+              <h3
+                id="inviteLinkPreviewName"
+                class="text-white font-semibold truncate"
+              >
                 Team
               </h3>
-              <p id="inviteLinkPreviewDesc" class="text-gray-500 text-sm mt-1 line-clamp-2">
+              <p
+                id="inviteLinkPreviewDesc"
+                class="text-gray-500 text-sm mt-1 line-clamp-2"
+              >
                 No description
               </p>
             </div>
@@ -1306,7 +1474,10 @@
             <span id="inviteLinkPreviewOwner"></span>
           </div>
 
-          <p id="inviteLinkPreviewUsage" class="text-xs text-gray-400 mt-3 hidden"></p>
+          <p
+            id="inviteLinkPreviewUsage"
+            class="text-xs text-gray-400 mt-3 hidden"
+          ></p>
 
           <button
             type="button"
@@ -1319,7 +1490,9 @@
 
         <div id="inviteLinkInputWrap" class="space-y-4">
           <div>
-            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">
+            <label
+              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+            >
               Invite link
             </label>
             <input
@@ -1521,11 +1694,32 @@
             aria-controls="guestNoticeFeaturesContent"
             class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2"
           >
-            <span id="guestNoticeFeaturesLabel">Registered account features</span>
-            <svg id="guestNoticeFeaturesChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            <span id="guestNoticeFeaturesLabel"
+              >Registered account features</span
+            >
+            <svg
+              id="guestNoticeFeaturesChevron"
+              class="w-4 h-4 shrink-0 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
           </button>
-          <div id="guestNoticeFeaturesContent" class="hidden mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <p class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">
+          <div
+            id="guestNoticeFeaturesContent"
+            class="hidden mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-4"
+          >
+            <p
+              class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2"
+            >
               With a registered account you get
             </p>
             <ul
@@ -1564,20 +1758,32 @@
       <div
         class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up max-h-[90vh] overflow-y-auto"
       >
-        <h2 id="featurePostModalTitle" class="text-base font-semibold text-white mb-1">
+        <h2
+          id="featurePostModalTitle"
+          class="text-base font-semibold text-white mb-1"
+        >
           New roadmap post
         </h2>
         <p class="text-sm text-gray-500 mb-4">
-          Share what is in progress or what shipped. Only one active &ldquo;in progress&rdquo; post at a time is recommended.
+          Share what is in progress or what shipped. Only one active &ldquo;in
+          progress&rdquo; post at a time is recommended.
         </p>
         <div
           id="featurePostModalError"
           class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
         ></div>
-        <form id="featurePostForm" onsubmit="submitFeaturePost(event)" class="space-y-4">
+        <form
+          id="featurePostForm"
+          onsubmit="submitFeaturePost(event)"
+          class="space-y-4"
+        >
           <input type="hidden" id="featurePostEditId" value="" />
           <div>
-            <label for="featurePostTitle" class="block text-xs text-gray-400 mb-1.5">Title</label>
+            <label
+              for="featurePostTitle"
+              class="block text-xs text-gray-400 mb-1.5"
+              >Title</label
+            >
             <input
               type="text"
               id="featurePostTitle"
@@ -1588,12 +1794,20 @@
             />
           </div>
           <div>
-            <label for="featurePostCaptionEditor" class="block text-xs text-gray-400 mb-1.5">Caption</label>
+            <label
+              for="featurePostCaptionEditor"
+              class="block text-xs text-gray-400 mb-1.5"
+              >Caption</label
+            >
             <div id="featurePostCaptionEditor"></div>
             <input type="hidden" id="featurePostCaption" />
           </div>
           <div>
-            <label for="featurePostType" class="block text-xs text-gray-400 mb-1.5">Post type</label>
+            <label
+              for="featurePostType"
+              class="block text-xs text-gray-400 mb-1.5"
+              >Post type</label
+            >
             <select
               id="featurePostType"
               class="w-full bg-ink-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition"
@@ -1603,14 +1817,21 @@
             </select>
           </div>
           <div>
-            <label for="featurePostImage" class="block text-xs text-gray-400 mb-1.5">Picture (optional)</label>
+            <label
+              for="featurePostImage"
+              class="block text-xs text-gray-400 mb-1.5"
+              >Picture (optional)</label
+            >
             <input
               type="file"
               id="featurePostImage"
               accept="image/jpeg,image/png,image/webp,image/gif"
               class="w-full text-sm text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-white/10 file:text-gray-200 hover:file:bg-white/15"
             />
-            <p id="featurePostImageHint" class="hidden text-xs text-gray-500 mt-1"></p>
+            <p
+              id="featurePostImageHint"
+              class="hidden text-xs text-gray-500 mt-1"
+            ></p>
             <img
               id="featurePostImagePreview"
               alt=""
@@ -1637,7 +1858,10 @@
       </div>
     </div>
 
-    <div id="featurePostReactionLayer" class="fixed inset-0 pointer-events-none z-[70]"></div>
+    <div
+      id="featurePostReactionLayer"
+      class="fixed inset-0 pointer-events-none z-[70]"
+    ></div>
 
     <!-- Feature post image preview -->
     <div
@@ -1654,8 +1878,13 @@
       <div
         class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden fade-up"
       >
-        <div class="flex items-center justify-between gap-3 p-4 border-b border-white/10 shrink-0">
-          <h3 id="featurePostImageModalTitle" class="text-sm font-medium text-white truncate"></h3>
+        <div
+          class="flex items-center justify-between gap-3 p-4 border-b border-white/10 shrink-0"
+        >
+          <h3
+            id="featurePostImageModalTitle"
+            class="text-sm font-medium text-white truncate"
+          ></h3>
           <button
             type="button"
             onclick="closeFeaturePostImagePreview()"
@@ -1870,2169 +2099,61 @@
       aria-hidden="true"
     ></div>
 
-    <div id="dmAttachmentPreviewModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="dmAttachmentPreviewTitle">
+    <div
+      id="dmAttachmentPreviewModal"
+      class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dmAttachmentPreviewTitle"
+    >
       <div class="absolute inset-0 bg-black/70" data-dm-close-preview></div>
-      <div class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 shrink-0">
-          <h3 id="dmAttachmentPreviewTitle" class="text-sm font-medium text-white truncate"></h3>
-          <button type="button" data-dm-close-preview class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10" aria-label="Close preview">&times;</button>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+      >
+        <div
+          class="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 shrink-0"
+        >
+          <h3
+            id="dmAttachmentPreviewTitle"
+            class="text-sm font-medium text-white truncate"
+          ></h3>
+          <button
+            type="button"
+            data-dm-close-preview
+            class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10"
+            aria-label="Close preview"
+          >
+            &times;
+          </button>
         </div>
-        <div id="dmAttachmentPreviewBody" class="flex-1 min-h-0 overflow-auto p-4 flex items-center justify-center"></div>
+        <div
+          id="dmAttachmentPreviewBody"
+          class="flex-1 min-h-0 overflow-auto p-4 flex items-center justify-center"
+        ></div>
         <div class="px-4 py-3 border-t border-white/10 shrink-0">
-          <a id="dmAttachmentPreviewOpenLink" href="#" target="_blank" rel="noopener" class="text-xs text-brand-500 hover:text-brand-400 font-medium">Open in new tab</a>
+          <a
+            id="dmAttachmentPreviewOpenLink"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            class="text-xs text-brand-500 hover:text-brand-400 font-medium"
+            >Open in new tab</a
+          >
         </div>
       </div>
     </div>
 
     <script src="/direct-chat.js?v=4"></script>
-    <script>
-      let confirmCallback = null;
-      let dashboardHistoryPopping = false;
-
-      function getTopDashboardOverlay() {
-        // Order matters: top-most overlays first.
-        if (!document.getElementById("confirmModal")?.classList.contains("hidden"))
-          return "confirm";
-        if (!document.getElementById("alertModal")?.classList.contains("hidden"))
-          return "alert";
-        if (!document.getElementById("inviteLinkModal")?.classList.contains("hidden"))
-          return "inviteLink";
-        if (!document.getElementById("guestNoticeModal")?.classList.contains("hidden"))
-          return "guestNotice";
-        if (!document.getElementById("feedbackModal")?.classList.contains("hidden"))
-          return "feedback";
-        if (
-          !document
-            .getElementById("featurePostImageModal")
-            ?.classList.contains("hidden")
-        )
-          return "featurePostImage";
-        if (!document.getElementById("profileModal")?.classList.contains("hidden"))
-          return "profile";
-        if (!document.getElementById("createModal")?.classList.contains("hidden"))
-          return "createTeam";
-        if (!document.getElementById("dmBlockedEmailsModal")?.classList.contains("hidden"))
-          return "dmBlockedEmails";
-        if (!document.getElementById("dmBlockedEmailStartModal")?.classList.contains("hidden"))
-          return "dmBlockedEmailStart";
-        return null;
-      }
-
-      function pushDashboardOverlay(name) {
-        if (!TF_VIEWPORT?.isMobile?.()) return;
-        if (dashboardHistoryPopping) return;
-        history.pushState({ tfDashOverlay: name, t: Date.now() }, "");
-      }
-
-      function requestCloseDashboardOverlay() {
-        if (!TF_VIEWPORT?.isMobile?.()) return;
-        if (getTopDashboardOverlay()) history.back();
-      }
-
-      async function closeDashboardOverlayUi(overlay) {
-        switch (overlay) {
-          case "confirm":
-            closeConfirmModal();
-            break;
-          case "alert":
-            closeAlertModal();
-            break;
-          case "inviteLink":
-            closeInviteLinkModal();
-            break;
-          case "guestNotice":
-            dismissGuestNotice();
-            break;
-          case "feedback":
-            closeFeedbackModal();
-            break;
-          case "featurePostImage":
-            closeFeaturePostImagePreview();
-            break;
-          case "profile":
-            closeProfileModal();
-            break;
-          case "createTeam":
-            closeCreateModal();
-            break;
-          case "dmBlockedEmails":
-            // Provided by direct-chat.js
-            window.closeBlockedEmailsModal?.();
-            break;
-          case "dmBlockedEmailStart":
-            window.closeBlockedEmailStartModal?.();
-            break;
-        }
-      }
-
-      function showConfirm({
-        title,
-        message,
-        confirmLabel = "Confirm",
-        danger = false,
-        onConfirm,
-      }) {
-        document.getElementById("confirmTitle").textContent = title;
-        document.getElementById("confirmMessage").textContent = message;
-        const btn = document.getElementById("confirmActionBtn");
-        btn.textContent = confirmLabel;
-        btn.className = danger
-          ? "flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
-          : "flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm";
-        confirmCallback = onConfirm;
-        document.getElementById("confirmModal").classList.remove("hidden");
-        pushDashboardOverlay("confirm");
-      }
-
-      function closeConfirmModal() {
-        document.getElementById("confirmModal").classList.add("hidden");
-        confirmCallback = null;
-      }
-
-      function runConfirmAction() {
-        const cb = confirmCallback;
-        closeConfirmModal();
-        if (cb) cb();
-      }
-
-      function showAlert(message, title = "Something went wrong") {
-        document.getElementById("alertTitle").textContent = title;
-        document.getElementById("alertMessage").textContent = message;
-        document.getElementById("alertModal").classList.remove("hidden");
-        pushDashboardOverlay("alert");
-      }
-
-      function closeAlertModal() {
-        document.getElementById("alertModal").classList.add("hidden");
-      }
-
-      function resetInviteLinkPreviewUi() {
-        invitePreviewToken = null;
-        invitePreviewData = null;
-        inviteAutoPreviewLastToken = null;
-        invitePreviewFetching = false;
-        document.getElementById("inviteLinkModalError").classList.add("hidden");
-        document.getElementById("inviteLinkPreview").classList.add("hidden");
-        document.getElementById("inviteLinkPreviewLoading").classList.add("hidden");
-        document.getElementById("inviteLinkPreviewUsage")?.classList.add("hidden");
-        document.getElementById("inviteLinkInputWrap")?.classList.remove("hidden");
-        const joinBtn = document.getElementById("inviteLinkJoinBtn");
-        if (joinBtn) {
-          joinBtn.classList.add("hidden");
-          joinBtn.disabled = false;
-          joinBtn.textContent = "Join team";
-        }
-      }
-
-      function showInviteLinkPreviewLoading() {
-        document.getElementById("inviteLinkModalError").classList.add("hidden");
-        document.getElementById("inviteLinkPreview").classList.add("hidden");
-        document.getElementById("inviteLinkPreviewLoading").classList.remove("hidden");
-        document.getElementById("inviteLinkInputWrap")?.classList.remove("hidden");
-        const joinBtn = document.getElementById("inviteLinkJoinBtn");
-        if (joinBtn) joinBtn.classList.add("hidden");
-      }
-
-      function showInviteLinkPreviewReady() {
-        document.getElementById("inviteLinkPreviewLoading").classList.add("hidden");
-        document.getElementById("inviteLinkPreview").classList.remove("hidden");
-        document.getElementById("inviteLinkInputWrap")?.classList.add("hidden");
-        const joinBtn = document.getElementById("inviteLinkJoinBtn");
-        if (joinBtn) {
-          joinBtn.classList.remove("hidden");
-          joinBtn.disabled = false;
-        }
-      }
-
-      function changeInviteLink() {
-        clearTimeout(inviteAutoPreviewTimer);
-        resetInviteLinkPreviewUi();
-        const input = document.getElementById("inviteLinkInput");
-        if (input) {
-          input.value = "";
-          setTimeout(() => input.focus(), 50);
-        }
-      }
-
-      function openInviteLinkModal() {
-        if (currentUser?.is_guest) {
-          return showAlert("Invite links require a registered account.", "Sign in required");
-        }
-        clearTimeout(inviteAutoPreviewTimer);
-        document.getElementById("inviteLinkInput").value = "";
-        resetInviteLinkPreviewUi();
-        document.getElementById("inviteLinkModal").classList.remove("hidden");
-        pushDashboardOverlay("inviteLink");
-        const input = document.getElementById("inviteLinkInput");
-        if (input) {
-          input.oninput = () => scheduleInviteAutoPreview();
-          input.onpaste = () => setTimeout(() => scheduleInviteAutoPreview(), 0);
-        }
-        setTimeout(() => document.getElementById("inviteLinkInput")?.focus(), 50);
-      }
-
-      function closeInviteLinkModal() {
-        clearTimeout(inviteAutoPreviewTimer);
-        resetInviteLinkPreviewUi();
-        document.getElementById("inviteLinkModal").classList.add("hidden");
-      }
-
-      function showInviteLinkModalError(msg) {
-        const el = document.getElementById("inviteLinkModalError");
-        el.textContent = msg;
-        el.classList.remove("hidden");
-      }
-
-      function extractInviteToken(input) {
-        const raw = String(input || "").trim();
-        if (!raw) return null;
-        if (/^[a-f0-9]{64}$/i.test(raw)) return raw.toLowerCase();
-        // Accept pasting the query arg or token and normalize it:
-        // - "invite=<token>"
-        // - "?invite=<token>"
-        // - "&invite=<token>"
-        const m = raw.match(/(?:^|[?&]|^)invite=([a-f0-9]{64})$/i);
-        if (m) return m[1].toLowerCase();
-        try {
-          const u = new URL(raw);
-          const token = u.searchParams.get("invite");
-          if (token && /^[a-f0-9]{64}$/i.test(token)) return token.toLowerCase();
-        } catch {
-          // Not a URL; ignore.
-        }
-        return null;
-      }
-
-      let invitePreviewToken = null;
-      let invitePreviewData = null;
-      let invitePreviewFetching = false;
-
-      function renderInvitePreview(preview) {
-        const team = preview?.team || {};
-        const avatarEl = document.getElementById("inviteLinkPreviewAvatar");
-        const nameEl = document.getElementById("inviteLinkPreviewName");
-        const descEl = document.getElementById("inviteLinkPreviewDesc");
-        const createdEl = document.getElementById("inviteLinkPreviewCreated");
-        const countsEl = document.getElementById("inviteLinkPreviewCounts");
-        const ownerEl = document.getElementById("inviteLinkPreviewOwner");
-        const usageEl = document.getElementById("inviteLinkPreviewUsage");
-
-        if (avatarEl) avatarEl.innerHTML = teamAvatarHtml(team, "w-11 h-11 text-sm");
-        if (nameEl) nameEl.textContent = team.name || "Team";
-        if (descEl) descEl.textContent = team.description || "No description";
-
-        const createdAt = team.created_at ? new Date(team.created_at).toLocaleDateString() : null;
-        if (createdEl) createdEl.textContent = createdAt ? `Created ${createdAt}` : "";
-
-        const online = team.online_count ?? 0;
-        const memberCount = team.member_count ?? 0;
-        if (countsEl) countsEl.textContent = `${online}/${memberCount} online`;
-
-        const ownerName = team.owner?.username || "Unknown";
-        if (ownerEl) ownerEl.textContent = `Owner: ${ownerName}`;
-
-        const expiry = preview?.expires_at ? new Date(preview.expires_at).toLocaleDateString() : null;
-        const usesRemaining = preview?.uses_remaining;
-        if (usageEl) {
-          usageEl.classList.remove("hidden");
-          const parts = [];
-          if (expiry) parts.push(`Expires ${expiry}`);
-          if (usesRemaining != null) parts.push(`${usesRemaining} uses remaining`);
-          usageEl.textContent = parts.length ? parts.join(" · ") : "";
-        }
-      }
-
-      async function previewInviteLink() {
-        const input = document.getElementById("inviteLinkInput").value;
-        const token = extractInviteToken(input);
-        if (!token) return showInviteLinkModalError("Paste a valid invite link.");
-        if (invitePreviewFetching) return;
-        if (invitePreviewToken === token) {
-          showInviteLinkPreviewReady();
-          return;
-        }
-
-        invitePreviewFetching = true;
-        showInviteLinkPreviewLoading();
-
-        try {
-          const r = await apiFetch(`/api/invite/${token}`);
-          const d = await parseJsonResponse(r);
-
-          if (!r.ok) {
-            resetInviteLinkPreviewUi();
-            return showInviteLinkModalError(d.error || "Could not load invite.");
-          }
-
-          invitePreviewToken = token;
-          invitePreviewData = d;
-          renderInvitePreview(d);
-          showInviteLinkPreviewReady();
-        } finally {
-          invitePreviewFetching = false;
-        }
-      }
-
-      async function joinByInviteLink() {
-        const token =
-          invitePreviewToken ||
-          extractInviteToken(document.getElementById("inviteLinkInput").value);
-        if (!token) return showInviteLinkModalError("Paste a valid invite link.");
-
-        if (!invitePreviewToken || invitePreviewToken !== token) {
-          await previewInviteLink();
-          if (!invitePreviewToken || invitePreviewToken !== token) return;
-        }
-
-        const btn = document.getElementById("inviteLinkJoinBtn");
-        btn.disabled = true;
-        btn.textContent = "Joining…";
-        document.getElementById("inviteLinkModalError").classList.add("hidden");
-
-        const r = await apiFetch(`/api/invite/${token}/accept`, { method: "POST" });
-        const d = await parseJsonResponse(r);
-
-        btn.disabled = false;
-        btn.textContent = "Join team";
-
-        if (!r.ok) return showInviteLinkModalError(d.error || "Could not join team.");
-        if (d.team_id) {
-          setNavigatingAway(true);
-          window.location = `/board/${d.team_id}`;
-        }
-      }
-
-      function buildInviteUrlFromToken(token) {
-        if (!token) return null;
-        try {
-          return `${window.location.origin}/register?invite=${token}`;
-        } catch {
-          return `/register?invite=${token}`;
-        }
-      }
-
-      let inviteAutoPreviewTimer = null;
-      let inviteAutoPreviewLastToken = null;
-      function scheduleInviteAutoPreview() {
-        const inputEl = document.getElementById("inviteLinkInput");
-        if (!inputEl) return;
-
-        clearTimeout(inviteAutoPreviewTimer);
-        document.getElementById("inviteLinkModalError").classList.add("hidden");
-
-        const token = extractInviteToken(inputEl.value);
-        if (!token) {
-          resetInviteLinkPreviewUi();
-          return;
-        }
-
-        if (token !== inviteAutoPreviewLastToken) {
-          invitePreviewToken = null;
-          invitePreviewData = null;
-          document.getElementById("inviteLinkPreview").classList.add("hidden");
-          document.getElementById("inviteLinkPreviewLoading").classList.add("hidden");
-          document.getElementById("inviteLinkInputWrap")?.classList.remove("hidden");
-          const joinBtn = document.getElementById("inviteLinkJoinBtn");
-          if (joinBtn) joinBtn.classList.add("hidden");
-        }
-
-        const normalized = buildInviteUrlFromToken(token);
-        if (normalized && inputEl.value.trim() !== normalized) {
-          inputEl.value = normalized;
-        }
-
-        inviteAutoPreviewTimer = setTimeout(async () => {
-          const token2 = extractInviteToken(inputEl.value);
-          if (!token2) {
-            resetInviteLinkPreviewUi();
-            return;
-          }
-          if (token2 === inviteAutoPreviewLastToken && invitePreviewToken === token2) return;
-          inviteAutoPreviewLastToken = token2;
-          try {
-            await previewInviteLink();
-          } catch (_) {
-            resetInviteLinkPreviewUi();
-          }
-        }, 350);
-      }
-
-      let currentUser = null;
-      let avatarPresets = [];
-      let selectedPresetId = null;
-      let profileSaving = false;
-      let createTeamDraft = {
-        presetId: null,
-        avatar_url: null,
-        pendingFile: null,
-      };
-      let createTeamSaving = false;
-      let kanbanPresets = [];
-      let teamsList = [];
-      let teamInvitesList = [];
-      const TEAM_INVITES_HINT_KEY = "taskflow_dashboard_team_invites";
-      let onlineTeamIds = new Set();
-      let teamOnlinePollInterval = null;
-      const TEAM_ONLINE_POLL_MS = 4000;
-      let registeredFeaturesCache = null;
-
-      function isFeedbackAdmin() {
-        return !!currentUser?.is_feedback_admin;
-      }
-
-      function parseFeaturesMarkdown(text) {
-        const raw = String(text || "");
-        const sectionMatch = raw.match(
-          /##\s*Registration benefits\s*\n([\s\S]*?)(?=\n##\s|\n---\s*$|$)/i,
-        );
-        const section = sectionMatch ? sectionMatch[1] : raw;
-        return section
-          .split("\n")
-          .map(
-            (line) =>
-              line.match(/^\s*-\s+\*\*(.+?)\*\*\s*[—–-]\s*(.+)$/) ||
-              line.match(/^\s*-\s+(.+)$/),
-          )
-          .filter(Boolean)
-          .map((m) =>
-            m[2]
-              ? `<span class="text-white font-medium">${escHtml(m[1])}</span><span class="text-gray-400"> — ${escHtml(m[2])}</span>`
-              : escHtml(m[1]),
-          );
-      }
-
-      async function loadRegisteredFeatures() {
-        if (registeredFeaturesCache) return registeredFeaturesCache;
-        try {
-          const r = await fetch("/features.md", { cache: "no-store" });
-          if (!r.ok) return [];
-          const text = await r.text();
-          registeredFeaturesCache = parseFeaturesMarkdown(text);
-          return registeredFeaturesCache;
-        } catch {
-          return [];
-        }
-      }
-
-      async function renderGuestNoticeFeatures() {
-        const list = document.getElementById("guestNoticeFeaturesList");
-        const items = await loadRegisteredFeatures();
-        if (!items.length) {
-          list.innerHTML =
-            '<li class="text-gray-500 list-none -ml-0">Sign up to unlock private workspaces and collaboration tools.</li>';
-          return;
-        }
-        list.innerHTML = items.map((html) => `<li>${html}</li>`).join("");
-      }
-
-      function applyGuestNoticeActions() {
-        const isGuest = !!currentUser?.is_guest;
-        const registerBtn = document.getElementById("guestNoticeRegisterBtn");
-        const dismissBtn = document.querySelector(
-          '#guestNoticeModal button[onclick="dismissGuestNotice()"]',
-        );
-        if (registerBtn) registerBtn.classList.toggle("hidden", isGuest);
-        if (dismissBtn) dismissBtn.classList.toggle("w-full", isGuest);
-      }
-
-      function updateFeedbackFabPosition() {
-        const dmVisible = !document
-          .getElementById("dmChatFabWrap")
-          ?.classList.contains("hidden");
-        document.body.classList.toggle("dashboard-has-dm-fab", dmVisible);
-      }
-      window.updateFeedbackFabPosition = updateFeedbackFabPosition;
-
-      function applyGuestTeamAvatarUploadUi() {
-        const guest = !!currentUser?.is_guest;
-        const label = document.getElementById("createTeamAvatarUploadLabel");
-        const note = document.getElementById("createTeamAvatarUploadGuestNote");
-        const input = document.getElementById("createTeamAvatarFile");
-        const hint = document.querySelector(
-          "#createModal .flex.items-center.gap-4.mb-4 .text-sm.text-gray-300",
-        );
-        if (label) label.classList.toggle("hidden", guest);
-        if (note) note.classList.toggle("hidden", !guest);
-        if (input && guest) input.value = "";
-        if (hint)
-          hint.textContent = guest
-            ? "Choose a preset avatar"
-            : "Choose a preset or upload your own";
-      }
-
-      async function maybeShowGuestNotice() {
-        if (!currentUser?.is_guest || hasGuestDashboardNoticeDismissed())
-          return;
-        await renderGuestNoticeFeatures();
-        resetGuestNoticeFeaturesDrawer();
-        applyGuestNoticeActions();
-        document.getElementById("guestNoticeModal").classList.remove("hidden");
-      }
-
-      function dismissGuestNotice() {
-        setGuestDashboardNoticeDismissed();
-        document.getElementById("guestNoticeModal").classList.add("hidden");
-        resetGuestNoticeFeaturesDrawer();
-      }
-
-      function toggleGuestNoticeFeatures() {
-        const content = document.getElementById("guestNoticeFeaturesContent");
-        const btn = document.getElementById("guestNoticeFeaturesToggleBtn");
-        const label = document.getElementById("guestNoticeFeaturesLabel");
-        const chevron = document.getElementById("guestNoticeFeaturesChevron");
-        if (!content || !btn) return;
-        const open = content.classList.contains("hidden");
-        content.classList.toggle("hidden", !open);
-        btn.setAttribute("aria-expanded", open ? "true" : "false");
-        btn.classList.toggle("drawer-open", open);
-        if (label) label.textContent = open ? "Hide features" : "Registered account features";
-        if (chevron) chevron.style.transform = open ? "rotate(180deg)" : "";
-      }
-
-      function resetGuestNoticeFeaturesDrawer() {
-        const content = document.getElementById("guestNoticeFeaturesContent");
-        const btn = document.getElementById("guestNoticeFeaturesToggleBtn");
-        const label = document.getElementById("guestNoticeFeaturesLabel");
-        const chevron = document.getElementById("guestNoticeFeaturesChevron");
-        if (content) content.classList.add("hidden");
-        if (btn) {
-          btn.setAttribute("aria-expanded", "false");
-          btn.classList.remove("drawer-open");
-        }
-        if (label) label.textContent = "Registered account features";
-        if (chevron) chevron.style.transform = "";
-      }
-
-      let feedbackCaptchaConfig = {
-        guestCaptchaRequired: false,
-        turnstileSiteKey: null,
-      };
-      let feedbackCaptchaToken = null;
-      let feedbackTurnstileWidgetId = null;
-      let feedbackTurnstileScriptPromise = null;
-
-      async function loadFeedbackCaptchaConfig() {
-        const r = await apiFetch("/api/feedback/captcha-config");
-        if (!r.ok) return;
-        const data = await parseJsonResponse(r);
-        feedbackCaptchaConfig = {
-          guestCaptchaRequired: !!data.guestCaptchaRequired,
-          turnstileSiteKey: data.turnstileSiteKey || null,
-        };
-      }
-
-      function loadTurnstileScript() {
-        if (window.turnstile) return Promise.resolve();
-        if (feedbackTurnstileScriptPromise)
-          return feedbackTurnstileScriptPromise;
-        feedbackTurnstileScriptPromise = new Promise((resolve, reject) => {
-          const s = document.createElement("script");
-          s.src =
-            "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-          s.async = true;
-          s.defer = true;
-          s.onload = () => resolve();
-          s.onerror = () => reject(new Error("Could not load verification"));
-          document.head.appendChild(s);
-        });
-        return feedbackTurnstileScriptPromise;
-      }
-
-      function getFeedbackCaptchaToken() {
-        if (feedbackCaptchaToken) return feedbackCaptchaToken;
-        if (feedbackTurnstileWidgetId != null && window.turnstile?.getResponse) {
-          try {
-            const token = turnstile.getResponse(feedbackTurnstileWidgetId);
-            if (token) {
-              feedbackCaptchaToken = token;
-              return token;
-            }
-          } catch (_) {
-            /* ignore */
-          }
-        }
-        return null;
-      }
-
-      function resetFeedbackTurnstile() {
-        feedbackCaptchaToken = null;
-        if (feedbackTurnstileWidgetId != null && window.turnstile) {
-          try {
-            turnstile.remove(feedbackTurnstileWidgetId);
-          } catch (_) {
-            /* ignore */
-          }
-          feedbackTurnstileWidgetId = null;
-        }
-        document.getElementById("feedbackTurnstile").innerHTML = "";
-      }
-
-      async function mountFeedbackTurnstile() {
-        const wrap = document.getElementById("feedbackCaptchaWrap");
-        const needsCaptcha =
-          !!currentUser?.is_guest && feedbackCaptchaConfig.guestCaptchaRequired;
-        wrap.classList.toggle("hidden", !needsCaptcha);
-        resetFeedbackTurnstile();
-        if (!needsCaptcha) return;
-        try {
-          await loadTurnstileScript();
-          feedbackTurnstileWidgetId = turnstile.render("#feedbackTurnstile", {
-            sitekey: feedbackCaptchaConfig.turnstileSiteKey,
-            theme: "dark",
-            callback: (token) => {
-              feedbackCaptchaToken = token;
-            },
-            "expired-callback": () => {
-              feedbackCaptchaToken = null;
-            },
-            "error-callback": () => {
-              feedbackCaptchaToken = null;
-            },
-          });
-        } catch {
-          document.getElementById("feedbackError").textContent =
-            "Could not load verification. Refresh and try again.";
-          document.getElementById("feedbackError").classList.remove("hidden");
-        }
-      }
-
-      async function openFeedbackModal() {
-        document.getElementById("feedbackError").classList.add("hidden");
-        document.getElementById("feedbackMessage").value = "";
-        const hp = document.getElementById("feedbackHp");
-        if (hp) hp.value = "";
-        document.getElementById("feedbackCategory").value = "feedback";
-        document
-          .getElementById("feedbackGuestNotice")
-          ?.classList.toggle("hidden", !currentUser?.is_guest);
-        document.getElementById("feedbackModal").classList.remove("hidden");
-        pushDashboardOverlay("feedback");
-        await mountFeedbackTurnstile();
-        setTimeout(
-          () => document.getElementById("feedbackMessage")?.focus(),
-          50,
-        );
-      }
-
-      function closeFeedbackModal() {
-        document.getElementById("feedbackModal").classList.add("hidden");
-        resetFeedbackTurnstile();
-        document.getElementById("feedbackCaptchaWrap").classList.add("hidden");
-      }
-
-      async function submitFeedback() {
-        const message = document.getElementById("feedbackMessage").value.trim();
-        const category = document.getElementById("feedbackCategory").value;
-        const errEl = document.getElementById("feedbackError");
-        const btn = document.getElementById("feedbackSubmitBtn");
-        errEl.classList.add("hidden");
-        if (message.length < 5) {
-          errEl.textContent = "Please enter at least 5 characters.";
-          errEl.classList.remove("hidden");
-          return;
-        }
-        const captchaToken = getFeedbackCaptchaToken();
-        if (
-          currentUser?.is_guest &&
-          feedbackCaptchaConfig.guestCaptchaRequired &&
-          !captchaToken
-        ) {
-          errEl.textContent = "Please complete the verification check below.";
-          errEl.classList.remove("hidden");
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = "Sending…";
-        const body = {
-          message,
-          category,
-          tf_hp: document.getElementById("feedbackHp")?.value || "",
-        };
-        if (
-          currentUser?.is_guest &&
-          feedbackCaptchaConfig.guestCaptchaRequired
-        ) {
-          body.captchaToken = captchaToken;
-        }
-        const r = await apiFetch("/api/feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const data = await parseJsonResponse(r);
-        btn.disabled = false;
-        btn.textContent = "Submit";
-        if (!r.ok) {
-          errEl.textContent = data.error || "Could not send feedback";
-          errEl.classList.remove("hidden");
-          return;
-        }
-        closeFeedbackModal();
-        resetFeedbackTurnstile();
-        showAlert("Thank you — your feedback has been submitted.", "Received");
-        if (isFeedbackAdmin()) loadAdminFeedback();
-      }
-
-      function formatFeedbackDate(iso) {
-        try {
-          return new Date(iso).toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          });
-        } catch {
-          return iso || "";
-        }
-      }
-
-      let feedbackAdminPage = 1;
-      let feedbackAdminQuery = "";
-
-      function renderFeedbackAdminItem(row) {
-        const isBug = row.category === "bug";
-        const badge = isBug
-          ? '<span class="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">Bug</span>'
-          : '<span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">Feedback</span>';
-        const who =
-          escHtml(row.username || "Unknown") +
-          (row.user_email
-            ? ` <span class="text-gray-500">(${escHtml(row.user_email)})</span>`
-            : "");
-        return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-4">
-        <div class="flex flex-wrap items-center gap-2 mb-2">${badge}<span class="text-xs text-gray-500">${escHtml(formatFeedbackDate(row.created_at))}</span></div>
-        <p class="text-xs text-gray-400 mb-2">${who}</p>
-        <p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escHtml(row.message)}</p>
-      </article>`;
-      }
-
-      function updateFeedbackAdminPager(payload) {
-        const pager = document.getElementById("feedbackAdminPager");
-        const meta = document.getElementById("feedbackAdminMeta");
-        const prevBtn = document.getElementById("feedbackAdminPrevBtn");
-        const nextBtn = document.getElementById("feedbackAdminNextBtn");
-        const pageLabel = document.getElementById("feedbackAdminPageLabel");
-        const showPager =
-          payload.total > 0 &&
-          (payload.hasPrev || payload.hasNext || payload.totalPages > 1);
-        pager.classList.toggle("hidden", !showPager);
-        prevBtn.disabled = !payload.hasPrev;
-        nextBtn.disabled = !payload.hasNext;
-        pageLabel.textContent = `Page ${payload.page} of ${payload.totalPages}`;
-        meta.classList.toggle("hidden", payload.total === 0);
-        const qNote = feedbackAdminQuery
-          ? ` matching "${feedbackAdminQuery}"`
-          : "";
-        meta.textContent =
-          payload.total === 0
-            ? feedbackAdminQuery
-              ? "No results for this search."
-              : ""
-            : `${payload.total} submission${payload.total === 1 ? "" : "s"}${qNote} - 20 per page`;
-      }
-
-      function searchAdminFeedback(e) {
-        e.preventDefault();
-        feedbackAdminQuery = document
-          .getElementById("feedbackAdminSearchInput")
-          .value.trim();
-        feedbackAdminPage = 1;
-        document
-          .getElementById("feedbackAdminSearchClearBtn")
-          .classList.toggle("hidden", !feedbackAdminQuery);
-        loadAdminFeedback();
-      }
-
-      function clearAdminFeedbackSearch() {
-        feedbackAdminQuery = "";
-        feedbackAdminPage = 1;
-        document.getElementById("feedbackAdminSearchInput").value = "";
-        document
-          .getElementById("feedbackAdminSearchClearBtn")
-          .classList.add("hidden");
-        loadAdminFeedback();
-      }
-
-      function feedbackAdminGoPage(delta) {
-        feedbackAdminPage = Math.max(1, feedbackAdminPage + delta);
-        loadAdminFeedback();
-      }
-
-      async function loadAdminFeedback() {
-        if (!isFeedbackAdmin()) return;
-        const list = document.getElementById("feedbackAdminList");
-        list.innerHTML = '<p class="text-sm text-gray-500">Loading…</p>';
-        const params = new URLSearchParams({ page: String(feedbackAdminPage) });
-        if (feedbackAdminQuery) params.set("q", feedbackAdminQuery);
-        const r = await apiFetch(`/api/feedback?${params}`);
-        const payload = await parseJsonResponse(r);
-        if (!r.ok) {
-          document.getElementById("feedbackAdminPager").classList.add("hidden");
-          document.getElementById("feedbackAdminMeta").classList.add("hidden");
-          list.innerHTML = `<p class="text-sm text-red-400">${escHtml(payload?.error || "Could not load feedback")}</p>`;
-          return;
-        }
-        const rows = payload.items || [];
-        feedbackAdminPage = payload.page || 1;
-        updateFeedbackAdminPager(payload);
-        if (!rows.length) {
-          list.innerHTML = `<p class="text-sm text-gray-500 text-center py-8">${feedbackAdminQuery ? "No matching submissions." : "No submissions yet."}</p>`;
-          return;
-        }
-        list.innerHTML = rows.map(renderFeedbackAdminItem).join("");
-      }
-
-      function renderNavUser() {
-        const isGuest = currentUser.is_guest;
-        document
-          .getElementById("profileBtn")
-          .classList.toggle("hidden", isGuest);
-        document
-          .getElementById("guestBadge")
-          .classList.toggle("hidden", !isGuest);
-        if (isGuest) {
-          applyAvatarToElement(
-            document.getElementById("guestAvatarCircle"),
-            currentUser,
-          );
-          document.getElementById("guestUsernameDisplay").textContent =
-            currentUser.username;
-          return;
-        }
-        applyAvatarToElement(
-          document.getElementById("avatarCircle"),
-          currentUser,
-        );
-        document.getElementById("usernameDisplay").textContent =
-          currentUser.username;
-      }
-
-      function matchPresetId(url) {
-        if (!url) return null;
-        const found = avatarPresets.find(
-          (p) => p.url === url || url.endsWith(p.url),
-        );
-        return found?.id || null;
-      }
-
-      async function loadAvatarPresets() {
-        const r = await apiFetch("/api/profile/avatars");
-        if (r.ok) avatarPresets = await parseJsonResponse(r);
-      }
-
-      function renderAvatarPresetGrid() {
-        const grid = document.getElementById("avatarPresetGrid");
-        const activeId =
-          selectedPresetId || matchPresetId(currentUser?.avatar_url);
-        grid.innerHTML = avatarPresets
-          .map(
-            (p) => `
-        <button type="button" onclick="selectAvatarPreset('${p.id}')"
-          class="avatar-preset-btn w-10 h-10 rounded-full overflow-hidden p-0 border border-white/10 ${activeId === p.id ? "selected" : ""}"
-          title="${escHtml(p.label)}">
-          <img src="${escHtml(p.url)}" alt="" class="w-full h-full object-cover" />
-        </button>`,
-          )
-          .join("");
-      }
-
-      function updateProfileAvatarPreview() {
-        applyAvatarToElement(
-          document.getElementById("profileAvatarPreview"),
-          currentUser,
-        );
-      }
-
-      function hideProfileMessages() {
-        document.getElementById("profileError").classList.add("hidden");
-        document.getElementById("profileSuccess").classList.add("hidden");
-      }
-
-      function showProfileError(msg) {
-        const el = document.getElementById("profileError");
-        el.textContent = msg;
-        el.classList.remove("hidden");
-        document.getElementById("profileSuccess").classList.add("hidden");
-      }
-
-      function showProfileSuccess(msg) {
-        const el = document.getElementById("profileSuccess");
-        el.textContent = msg;
-        el.classList.remove("hidden");
-        document.getElementById("profileError").classList.add("hidden");
-      }
-
-      async function openProfileModal() {
-        if (currentUser?.is_guest) return;
-        hideProfileMessages();
-        document.getElementById("profileUsername").value = currentUser.username;
-        document.getElementById("profileEmail").value = currentUser.email;
-        document.getElementById("profileCurrentPassword").value = "";
-        document.getElementById("profileNewPassword").value = "";
-        document.getElementById("avatarUploadStatus").classList.add("hidden");
-        selectedPresetId = matchPresetId(currentUser.avatar_url);
-        if (!avatarPresets.length) await loadAvatarPresets();
-        renderAvatarPresetGrid();
-        updateProfileAvatarPreview();
-        document.getElementById("profileModal").classList.remove("hidden");
-        pushDashboardOverlay("profile");
-        setTimeout(
-          () => document.getElementById("profileUsername").focus(),
-          50,
-        );
-      }
-
-      function closeProfileModal() {
-        document.getElementById("profileModal").classList.add("hidden");
-        hideProfileMessages();
-      }
-
-      // Mobile back: close the top-most closable popup instead of leaving the page.
-      window.addEventListener("popstate", () => {
-        if (window.DirectChat?.handlePopState?.()) return;
-        if (!dashboardHistoryPopping) resetTransientNavigationUi();
-        if (!TF_VIEWPORT?.isMobile?.()) return;
-        if (dashboardHistoryPopping) {
-          dashboardHistoryPopping = false;
-          return;
-        }
-        const overlay = getTopDashboardOverlay();
-        if (overlay) closeDashboardOverlayUi(overlay);
-      });
-
-      async function selectAvatarPreset(presetId) {
-        hideProfileMessages();
-        const status = document.getElementById("avatarUploadStatus");
-        status.textContent = "Saving avatar…";
-        status.classList.remove("hidden");
-        const r = await apiFetch("/api/profile/avatar/preset", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ preset: presetId }),
-        });
-        const d = await parseJsonResponse(r);
-        status.classList.add("hidden");
-        if (d.error) return showProfileError(d.error);
-        currentUser = d.user;
-        selectedPresetId = presetId;
-        renderNavUser();
-        DirectChat.onUserUpdated(currentUser);
-        renderAvatarPresetGrid();
-        updateProfileAvatarPreview();
-        showProfileSuccess("Avatar updated.");
-      }
-
-      document
-        .getElementById("avatarFileInput")
-        ?.addEventListener("change", async (e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (!file) return;
-          hideProfileMessages();
-          const status = document.getElementById("avatarUploadStatus");
-          status.textContent = "Uploading…";
-          status.classList.remove("hidden");
-          const form = new FormData();
-          form.append("avatar", file);
-          const r = await apiFetch("/api/profile/avatar/upload", {
-            method: "POST",
-            body: form,
-          });
-          const d = await parseJsonResponse(r);
-          status.classList.add("hidden");
-          if (d.error) return showProfileError(d.error);
-          currentUser = d.user;
-          selectedPresetId = null;
-          renderNavUser();
-          DirectChat.onUserUpdated(currentUser);
-          renderAvatarPresetGrid();
-          updateProfileAvatarPreview();
-          showProfileSuccess("Custom avatar uploaded.");
-        });
-
-      async function saveProfile() {
-        if (profileSaving || currentUser?.is_guest) return;
-        hideProfileMessages();
-        const username = document
-          .getElementById("profileUsername")
-          .value.trim();
-        const email = document.getElementById("profileEmail").value.trim();
-        const current_password = document.getElementById(
-          "profileCurrentPassword",
-        ).value;
-        const new_password =
-          document.getElementById("profileNewPassword").value;
-        const btn = document.getElementById("profileSaveBtn");
-        profileSaving = true;
-        btn.disabled = true;
-        btn.textContent = "Saving…";
-        const body = { username, email };
-        if (new_password) {
-          if (new_password.length < 8)
-            return showProfileError(
-              "New password must be at least 8 characters",
-            );
-          body.current_password = current_password;
-          body.new_password = new_password;
-        }
-        const r = await apiFetch("/api/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const d = await parseJsonResponse(r);
-        profileSaving = false;
-        btn.disabled = false;
-        btn.textContent = "Save changes";
-        if (d.error) return showProfileError(d.error);
-        currentUser = d.user;
-        renderNavUser();
-        DirectChat.onUserUpdated(currentUser);
-        document.getElementById("profileCurrentPassword").value = "";
-        document.getElementById("profileNewPassword").value = "";
-        showProfileSuccess("Profile saved.");
-        setTimeout(closeProfileModal, 1200);
-      }
-
-      let featurePostsList = [];
-      let featurePostsAdmin = false;
-      let featurePostCommentsCache = new Map();
-      let featurePostOpenComments = new Set();
-      let featurePostSaving = false;
-      let featurePostReactionPicker = null;
-
-      const FEATURE_POST_REACTION_EMOJIS = {
-        love: "❤️",
-        money: "🤑",
-        ok: "👍",
-        haha: "😂",
-        sad: "😢",
-        angry: "😠",
-        fire: "🔥",
-        clap: "👏",
-        think: "🤔",
-        party: "🎉",
-        eyes: "👀",
-        hundred: "💯",
-      };
-
-      function featurePostReactionSymbol(emoji) {
-        return FEATURE_POST_REACTION_EMOJIS[emoji] || emoji;
-      }
-
-      function formatFeaturePostDate(iso) {
-        try {
-          return new Intl.DateTimeFormat(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }).format(new Date(iso));
-        } catch (_) {
-          return iso;
-        }
-      }
-
-      function featurePostTypeBadge(postType) {
-        if (postType === "completed") {
-          return '<span class="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Shipped</span>';
-        }
-        return '<span class="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-brand-500/15 text-brand-200 border border-brand-500/25">In progress</span>';
-      }
-
-      function closeFeaturePostReactionPicker() {
-        featurePostReactionPicker = null;
-        const layer = document.getElementById("featurePostReactionLayer");
-        if (layer) layer.innerHTML = "";
-      }
-
-      function openFeaturePostReactionPicker(postId, anchorEl) {
-        if (currentUser?.is_guest) return;
-        if (featurePostReactionPicker?.postId === postId) {
-          closeFeaturePostReactionPicker();
-          return;
-        }
-        featurePostReactionPicker = { postId, anchor: anchorEl };
-        const layer = document.getElementById("featurePostReactionLayer");
-        if (!layer) return;
-        const picker = document.createElement("div");
-        picker.className =
-          "reaction-picker pointer-events-auto absolute flex flex-wrap gap-0.5 p-2 rounded-xl bg-ink-700 border border-white/15 max-w-[240px]";
-        picker.onclick = (e) => e.stopPropagation();
-        picker.innerHTML = Object.entries(FEATURE_POST_REACTION_EMOJIS)
-          .map(
-            ([key, sym]) =>
-              `<button type="button" data-fp-reaction="${key}" class="text-lg hover:scale-110 transition p-1 rounded-lg hover:bg-white/10" title="${key}">${sym}</button>`,
-          )
-          .join("");
-        picker.querySelectorAll("[data-fp-reaction]").forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            toggleFeaturePostReaction(postId, btn.dataset.fpReaction);
-          });
-        });
-        layer.innerHTML = "";
-        layer.appendChild(picker);
-        const rect = anchorEl.getBoundingClientRect();
-        picker.style.left = `${Math.min(rect.left, window.innerWidth - 260)}px`;
-        picker.style.top = `${rect.bottom + 6}px`;
-      }
-
-      function renderFeaturePostReactions(post) {
-        const pills = (post.reactions || [])
-          .map((r) => {
-            const mine = (r.users || []).some(
-              (u) => String(u.id) === String(currentUser?.id),
-            );
-            return `<button type="button" data-fp-pill data-post-id="${post.id}" data-emoji="${r.emoji}"
-            class="reaction-pill inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 ${mine ? "reaction-pill-active" : ""}">
-            <span>${featurePostReactionSymbol(r.emoji)}</span>
-            <span class="text-gray-400">${r.count}</span>
-          </button>`;
-          })
-          .join("");
-        const addBtn = currentUser?.is_guest
-          ? ""
-          : `<button type="button" data-fp-add data-post-id="${post.id}"
-          class="text-xs text-gray-500 hover:text-white px-1.5 py-0.5 rounded-full hover:bg-white/10 transition" title="Add reaction">+</button>`;
-        return `<div class="flex flex-wrap items-center gap-1.5 mt-3">${pills}${addBtn}</div>`;
-      }
-
-      function renderFeaturePostComments(postId) {
-        const comments = featurePostCommentsCache.get(postId) || [];
-        const list = comments
-          .map(
-            (c) => `<div class="flex gap-2.5 py-2.5 border-b border-white/5 last:border-0">
-            ${userAvatarHtml(c.user, "w-8 h-8 text-xs shrink-0")}
-            <div class="min-w-0 flex-1">
-              <div class="flex items-baseline gap-2 flex-wrap">
-                <span class="text-sm font-medium text-white">${escHtml(c.user?.username || "User")}</span>
-                <span class="text-xs text-gray-500">${escHtml(formatFeaturePostDate(c.created_at))}</span>
-              </div>
-              <p class="text-sm text-gray-300 mt-0.5 whitespace-pre-wrap break-words">${escHtml(c.content)}</p>
-            </div>
-          </div>`,
-          )
-          .join("");
-        const composer = currentUser?.is_guest
-          ? `<p class="text-xs text-gray-500 mt-3">Sign in with a registered account to comment.</p>`
-          : `<form class="flex gap-2 mt-3" onsubmit="submitFeaturePostComment(event, '${postId}')">
-            <input type="text" maxlength="2000" required placeholder="Write a comment…"
-              class="flex-1 bg-ink-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition" />
-            <button type="submit" class="text-sm text-white bg-brand-500 hover:bg-brand-600 px-3 py-2 rounded-xl transition shrink-0">Post</button>
-          </form>`;
-        return `<div class="mt-4 pt-4 border-t border-white/10">
-          <div class="space-y-0">${list || '<p class="text-sm text-gray-500 py-2">No comments yet.</p>'}</div>
-          ${composer}
-        </div>`;
-      }
-
-      function renderFeaturePostCard(post, index) {
-        const author = post.author || {};
-        const adminActions = featurePostsAdmin
-          ? `<div class="flex gap-1 shrink-0">
-            <button type="button" onclick="openFeaturePostModal('${post.id}')"
-              class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition"
-              aria-label="Edit post" title="Edit post">
-              <svg class="w-4 h-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-              <span class="hidden md:inline text-xs px-0.5">Edit</span>
-            </button>
-            <button type="button" onclick="deleteFeaturePost('${post.id}')"
-              class="text-red-400/80 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition"
-              aria-label="Delete post" title="Delete post">
-              <svg class="w-4 h-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-              <span class="hidden md:inline text-xs px-0.5">Delete</span>
-            </button>
-          </div>`
-          : "";
-        const image = post.image_url
-          ? `<button type="button" class="block w-full mt-4 rounded-xl overflow-hidden border border-white/10 hover:border-white/20 transition focus:outline-none focus:ring-2 focus:ring-brand-500/40" data-fp-image data-image-url="${escHtml(post.image_url)}" data-image-title="${escHtml(post.title)}" aria-label="View image: ${escHtml(post.title)}">
-              <img src="${escHtml(post.image_url)}" alt="" class="w-full max-h-80 object-cover pointer-events-none" loading="lazy" ${storageImageOnErrorAttr()} />
-            </button>`
-          : "";
-        const commentsOpen = featurePostOpenComments.has(post.id);
-        const commentToggle = `<button type="button" onclick="toggleFeaturePostComments('${post.id}')"
-          class="text-sm text-gray-400 hover:text-white mt-3 transition">
-          ${commentsOpen ? "Hide" : "View"} comments (${post.comment_count || 0})
-        </button>`;
-        const commentsBlock = commentsOpen
-          ? `<div id="featurePostComments-${post.id}">${renderFeaturePostComments(post.id)}</div>`
-          : "";
-
-        return `<article class="bg-ink-800 border border-white/10 rounded-2xl p-5 fade-up" style="animation-delay:${index * 0.05}s" data-post-id="${post.id}">
-          <div class="flex items-start justify-between gap-3 mb-3">
-            <div class="flex items-center gap-3 min-w-0">
-              ${userAvatarHtml(author, "w-10 h-10 text-sm shrink-0")}
-              <div class="min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-medium text-white">${escHtml(author.username || "TaskFlow")}</span>
-                  ${featurePostTypeBadge(post.post_type)}
-                </div>
-                <p class="text-xs text-gray-500 mt-0.5">${escHtml(formatFeaturePostDate(post.created_at))}</p>
-              </div>
-            </div>
-            ${adminActions}
-          </div>
-          <h3 class="text-lg font-semibold text-white">${escHtml(post.title)}</h3>
-          ${RichTextEditor.renderCaptionHtml(post.caption)}
-          ${image}
-          ${renderFeaturePostReactions(post)}
-          ${commentToggle}
-          ${commentsBlock}
-        </article>`;
-      }
-
-      function openFeaturePostImagePreview(url, title) {
-        const modal = document.getElementById("featurePostImageModal");
-        const img = document.getElementById("featurePostImageModalImg");
-        const titleEl = document.getElementById("featurePostImageModalTitle");
-        const link = document.getElementById("featurePostImageModalOpenLink");
-        if (!modal || !img || !url) return;
-        img.src = url;
-        img.alt = title || "Roadmap post image";
-        if (titleEl) titleEl.textContent = title || "Image";
-        if (link) link.href = url;
-        modal.classList.remove("hidden");
-        document.body.style.overflow = "hidden";
-        pushDashboardOverlay("featurePostImage");
-      }
-
-      function closeFeaturePostImagePreview() {
-        const modal = document.getElementById("featurePostImageModal");
-        const img = document.getElementById("featurePostImageModalImg");
-        modal?.classList.add("hidden");
-        if (img) {
-          img.removeAttribute("src");
-          img.alt = "";
-        }
-        document.body.style.overflow = "";
-      }
-
-      function bindFeaturePostInteractions() {
-        document.querySelectorAll("[data-fp-pill]").forEach((pill) => {
-          pill.onclick = () =>
-            toggleFeaturePostReaction(pill.dataset.postId, pill.dataset.emoji);
-        });
-        document.querySelectorAll("[data-fp-add]").forEach((btn) => {
-          btn.onclick = (e) => {
-            e.stopPropagation();
-            openFeaturePostReactionPicker(btn.dataset.postId, btn);
-          };
-        });
-        document.querySelectorAll("[data-fp-image]").forEach((btn) => {
-          btn.onclick = () =>
-            openFeaturePostImagePreview(
-              btn.dataset.imageUrl,
-              btn.dataset.imageTitle,
-            );
-        });
-      }
-
-      function renderFeaturePostsList() {
-        const list = document.getElementById("featurePostsList");
-        if (!list) return;
-        if (!featurePostsList.length) {
-          list.innerHTML =
-            '<p class="text-sm text-gray-500">No roadmap posts yet.</p>';
-          return;
-        }
-        list.innerHTML = featurePostsList
-          .map((post, i) => renderFeaturePostCard(post, i))
-          .join("");
-        bindFeaturePostInteractions();
-      }
-
-      async function loadFeaturePosts() {
-        const r = await apiFetch("/api/feature-posts");
-        if (!r.ok) return;
-        const data = await parseJsonResponse(r);
-        if (!data?.posts) return;
-        featurePostsList = data.posts;
-        featurePostsAdmin = !!data.is_admin;
-        document
-          .getElementById("featurePostNewBtn")
-          ?.classList.toggle("hidden", !featurePostsAdmin);
-        renderFeaturePostsList();
-      }
-
-      async function toggleFeaturePostReaction(postId, emoji) {
-        if (currentUser?.is_guest) return;
-        closeFeaturePostReactionPicker();
-        const r = await apiFetch("/api/reactions/toggle", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messageType: "feature_post",
-            messageId: postId,
-            emoji,
-          }),
-        });
-        const data = await parseJsonResponse(r);
-        if (!r.ok) return showAlert(data.error || "Failed to react");
-        const idx = featurePostsList.findIndex((p) => p.id === postId);
-        if (idx !== -1) {
-          featurePostsList[idx] = {
-            ...featurePostsList[idx],
-            reactions: data.reactions || [],
-          };
-          renderFeaturePostsList();
-        }
-      }
-
-      async function toggleFeaturePostComments(postId) {
-        if (featurePostOpenComments.has(postId)) {
-          featurePostOpenComments.delete(postId);
-        } else {
-          featurePostOpenComments.add(postId);
-          if (!featurePostCommentsCache.has(postId)) {
-            const r = await apiFetch(`/api/feature-posts/${postId}/comments`);
-            if (r.ok) {
-              const comments = await parseJsonResponse(r);
-              featurePostCommentsCache.set(
-                postId,
-                Array.isArray(comments) ? comments : [],
-              );
-            }
-          }
-        }
-        renderFeaturePostsList();
-      }
-
-      async function submitFeaturePostComment(e, postId) {
-        e.preventDefault();
-        if (currentUser?.is_guest) return;
-        const input = e.target.querySelector("input");
-        const content = input?.value?.trim();
-        if (!content) return;
-        const r = await apiFetch(`/api/feature-posts/${postId}/comments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
-        const data = await parseJsonResponse(r);
-        if (!r.ok) return showAlert(data.error || "Failed to comment");
-        const cached = featurePostCommentsCache.get(postId) || [];
-        cached.push(data);
-        featurePostCommentsCache.set(postId, cached);
-        const idx = featurePostsList.findIndex((p) => p.id === postId);
-        if (idx !== -1) {
-          featurePostsList[idx] = {
-            ...featurePostsList[idx],
-            comment_count: (featurePostsList[idx].comment_count || 0) + 1,
-          };
-        }
-        input.value = "";
-        renderFeaturePostsList();
-      }
-
-      function showFeaturePostModalError(msg) {
-        const el = document.getElementById("featurePostModalError");
-        if (!msg) {
-          el.classList.add("hidden");
-          el.textContent = "";
-          return;
-        }
-        el.textContent = msg;
-        el.classList.remove("hidden");
-      }
-
-      function closeFeaturePostModal() {
-        document.getElementById("featurePostModal")?.classList.add("hidden");
-        showFeaturePostModalError("");
-        featurePostSaving = false;
-        RichTextEditor.clear("featurePostCaptionEditor");
-      }
-
-      function openFeaturePostModal(editId) {
-        if (!featurePostsAdmin) return;
-        const post = editId
-          ? featurePostsList.find((p) => p.id === editId)
-          : null;
-        document.getElementById("featurePostEditId").value = post?.id || "";
-        document.getElementById("featurePostTitle").value = post?.title || "";
-        RichTextEditor.setContent("featurePostCaptionEditor", post?.caption || "");
-        document.getElementById("featurePostType").value =
-          post?.post_type || "in_progress";
-        document.getElementById("featurePostImage").value = "";
-        const preview = document.getElementById("featurePostImagePreview");
-        const hint = document.getElementById("featurePostImageHint");
-        if (post?.image_url) {
-          preview.src = post.image_url;
-          preview.classList.remove("hidden");
-          hint.textContent = "Leave empty to keep the current image.";
-          hint.classList.remove("hidden");
-        } else {
-          preview.classList.add("hidden");
-          preview.removeAttribute("src");
-          hint.classList.add("hidden");
-        }
-        document.getElementById("featurePostModalTitle").textContent = post
-          ? "Edit roadmap post"
-          : "New roadmap post";
-        document.getElementById("featurePostSubmitBtn").textContent = post
-          ? "Save changes"
-          : "Publish";
-        showFeaturePostModalError("");
-        document.getElementById("featurePostModal").classList.remove("hidden");
-      }
-
-      async function submitFeaturePost(e) {
-        e.preventDefault();
-        if (featurePostSaving || !featurePostsAdmin) return;
-        featurePostSaving = true;
-        const btn = document.getElementById("featurePostSubmitBtn");
-        const prevText = btn.textContent;
-        btn.textContent = "Saving…";
-        btn.classList.add("btn-loading");
-
-        const editId = document.getElementById("featurePostEditId").value;
-        const caption = RichTextEditor.syncHidden("featurePostCaptionEditor");
-        if (RichTextEditor.getPlainTextLength("featurePostCaptionEditor") < 10) {
-          featurePostSaving = false;
-          btn.textContent = prevText;
-          btn.classList.remove("btn-loading");
-          return showFeaturePostModalError("Caption must be at least 10 characters");
-        }
-        const formData = new FormData();
-        formData.append("title", document.getElementById("featurePostTitle").value);
-        formData.append("caption", caption);
-        formData.append("post_type", document.getElementById("featurePostType").value);
-        const fileInput = document.getElementById("featurePostImage");
-        if (fileInput?.files?.[0]) formData.append("image", fileInput.files[0]);
-
-        const url = editId ? `/api/feature-posts/${editId}` : "/api/feature-posts";
-        const method = editId ? "PATCH" : "POST";
-        const r = await apiFetch(url, { method, body: formData });
-        const data = await parseJsonResponse(r);
-
-        btn.textContent = prevText;
-        btn.classList.remove("btn-loading");
-        featurePostSaving = false;
-
-        if (!r.ok) return showFeaturePostModalError(data.error || "Failed to save");
-        closeFeaturePostModal();
-        if (editId) {
-          const idx = featurePostsList.findIndex((p) => p.id === editId);
-          if (idx !== -1) featurePostsList[idx] = data;
-        } else {
-          featurePostsList.unshift(data);
-        }
-        renderFeaturePostsList();
-      }
-
-      async function deleteFeaturePost(postId) {
-        if (!featurePostsAdmin) return;
-        const post = featurePostsList.find((p) => p.id === postId);
-        if (
-          !(await showConfirm(
-            `Delete “${post?.title || "this post"}”? This cannot be undone.`,
-          ))
-        )
-          return;
-        const r = await apiFetch(`/api/feature-posts/${postId}`, {
-          method: "DELETE",
-        });
-        if (!r.ok) {
-          const data = await parseJsonResponse(r);
-          return showAlert(data.error || "Failed to delete");
-        }
-        featurePostsList = featurePostsList.filter((p) => p.id !== postId);
-        featurePostCommentsCache.delete(postId);
-        featurePostOpenComments.delete(postId);
-        renderFeaturePostsList();
-      }
-
-      document
-        .getElementById("featurePostImage")
-        ?.addEventListener("change", (e) => {
-          const file = e.target.files?.[0];
-          const preview = document.getElementById("featurePostImagePreview");
-          if (!file) {
-            preview.classList.add("hidden");
-            return;
-          }
-          preview.src = URL.createObjectURL(file);
-          preview.classList.remove("hidden");
-        });
-
-      document.addEventListener("click", (e) => {
-        if (
-          featurePostReactionPicker &&
-          !e.target.closest("#featurePostReactionLayer") &&
-          !e.target.closest("[data-fp-add]")
-        ) {
-          closeFeaturePostReactionPicker();
-        }
-      });
-
-      async function init() {
-        hideNavigationLoading();
-        RichTextEditor.mount("featurePostCaptionEditor", {
-          hiddenInputId: "featurePostCaption",
-          placeholder: "What are we building or what shipped?",
-        });
-        const r = await apiFetch("/api/me");
-        const meData = await parseJsonResponse(r);
-        if (!r.ok) {
-          if (isApiUnauthorizedUpdate(r, meData)) return;
-          if (r.status === 401) return (window.location = "/login");
-          return;
-        }
-        currentUser = meData;
-        if (currentUser.error) return;
-        await loadFeedbackCaptchaConfig();
-        renderNavUser();
-        if (!currentUser.is_guest) {
-          document.getElementById("joinByInviteLinkBtn")?.classList.remove("hidden");
-        }
-        if (!currentUser.is_guest) {
-          document.getElementById("profileBtn").onclick = openProfileModal;
-          loadAvatarPresets();
-          DirectChat.init(currentUser, { showConfirm, showAlert });
-        }
-        updateFeedbackFabPosition();
-        applyGuestTeamAvatarUploadUi();
-        loadTeams();
-        loadTeamInvites();
-        loadFeaturePosts();
-        if (isFeedbackAdmin()) {
-          document
-            .getElementById("feedbackAdminSection")
-            .classList.remove("hidden");
-          loadAdminFeedback();
-        }
-        maybeShowGuestNotice();
-      }
-
-      async function loadTeamInvites() {
-        if (!currentUser?.is_guest && hasKnownTeamInvites()) showTeamInvitesLoading();
-        const r = await apiFetch("/api/team-invites");
-        if (!r.ok) {
-          hideTeamInvitesSection();
-          return;
-        }
-        const invites = await parseJsonResponse(r);
-        if (!Array.isArray(invites)) {
-          hideTeamInvitesSection();
-          return;
-        }
-        teamInvitesList = invites;
-        setKnownTeamInvites(teamInvitesList.length > 0);
-        renderTeamInvitesSection();
-      }
-
-      function teamInvitesHintStorageKey() {
-        return currentUser?.id
-          ? `${TEAM_INVITES_HINT_KEY}:${currentUser.id}`
-          : null;
-      }
-
-      function hasKnownTeamInvites() {
-        const key = teamInvitesHintStorageKey();
-        if (!key) return false;
-        try {
-          return sessionStorage.getItem(key) === "1";
-        } catch {
-          return false;
-        }
-      }
-
-      function setKnownTeamInvites(hasInvites) {
-        const key = teamInvitesHintStorageKey();
-        if (!key) return;
-        try {
-          if (hasInvites) sessionStorage.setItem(key, "1");
-          else sessionStorage.removeItem(key);
-        } catch {
-          /* ignore */
-        }
-      }
-
-      const TEAM_INVITE_CARD_SKELETON_HTML = `
-        <div class="bg-ink-800 border border-amber-500/20 rounded-2xl p-5">
-          <div class="flex items-start gap-3 mb-4">
-            <div class="skeleton w-11 h-11 rounded-xl shrink-0"></div>
-            <div class="flex-1 min-w-0 space-y-2">
-              <div class="skeleton h-4 w-2/5 rounded"></div>
-              <div class="skeleton h-3 w-full rounded"></div>
-              <div class="skeleton h-3 w-4/5 rounded"></div>
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <div class="skeleton flex-1 h-9 rounded-xl"></div>
-            <div class="skeleton flex-1 h-9 rounded-xl"></div>
-          </div>
-        </div>`;
-
-      function showTeamInvitesLoading() {
-        const section = document.getElementById("teamInvitesSection");
-        const grid = document.getElementById("teamInvitesGrid");
-        const countEl = document.getElementById("teamInvitesCount");
-        if (!section || !grid || !countEl) return;
-        section.classList.remove("hidden");
-        countEl.innerHTML = '<span class="inline-block skeleton w-5 h-4 rounded align-middle"></span>';
-        grid.innerHTML = TEAM_INVITE_CARD_SKELETON_HTML;
-      }
-
-      function hideTeamInvitesSection() {
-        const section = document.getElementById("teamInvitesSection");
-        const grid = document.getElementById("teamInvitesGrid");
-        section?.classList.add("hidden");
-        if (grid) grid.innerHTML = "";
-      }
-
-      function renderTeamInvitesSection() {
-        const section = document.getElementById("teamInvitesSection");
-        const grid = document.getElementById("teamInvitesGrid");
-        const countEl = document.getElementById("teamInvitesCount");
-
-        if (!teamInvitesList.length) {
-          hideTeamInvitesSection();
-          return;
-        }
-
-        section.classList.remove("hidden");
-        countEl.textContent = teamInvitesList.length;
-
-        grid.innerHTML = teamInvitesList
-          .map((invite, i) => {
-            const team = invite.team || {};
-            const inviter = invite.invited_by;
-            const invitedByLine = inviter?.username
-              ? `<p class="text-xs text-amber-400/90 mt-2">Invited by ${escHtml(inviter.username)}${inviter.email ? ` (${escHtml(inviter.email)})` : ""}</p>`
-              : "";
-            return `<div class="invite-card bg-ink-800 border border-amber-500/20 rounded-2xl p-5 fade-up" style="animation-delay:${i * 0.07}s">
-          <div class="flex items-start gap-3 mb-4">
-            ${teamAvatarHtml(team, "w-11 h-11 text-sm")}
-            <div class="flex-1 min-w-0">
-              <h3 class="text-white font-semibold truncate">${escHtml(team.name || "Team")}</h3>
-              <p class="text-gray-500 text-sm line-clamp-3 mt-1">${escHtml(team.description || "No description")}</p>
-              ${invitedByLine}
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button type="button" onclick="acceptTeamInvite('${invite.id}')"
-              class="flex-1 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium py-2 rounded-xl transition">
-              Accept
-            </button>
-            <button type="button" onclick="declineTeamInvite('${invite.id}')"
-              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-sm font-medium py-2 rounded-xl transition">
-              Decline
-            </button>
-          </div>
-        </div>`;
-          })
-          .join("");
-      }
-
-      async function acceptTeamInvite(inviteId) {
-        const card = document
-          .querySelector(
-            `.invite-card button[onclick="acceptTeamInvite('${inviteId}')"]`,
-          )
-          ?.closest(".invite-card");
-        if (card) {
-          card.querySelectorAll("button").forEach((b) => {
-            b.disabled = true;
-          });
-        }
-        const r = await apiFetch(`/api/team-invites/${inviteId}/accept`, {
-          method: "POST",
-        });
-        const d = await parseJsonResponse(r);
-        if (!r.ok) {
-          if (card)
-            card.querySelectorAll("button").forEach((b) => {
-              b.disabled = false;
-            });
-          return showAlert(d.error || "Failed to accept invite");
-        }
-        await loadTeamInvites();
-        showTeamsLoading();
-        await loadTeams();
-      }
-
-      async function declineTeamInvite(inviteId) {
-        const card = document
-          .querySelector(
-            `.invite-card button[onclick="declineTeamInvite('${inviteId}')"]`,
-          )
-          ?.closest(".invite-card");
-        if (card) {
-          card.querySelectorAll("button").forEach((b) => {
-            b.disabled = true;
-          });
-        }
-        const r = await apiFetch(`/api/team-invites/${inviteId}/decline`, {
-          method: "POST",
-        });
-        const d = await parseJsonResponse(r);
-        if (!r.ok) {
-          if (card)
-            card.querySelectorAll("button").forEach((b) => {
-              b.disabled = false;
-            });
-          return showAlert(d.error || "Failed to decline invite");
-        }
-        await loadTeamInvites();
-      }
-
-      function isTeamOnline(teamId) {
-        return onlineTeamIds.has(String(teamId));
-      }
-
-      function teamAvatarWithPresenceHtml(team) {
-        const online = isTeamOnline(team.id);
-        return `<div class="relative shrink-0" title="${online ? "Someone is online on this board" : escHtml(team.name)}">
-          ${teamAvatarHtml(team, "w-11 h-11 text-sm")}
-          ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Someone is online"></span>' : ""}
-        </div>`;
-      }
-
-      const TEAM_CARD_BODY_SKELETON_HTML = `
-        <div class="flex items-start justify-between mb-4">
-          <div class="skeleton w-11 h-11 rounded-xl"></div>
-          <div class="skeleton w-14 h-5 rounded-full"></div>
-        </div>
-        <div class="skeleton w-2/3 h-4 mb-2"></div>
-        <div class="skeleton w-full h-3 mb-1.5"></div>
-        <div class="skeleton w-4/5 h-3 mb-5"></div>
-        <div class="flex items-center justify-between">
-          <div class="skeleton w-16 h-3"></div>
-          <div class="skeleton w-4 h-4 rounded"></div>
-        </div>`;
-
-      function beginOpeningTeam(teamId, cardEl) {
-        const grid = document.getElementById("teamsGrid");
-        if (cardEl) {
-          cardEl.classList.remove(
-            "hover:border-white/20",
-            "hover:bg-ink-700",
-            "cursor-pointer",
-          );
-          cardEl.classList.add("pointer-events-none");
-          cardEl.innerHTML = TEAM_CARD_BODY_SKELETON_HTML;
-        }
-        grid?.querySelectorAll(".team-card[data-team-id]").forEach((c) => {
-          if (c !== cardEl) c.classList.add("pointer-events-none", "opacity-60");
-        });
-        setNavigatingAway(true);
-        window.location = `/board/${teamId}`;
-      }
-
-      const TEAMS_GRID_SKELETON_HTML = `
-      <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-        <div class="flex items-start justify-between mb-4">
-          <div class="skeleton w-11 h-11 rounded-xl"></div>
-          <div class="skeleton w-14 h-5 rounded-full"></div>
-        </div>
-        <div class="skeleton w-2/3 h-4 mb-2"></div>
-        <div class="skeleton w-full h-3 mb-1.5"></div>
-        <div class="skeleton w-4/5 h-3 mb-5"></div>
-        <div class="flex items-center justify-between">
-          <div class="skeleton w-16 h-3"></div>
-          <div class="skeleton w-4 h-4 rounded"></div>
-        </div>
-      </div>
-      <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-        <div class="flex items-start justify-between mb-4">
-          <div class="skeleton w-11 h-11 rounded-xl"></div>
-          <div class="skeleton w-16 h-5 rounded-full"></div>
-        </div>
-        <div class="skeleton w-1/2 h-4 mb-2"></div>
-        <div class="skeleton w-full h-3 mb-1.5"></div>
-        <div class="skeleton w-3/5 h-3 mb-5"></div>
-        <div class="flex items-center justify-between">
-          <div class="skeleton w-20 h-3"></div>
-          <div class="skeleton w-4 h-4 rounded"></div>
-        </div>
-      </div>
-      <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-        <div class="flex items-start justify-between mb-4">
-          <div class="skeleton w-11 h-11 rounded-xl"></div>
-          <div class="skeleton w-12 h-5 rounded-full"></div>
-        </div>
-        <div class="skeleton w-3/4 h-4 mb-2"></div>
-        <div class="skeleton w-full h-3 mb-1.5"></div>
-        <div class="skeleton w-2/3 h-3 mb-5"></div>
-        <div class="flex items-center justify-between">
-          <div class="skeleton w-14 h-3"></div>
-          <div class="skeleton w-4 h-4 rounded"></div>
-        </div>
-      </div>`;
-
-      function showTeamsLoading() {
-        stopTeamOnlinePoll();
-        document.getElementById("teamsGrid").innerHTML =
-          TEAMS_GRID_SKELETON_HTML;
-      }
-
-      function renderTeamsGrid() {
-        const grid = document.getElementById("teamsGrid");
-        grid.innerHTML = "";
-
-        if (!teamsList.length) {
-          stopTeamOnlinePoll();
-          grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
-          <div class="w-16 h-16 bg-ink-800 border border-white/10 rounded-2xl flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <p class="text-gray-300 font-medium mb-1">No teams yet</p>
-          <p class="text-gray-500 text-sm mb-5">Create your first team to start managing tasks.</p>
-          <button onclick="openCreateModal()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">Create a Team</button>
-        </div>`;
-          return;
-        }
-
-        teamsList.forEach((team, i) => {
-          const card = document.createElement("div");
-          card.className =
-            "team-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-2xl p-5 cursor-pointer transition-all hover:bg-ink-700 fade-up";
-          card.style.animationDelay = `${i * 0.07}s`;
-          card.dataset.teamId = team.id;
-          card.onclick = () => beginOpeningTeam(team.id, card);
-          card.innerHTML = `
-          <div class="flex items-start justify-between mb-4">
-            ${teamAvatarWithPresenceHtml(team)}
-            <span class="text-xs px-2.5 py-1 rounded-full border ${team.role === "owner" ? "border-brand-500/40 text-brand-500 bg-brand-500/10" : "border-white/10 text-gray-400 bg-white/5"}">${team.role}</span>
-          </div>
-          <h3 class="text-white font-semibold mb-1">${escHtml(team.name)}</h3>
-          <p class="text-gray-500 text-sm mb-4 line-clamp-2">${escHtml(team.description || "No description")}</p>
-          <div class="flex items-center justify-between">
-            <div class="flex flex-col gap-0.5">
-              <span class="text-gray-600 text-xs">${new Date(team.created_at).toLocaleDateString()}</span>
-              <span class="text-gray-500 text-xs" title="Members online on this board">${team.online_count ?? 0}/${team.member_count ?? 0} online</span>
-            </div>
-            <svg class="arrow w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>`;
-          grid.appendChild(card);
-        });
-      }
-
-      function updateTeamOnlineIndicators() {
-        document
-          .querySelectorAll(".team-card[data-team-id]")
-          .forEach((card) => {
-            const teamId = card.dataset.teamId;
-            const team = teamsList.find((t) => String(t.id) === String(teamId));
-            if (!team) return;
-            const avatarWrap = card.querySelector(".relative.shrink-0");
-            if (!avatarWrap) return;
-            avatarWrap.outerHTML = teamAvatarWithPresenceHtml(team);
-          });
-      }
-
-      async function fetchTeamOnlineStatus() {
-        const r = await apiFetch("/api/teams/online");
-        if (!r.ok) return;
-        const ids = await parseJsonResponse(r);
-        if (!Array.isArray(ids)) return;
-        const next = new Set(ids.map(String));
-        const changed =
-          next.size !== onlineTeamIds.size ||
-          [...next].some((id) => !onlineTeamIds.has(id)) ||
-          [...onlineTeamIds].some((id) => !next.has(id));
-        onlineTeamIds = next;
-        if (changed && teamsList.length) updateTeamOnlineIndicators();
-      }
-
-      function stopTeamOnlinePoll() {
-        clearInterval(teamOnlinePollInterval);
-        teamOnlinePollInterval = null;
-      }
-
-      function startTeamOnlinePoll() {
-        stopTeamOnlinePoll();
-        if (!teamsList.length) return;
-        fetchTeamOnlineStatus();
-        teamOnlinePollInterval = setInterval(
-          fetchTeamOnlineStatus,
-          TEAM_ONLINE_POLL_MS,
-        );
-      }
-
-      async function loadTeams() {
-        const r = await apiFetch("/api/teams");
-        if (!r.ok) return;
-        const teams = await parseJsonResponse(r);
-        if (!Array.isArray(teams)) return;
-        teamsList = teams;
-        await fetchTeamOnlineStatus();
-        renderTeamsGrid();
-        startTeamOnlinePoll();
-      }
-
-      function resetCreateTeamDraft() {
-        const defaultPreset = avatarPresets[0];
-        createTeamDraft = {
-          presetId: defaultPreset?.id || null,
-          avatar_url: defaultPreset?.url || null,
-          pendingFile: null,
-        };
-      }
-
-      function renderCreateTeamAvatarPresetGrid() {
-        const grid = document.getElementById("createTeamAvatarPresetGrid");
-        const activeId = createTeamDraft.pendingFile
-          ? null
-          : createTeamDraft.presetId;
-        grid.innerHTML = avatarPresets
-          .map(
-            (p) => `
-        <button type="button" onclick="selectCreateTeamPreset('${p.id}')"
-          class="avatar-preset-btn w-10 h-10 rounded-xl overflow-hidden p-0 border border-white/10 ${activeId === p.id ? "selected" : ""}"
-          title="${escHtml(p.label)}">
-          <img src="${escHtml(p.url)}" alt="" class="w-full h-full object-cover" />
-        </button>`,
-          )
-          .join("");
-      }
-
-      function updateCreateTeamPreview() {
-        const el = document.getElementById("createTeamAvatarPreview");
-        const name = document.getElementById("teamName").value.trim() || "Team";
-        if (createTeamDraft.pendingFile) {
-          el.innerHTML = "";
-          el.style.background = "";
-          const img = document.createElement("img");
-          img.src = URL.createObjectURL(createTeamDraft.pendingFile);
-          img.alt = "";
-          img.className = "w-full h-full object-cover";
-          el.appendChild(img);
-          return;
-        }
-        applyTeamAvatarToElement(el, {
-          name,
-          avatar_color: "#4f6ef7",
-          avatar_url: createTeamDraft.avatar_url,
-        });
-      }
-
-      async function loadKanbanPresets() {
-        if (kanbanPresets.length) return;
-        const r = await apiFetch("/api/kanban-presets");
-        const data = await parseJsonResponse(r);
-        if (r.ok && Array.isArray(data)) kanbanPresets = data;
-      }
-
-      function renderKanbanPresetSelect() {
-        const sel = document.getElementById("teamKanbanPreset");
-        if (!sel || !kanbanPresets.length) return;
-        sel.innerHTML = kanbanPresets
-          .map(
-            (p) =>
-              `<option value="${p.id}">${p.name} (${p.column_count} columns)</option>`
-          )
-          .join("");
-        updateKanbanPresetDescription();
-      }
-
-      function updateKanbanPresetDescription() {
-        const sel = document.getElementById("teamKanbanPreset");
-        const desc = document.getElementById("teamKanbanPresetDesc");
-        if (!sel || !desc) return;
-        const preset = kanbanPresets.find((p) => p.id === sel.value);
-        if (!preset) {
-          desc.textContent = "";
-          return;
-        }
-        const cols = (preset.columns || []).map((c) => c.name).join(" → ");
-        desc.textContent = preset.description + (cols ? ` · ${cols}` : "");
-      }
-
-      function toggleCreateTeamOptional() {
-        const content = document.getElementById('createTeamOptionalContent');
-        const btn = document.getElementById('createTeamOptionalToggleBtn');
-        const label = document.getElementById('createTeamOptionalLabel');
-        const chevron = document.getElementById('createTeamOptionalChevron');
-        if (!content) return;
-        const open = content.classList.contains('hidden');
-        content.classList.toggle('hidden', !open);
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        btn.classList.toggle('drawer-open', open);
-        if (label) label.textContent = open ? 'Fewer options' : 'More options';
-        if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
-      }
-
-      function resetCreateTeamOptionalDrawer() {
-        const content = document.getElementById('createTeamOptionalContent');
-        const btn = document.getElementById('createTeamOptionalToggleBtn');
-        const label = document.getElementById('createTeamOptionalLabel');
-        const chevron = document.getElementById('createTeamOptionalChevron');
-        if (content) content.classList.add('hidden');
-        if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('drawer-open'); }
-        if (label) label.textContent = 'More options';
-        if (chevron) chevron.style.transform = '';
-      }
-
-      async function openCreateModal() {
-        document.getElementById("modalError").classList.add("hidden");
-        document.getElementById("teamName").value = "";
-        document.getElementById("teamDesc").value = "";
-        document.getElementById("createTeamAvatarFile").value = "";
-        if (!avatarPresets.length) await loadAvatarPresets();
-        await loadKanbanPresets();
-        renderKanbanPresetSelect();
-        resetCreateTeamDraft();
-        renderCreateTeamAvatarPresetGrid();
-        updateCreateTeamPreview();
-        applyGuestTeamAvatarUploadUi();
-        resetCreateTeamOptionalDrawer();
-        document.getElementById("createModal").classList.remove("hidden");
-        pushDashboardOverlay("createTeam");
-        setTimeout(() => document.getElementById("teamName").focus(), 50);
-      }
-
-      function closeCreateModal() {
-        document.getElementById("createModal").classList.add("hidden");
-        document.getElementById("teamName").value = "";
-        document.getElementById("teamDesc").value = "";
-        document.getElementById("modalError").classList.add("hidden");
-        resetCreateTeamOptionalDrawer();
-      }
-
-      function selectCreateTeamPreset(presetId) {
-        const preset = avatarPresets.find((p) => p.id === presetId);
-        if (!preset) return;
-        createTeamDraft.presetId = presetId;
-        createTeamDraft.avatar_url = preset.url;
-        createTeamDraft.pendingFile = null;
-        renderCreateTeamAvatarPresetGrid();
-        updateCreateTeamPreview();
-      }
-
-      function setCreateTeamBtnLoading(loading, label) {
-        const btn = document.getElementById("createTeamBtn");
-        if (!btn) return;
-        if (loading) {
-          if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
-          btn.disabled = true;
-          btn.classList.add("btn-loading", "inline-flex", "items-center", "justify-center", "gap-2");
-          btn.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span>${label || "Creating…"}</span>`;
-        } else {
-          btn.disabled = false;
-          btn.classList.remove("btn-loading", "inline-flex", "items-center", "justify-center", "gap-2");
-          btn.textContent = btn.dataset.origText || "Create Team";
-          delete btn.dataset.origText;
-        }
-      }
-
-      async function createTeam() {
-        if (createTeamSaving) return;
-        const name = document.getElementById("teamName").value.trim();
-        if (!name) {
-          const el = document.getElementById("modalError");
-          el.textContent = "Team name is required";
-          el.classList.remove("hidden");
-          return;
-        }
-        const desc = document.getElementById("teamDesc").value.trim();
-        const kanbanPreset =
-          document.getElementById("teamKanbanPreset")?.value || "classic";
-        const body = { name, description: desc, kanban_preset: kanbanPreset };
-        if (!createTeamDraft.pendingFile && createTeamDraft.avatar_url) {
-          body.avatar_url = createTeamDraft.avatar_url;
-        }
-
-        createTeamSaving = true;
-        setCreateTeamBtnLoading(true, "Creating…");
-
-        const r = await apiFetch("/api/teams", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const d = await parseJsonResponse(r);
-        if (d.error) {
-          createTeamSaving = false;
-          setCreateTeamBtnLoading(false);
-          const el = document.getElementById("modalError");
-          el.textContent = d.error;
-          el.classList.remove("hidden");
-          return;
-        }
-
-        if (createTeamDraft.pendingFile && !currentUser?.is_guest) {
-          setCreateTeamBtnLoading(true, "Uploading avatar…");
-          const form = new FormData();
-          form.append("avatar", createTeamDraft.pendingFile);
-          const upR = await apiFetch(`/api/teams/${d.id}/avatar/upload`, {
-            method: "POST",
-            body: form,
-          });
-          const upD = await parseJsonResponse(upR);
-          if (!upR.ok) {
-            createTeamSaving = false;
-            setCreateTeamBtnLoading(false);
-            const el = document.getElementById("modalError");
-            el.textContent =
-              upD.error || "Team created but avatar upload failed";
-            el.classList.remove("hidden");
-            closeCreateModal();
-            showTeamsLoading();
-            await loadTeams();
-            return;
-          }
-        }
-
-        createTeamSaving = false;
-        setCreateTeamBtnLoading(false);
-        closeCreateModal();
-        setNavigatingAway(true);
-        window.location = `/board/${d.id}`;
-      }
-
-      document
-        .getElementById("createTeamAvatarFile")
-        ?.addEventListener("change", (e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (!file) return;
-          createTeamDraft.pendingFile = file;
-          createTeamDraft.presetId = null;
-          renderCreateTeamAvatarPresetGrid();
-          updateCreateTeamPreview();
-        });
-
-      document.getElementById("teamName")?.addEventListener("input", () => {
-        if (
-          !document.getElementById("createModal").classList.contains("hidden")
-        ) {
-          updateCreateTeamPreview();
-        }
-      });
-
-      document
-        .getElementById("teamKanbanPreset")
-        ?.addEventListener("change", updateKanbanPresetDescription);
-
-      async function logout() {
-        setNavigatingAway(true);
-        showNavigationLoading("Signing out…");
-        DirectChat.leaveAppPresence?.();
-        clearGuestDashboardNotice();
-        await apiFetch("/api/auth/logout", { method: "POST" });
-        window.location = "/login";
-      }
-
-      function escHtml(str) {
-        return String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;");
-      }
-
-      window.tfResetPageNavigationUi = () => {
-        if (teamsList.length) {
-          renderTeamsGrid();
-          updateTeamOnlineIndicators();
-        }
-      };
-
-      window.addEventListener("pagehide", stopTeamOnlinePoll);
-
-      init();
-    </script>
+    <script src="/dashboard/state.js"></script>
+    <script src="/dashboard/modals.js"></script>
+    <script src="/dashboard/invite-link.js"></script>
+    <script src="/dashboard/profile.js"></script>
+    <script src="/dashboard/guest-notice.js"></script>
+    <script src="/dashboard/feedback.js"></script>
+    <script src="/dashboard/feedback-admin.js"></script>
+    <script src="/dashboard/feature-posts.js"></script>
+    <script src="/dashboard/teams.js"></script>
+    <script src="/dashboard/team-invites.js"></script>
+    <script src="/dashboard/init.js"></script>
   </body>
 </html>

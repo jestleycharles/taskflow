@@ -1,0 +1,535 @@
+/**
+ * dashboard/teams.js
+ * ------------------
+ * Teams grid (load, render, navigate), team-online presence polling, and the
+ * "Create Team" modal (avatar, kanban preset, name, description).
+ *
+ * Depends on: state.js, modals.js, api.js, avatar-utils.js
+ */
+
+// ---------------------------------------------------------------------------
+// Skeleton HTML constants (used while data loads)
+// ---------------------------------------------------------------------------
+
+const TEAM_CARD_BODY_SKELETON_HTML = `
+  <div class="flex items-start justify-between mb-4">
+    <div class="skeleton w-11 h-11 rounded-xl"></div>
+    <div class="skeleton w-14 h-5 rounded-full"></div>
+  </div>
+  <div class="skeleton w-2/3 h-4 mb-2"></div>
+  <div class="skeleton w-full h-3 mb-1.5"></div>
+  <div class="skeleton w-4/5 h-3 mb-5"></div>
+  <div class="flex items-center justify-between">
+    <div class="skeleton w-16 h-3"></div>
+    <div class="skeleton w-4 h-4 rounded"></div>
+  </div>`;
+
+const TEAMS_GRID_SKELETON_HTML = `
+  <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
+    <div class="flex items-start justify-between mb-4">
+      <div class="skeleton w-11 h-11 rounded-xl"></div>
+      <div class="skeleton w-14 h-5 rounded-full"></div>
+    </div>
+    <div class="skeleton w-2/3 h-4 mb-2"></div>
+    <div class="skeleton w-full h-3 mb-1.5"></div>
+    <div class="skeleton w-4/5 h-3 mb-5"></div>
+    <div class="flex items-center justify-between">
+      <div class="skeleton w-16 h-3"></div>
+      <div class="skeleton w-4 h-4 rounded"></div>
+    </div>
+  </div>
+  <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
+    <div class="flex items-start justify-between mb-4">
+      <div class="skeleton w-11 h-11 rounded-xl"></div>
+      <div class="skeleton w-16 h-5 rounded-full"></div>
+    </div>
+    <div class="skeleton w-1/2 h-4 mb-2"></div>
+    <div class="skeleton w-full h-3 mb-1.5"></div>
+    <div class="skeleton w-3/5 h-3 mb-5"></div>
+    <div class="flex items-center justify-between">
+      <div class="skeleton w-20 h-3"></div>
+      <div class="skeleton w-4 h-4 rounded"></div>
+    </div>
+  </div>
+  <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
+    <div class="flex items-start justify-between mb-4">
+      <div class="skeleton w-11 h-11 rounded-xl"></div>
+      <div class="skeleton w-12 h-5 rounded-full"></div>
+    </div>
+    <div class="skeleton w-3/4 h-4 mb-2"></div>
+    <div class="skeleton w-full h-3 mb-1.5"></div>
+    <div class="skeleton w-2/3 h-3 mb-5"></div>
+    <div class="flex items-center justify-between">
+      <div class="skeleton w-14 h-3"></div>
+      <div class="skeleton w-4 h-4 rounded"></div>
+    </div>
+  </div>`;
+
+// ---------------------------------------------------------------------------
+// Online presence
+// ---------------------------------------------------------------------------
+
+function isTeamOnline(teamId) {
+  return window.onlineTeamIds.has(String(teamId));
+}
+
+function teamAvatarWithPresenceHtml(team) {
+  const online = isTeamOnline(team.id);
+  return `<div class="relative shrink-0" title="${online ? "Someone is online on this board" : escHtml(team.name)}">
+    ${teamAvatarHtml(team, "w-11 h-11 text-sm")}
+    ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Someone is online"></span>' : ""}
+  </div>`;
+}
+
+async function fetchTeamOnlineStatus() {
+  const r = await apiFetch("/api/teams/online");
+  if (!r.ok) return;
+  const ids = await parseJsonResponse(r);
+  if (!Array.isArray(ids)) return;
+
+  const next = new Set(ids.map(String));
+  const changed =
+    next.size !== window.onlineTeamIds.size ||
+    [...next].some((id) => !window.onlineTeamIds.has(id)) ||
+    [...window.onlineTeamIds].some((id) => !next.has(id));
+
+  window.onlineTeamIds = next;
+  if (changed && window.teamsList.length) updateTeamOnlineIndicators();
+}
+
+function updateTeamOnlineIndicators() {
+  document.querySelectorAll(".team-card[data-team-id]").forEach((card) => {
+    const teamId = card.dataset.teamId;
+    const team = window.teamsList.find((t) => String(t.id) === String(teamId));
+    if (!team) return;
+    const avatarWrap = card.querySelector(".relative.shrink-0");
+    if (!avatarWrap) return;
+    avatarWrap.outerHTML = teamAvatarWithPresenceHtml(team);
+  });
+}
+
+function stopTeamOnlinePoll() {
+  clearInterval(window.teamOnlinePollInterval);
+  window.teamOnlinePollInterval = null;
+}
+
+function startTeamOnlinePoll() {
+  stopTeamOnlinePoll();
+  if (!window.teamsList.length) return;
+  fetchTeamOnlineStatus();
+  window.teamOnlinePollInterval = setInterval(
+    fetchTeamOnlineStatus,
+    window.TEAM_ONLINE_POLL_MS,
+  );
+}
+
+window.stopTeamOnlinePoll = stopTeamOnlinePoll;
+
+// ---------------------------------------------------------------------------
+// Teams grid rendering
+// ---------------------------------------------------------------------------
+
+/** Replace the grid with skeletons while a fresh load is in progress. */
+window.showTeamsLoading = function showTeamsLoading() {
+  stopTeamOnlinePoll();
+  document.getElementById("teamsGrid").innerHTML = TEAMS_GRID_SKELETON_HTML;
+};
+
+/**
+ * Navigate to a team board, showing a loading skeleton on the card first.
+ * @param {string} teamId
+ * @param {HTMLElement|null} cardEl
+ */
+window.beginOpeningTeam = function beginOpeningTeam(teamId, cardEl) {
+  const grid = document.getElementById("teamsGrid");
+  if (cardEl) {
+    cardEl.classList.remove(
+      "hover:border-white/20",
+      "hover:bg-ink-700",
+      "cursor-pointer",
+    );
+    cardEl.classList.add("pointer-events-none");
+    cardEl.innerHTML = TEAM_CARD_BODY_SKELETON_HTML;
+  }
+  grid?.querySelectorAll(".team-card[data-team-id]").forEach((c) => {
+    if (c !== cardEl) c.classList.add("pointer-events-none", "opacity-60");
+  });
+  setNavigatingAway(true);
+  window.location = `/board/${teamId}`;
+};
+
+function renderTeamsGrid() {
+  const grid = document.getElementById("teamsGrid");
+  grid.innerHTML = "";
+
+  if (!window.teamsList.length) {
+    stopTeamOnlinePoll();
+    grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+      <div class="w-16 h-16 bg-ink-800 border border-white/10 rounded-2xl flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </div>
+      <p class="text-gray-300 font-medium mb-1">No teams yet</p>
+      <p class="text-gray-500 text-sm mb-5">Create your first team to start managing tasks.</p>
+      <button onclick="openCreateModal()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">Create a Team</button>
+    </div>`;
+    return;
+  }
+
+  window.teamsList.forEach((team, i) => {
+    const card = document.createElement("div");
+    card.className =
+      "team-card bg-ink-800 border border-white/10 hover:border-white/20 rounded-2xl p-5 cursor-pointer transition-all hover:bg-ink-700 fade-up";
+    card.style.animationDelay = `${i * 0.07}s`;
+    card.dataset.teamId = team.id;
+    card.onclick = () => beginOpeningTeam(team.id, card);
+    card.innerHTML = `
+      <div class="flex items-start justify-between mb-4">
+        ${teamAvatarWithPresenceHtml(team)}
+        <span class="text-xs px-2.5 py-1 rounded-full border ${team.role === "owner" ? "border-brand-500/40 text-brand-500 bg-brand-500/10" : "border-white/10 text-gray-400 bg-white/5"}">${team.role}</span>
+      </div>
+      <h3 class="text-white font-semibold mb-1">${escHtml(team.name)}</h3>
+      <p class="text-gray-500 text-sm mb-4 line-clamp-2">${escHtml(team.description || "No description")}</p>
+      <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-0.5">
+          <span class="text-gray-600 text-xs">${new Date(team.created_at).toLocaleDateString()}</span>
+          <span class="text-gray-500 text-xs" title="Members online on this board">${team.online_count ?? 0}/${team.member_count ?? 0} online</span>
+        </div>
+        <svg class="arrow w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Load teams from API
+// ---------------------------------------------------------------------------
+
+window.loadTeams = async function loadTeams() {
+  const r = await apiFetch("/api/teams");
+  if (!r.ok) return;
+  const teams = await parseJsonResponse(r);
+  if (!Array.isArray(teams)) return;
+
+  window.teamsList = teams;
+  await fetchTeamOnlineStatus();
+  renderTeamsGrid();
+  startTeamOnlinePoll();
+};
+
+// Expose for page-restore after bfcache
+window.tfResetPageNavigationUi = () => {
+  if (window.teamsList.length) {
+    renderTeamsGrid();
+    updateTeamOnlineIndicators();
+  }
+};
+
+window.addEventListener("pagehide", stopTeamOnlinePoll);
+
+// ---------------------------------------------------------------------------
+// Create Team modal
+// ---------------------------------------------------------------------------
+
+function resetCreateTeamDraft() {
+  const defaultPreset = window.avatarPresets[0];
+  window.createTeamDraft = {
+    presetId: defaultPreset?.id || null,
+    avatar_url: defaultPreset?.url || null,
+    pendingFile: null,
+  };
+}
+
+function renderCreateTeamAvatarPresetGrid() {
+  const grid = document.getElementById("createTeamAvatarPresetGrid");
+  const activeId = window.createTeamDraft.pendingFile
+    ? null
+    : window.createTeamDraft.presetId;
+
+  grid.innerHTML = window.avatarPresets
+    .map(
+      (p) => `
+      <button type="button" onclick="selectCreateTeamPreset('${p.id}')"
+        class="avatar-preset-btn w-10 h-10 rounded-xl overflow-hidden p-0 border border-white/10 ${activeId === p.id ? "selected" : ""}"
+        title="${escHtml(p.label)}">
+        <img src="${escHtml(p.url)}" alt="" class="w-full h-full object-cover" />
+      </button>`,
+    )
+    .join("");
+}
+
+function updateCreateTeamPreview() {
+  const el = document.getElementById("createTeamAvatarPreview");
+  const name = document.getElementById("teamName").value.trim() || "Team";
+
+  if (window.createTeamDraft.pendingFile) {
+    el.innerHTML = "";
+    el.style.background = "";
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(window.createTeamDraft.pendingFile);
+    img.alt = "";
+    img.className = "w-full h-full object-cover";
+    el.appendChild(img);
+    return;
+  }
+
+  applyTeamAvatarToElement(el, {
+    name,
+    avatar_color: "#4f6ef7",
+    avatar_url: window.createTeamDraft.avatar_url,
+  });
+}
+
+async function loadKanbanPresets() {
+  if (window.kanbanPresets.length) return;
+  const r = await apiFetch("/api/kanban-presets");
+  const data = await parseJsonResponse(r);
+  if (r.ok && Array.isArray(data)) window.kanbanPresets = data;
+}
+
+function renderKanbanPresetSelect() {
+  const sel = document.getElementById("teamKanbanPreset");
+  if (!sel || !window.kanbanPresets.length) return;
+
+  sel.innerHTML = window.kanbanPresets
+    .map(
+      (p) =>
+        `<option value="${p.id}">${p.name} (${p.column_count} columns)</option>`,
+    )
+    .join("");
+
+  updateKanbanPresetDescription();
+}
+
+window.updateKanbanPresetDescription =
+  function updateKanbanPresetDescription() {
+    const sel = document.getElementById("teamKanbanPreset");
+    const desc = document.getElementById("teamKanbanPresetDesc");
+    if (!sel || !desc) return;
+
+    const preset = window.kanbanPresets.find((p) => p.id === sel.value);
+    if (!preset) {
+      desc.textContent = "";
+      return;
+    }
+
+    const cols = (preset.columns || []).map((c) => c.name).join(" → ");
+    desc.textContent = preset.description + (cols ? ` · ${cols}` : "");
+  };
+
+window.toggleCreateTeamOptional = function toggleCreateTeamOptional() {
+  const content = document.getElementById("createTeamOptionalContent");
+  const btn = document.getElementById("createTeamOptionalToggleBtn");
+  const label = document.getElementById("createTeamOptionalLabel");
+  const chevron = document.getElementById("createTeamOptionalChevron");
+  if (!content) return;
+
+  const open = content.classList.contains("hidden");
+  content.classList.toggle("hidden", !open);
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  btn.classList.toggle("drawer-open", open);
+  if (label) label.textContent = open ? "Fewer options" : "More options";
+  if (chevron) chevron.style.transform = open ? "rotate(180deg)" : "";
+};
+
+function resetCreateTeamOptionalDrawer() {
+  const content = document.getElementById("createTeamOptionalContent");
+  const btn = document.getElementById("createTeamOptionalToggleBtn");
+  const label = document.getElementById("createTeamOptionalLabel");
+  const chevron = document.getElementById("createTeamOptionalChevron");
+
+  if (content) content.classList.add("hidden");
+  if (btn) {
+    btn.setAttribute("aria-expanded", "false");
+    btn.classList.remove("drawer-open");
+  }
+  if (label) label.textContent = "More options";
+  if (chevron) chevron.style.transform = "";
+}
+
+/** Show/hide the custom-upload label for guests (guests can only use presets). */
+window.applyGuestTeamAvatarUploadUi = function applyGuestTeamAvatarUploadUi() {
+  const guest = !!window.currentUser?.is_guest;
+  const label = document.getElementById("createTeamAvatarUploadLabel");
+  const note = document.getElementById("createTeamAvatarUploadGuestNote");
+  const input = document.getElementById("createTeamAvatarFile");
+  const hint = document.querySelector(
+    "#createModal .flex.items-center.gap-4.mb-4 .text-sm.text-gray-300",
+  );
+  if (label) label.classList.toggle("hidden", guest);
+  if (note) note.classList.toggle("hidden", !guest);
+  if (input && guest) input.value = "";
+  if (hint)
+    hint.textContent = guest
+      ? "Choose a preset avatar"
+      : "Choose a preset or upload your own";
+};
+
+window.openCreateModal = async function openCreateModal() {
+  document.getElementById("modalError").classList.add("hidden");
+  document.getElementById("teamName").value = "";
+  document.getElementById("teamDesc").value = "";
+  document.getElementById("createTeamAvatarFile").value = "";
+
+  if (!window.avatarPresets.length) await window.loadAvatarPresets();
+  await loadKanbanPresets();
+  renderKanbanPresetSelect();
+  resetCreateTeamDraft();
+  renderCreateTeamAvatarPresetGrid();
+  updateCreateTeamPreview();
+  applyGuestTeamAvatarUploadUi();
+  resetCreateTeamOptionalDrawer();
+
+  document.getElementById("createModal").classList.remove("hidden");
+  pushDashboardOverlay("createTeam");
+  setTimeout(() => document.getElementById("teamName").focus(), 50);
+};
+
+window.closeCreateModal = function closeCreateModal() {
+  document.getElementById("createModal").classList.add("hidden");
+  document.getElementById("teamName").value = "";
+  document.getElementById("teamDesc").value = "";
+  document.getElementById("modalError").classList.add("hidden");
+  resetCreateTeamOptionalDrawer();
+};
+
+window.selectCreateTeamPreset = function selectCreateTeamPreset(presetId) {
+  const preset = window.avatarPresets.find((p) => p.id === presetId);
+  if (!preset) return;
+  window.createTeamDraft.presetId = presetId;
+  window.createTeamDraft.avatar_url = preset.url;
+  window.createTeamDraft.pendingFile = null;
+  renderCreateTeamAvatarPresetGrid();
+  updateCreateTeamPreview();
+};
+
+function setCreateTeamBtnLoading(loading, label) {
+  const btn = document.getElementById("createTeamBtn");
+  if (!btn) return;
+  if (loading) {
+    if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add(
+      "btn-loading",
+      "inline-flex",
+      "items-center",
+      "justify-center",
+      "gap-2",
+    );
+    btn.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span>${label || "Creating…"}</span>`;
+  } else {
+    btn.disabled = false;
+    btn.classList.remove(
+      "btn-loading",
+      "inline-flex",
+      "items-center",
+      "justify-center",
+      "gap-2",
+    );
+    btn.textContent = btn.dataset.origText || "Create Team";
+    delete btn.dataset.origText;
+  }
+}
+
+window.createTeam = async function createTeam() {
+  if (window.createTeamSaving) return;
+
+  const name = document.getElementById("teamName").value.trim();
+  if (!name) {
+    const el = document.getElementById("modalError");
+    el.textContent = "Team name is required";
+    el.classList.remove("hidden");
+    return;
+  }
+
+  const desc = document.getElementById("teamDesc").value.trim();
+  const kanbanPreset =
+    document.getElementById("teamKanbanPreset")?.value || "classic";
+  const body = { name, description: desc, kanban_preset: kanbanPreset };
+
+  if (
+    !window.createTeamDraft.pendingFile &&
+    window.createTeamDraft.avatar_url
+  ) {
+    body.avatar_url = window.createTeamDraft.avatar_url;
+  }
+
+  window.createTeamSaving = true;
+  setCreateTeamBtnLoading(true, "Creating…");
+
+  const r = await apiFetch("/api/teams", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await parseJsonResponse(r);
+
+  if (d.error) {
+    window.createTeamSaving = false;
+    setCreateTeamBtnLoading(false);
+    const el = document.getElementById("modalError");
+    el.textContent = d.error;
+    el.classList.remove("hidden");
+    return;
+  }
+
+  // Optional: upload a custom avatar file
+  if (window.createTeamDraft.pendingFile && !window.currentUser?.is_guest) {
+    setCreateTeamBtnLoading(true, "Uploading avatar…");
+    const form = new FormData();
+    form.append("avatar", window.createTeamDraft.pendingFile);
+
+    const upR = await apiFetch(`/api/teams/${d.id}/avatar/upload`, {
+      method: "POST",
+      body: form,
+    });
+    const upD = await parseJsonResponse(upR);
+
+    if (!upR.ok) {
+      window.createTeamSaving = false;
+      setCreateTeamBtnLoading(false);
+      const el = document.getElementById("modalError");
+      el.textContent = upD.error || "Team created but avatar upload failed";
+      el.classList.remove("hidden");
+      closeCreateModal();
+      showTeamsLoading();
+      await loadTeams();
+      return;
+    }
+  }
+
+  window.createTeamSaving = false;
+  setCreateTeamBtnLoading(false);
+  closeCreateModal();
+  setNavigatingAway(true);
+  window.location = `/board/${d.id}`;
+};
+
+// ---------------------------------------------------------------------------
+// DOM event wiring for the create-modal inputs
+// ---------------------------------------------------------------------------
+
+document
+  .getElementById("createTeamAvatarFile")
+  ?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    window.createTeamDraft.pendingFile = file;
+    window.createTeamDraft.presetId = null;
+    renderCreateTeamAvatarPresetGrid();
+    updateCreateTeamPreview();
+  });
+
+document.getElementById("teamName")?.addEventListener("input", () => {
+  if (!document.getElementById("createModal").classList.contains("hidden")) {
+    updateCreateTeamPreview();
+  }
+});
+
+document
+  .getElementById("teamKanbanPreset")
+  ?.addEventListener("change", updateKanbanPresetDescription);
