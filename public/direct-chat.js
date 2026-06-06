@@ -1569,5 +1569,5 @@
 
   window.addEventListener('pagehide', leaveAppPresence);
 
-  window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence, handlePopState };
+  window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence, handlePopState: handleDmPopState };
 })();

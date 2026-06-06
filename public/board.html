@@ -2035,9 +2035,7 @@
       data.roles = data.roles || [];
       data.columns = data.columns || [];
       data.separate_role_members = !!data.separate_role_members;
-      const colSig = JSON.stringify(data.columns.map((c) => `${c.id}:${c.name}:${c.slug}:${c.sort_order}`));
-      const prevColSig = JSON.stringify((teamColumns || []).map((c) => `${c.id}:${c.name}:${c.slug}:${c.sort_order}`));
-      const columnsChanged = colSig !== prevColSig;
+      const columnsChanged = columnsStructureSig(data.columns) !== columnsStructureSig(teamColumns);
       const sig = teamRoleStateSignature(data);
       if (sig === teamRoleStateSig && !columnsChanged) return;
       teamRoleStateSig = sig;
@@ -2059,6 +2057,7 @@
       }
       refreshTeamRoleVisuals();
       applyInviteSectionState();
+      ensureBoardTasksRendered();
     }
 
     function syncSeparateRoleToggleUi(checkedOverride) {
@@ -2600,6 +2599,7 @@
     }
 
     async function loadTeam() {
+      const prevColSig = columnsStructureSig(teamColumns.length ? teamColumns : teamData?.columns);
       const r = await apiFetch(`/api/teams/${teamId}`);
       const data = await parseJsonResponse(r);
       if (!r.ok) {
@@ -2616,9 +2616,12 @@
       teamColumns = teamData.columns;
       teamData.separate_role_members = !!teamData.separate_role_members;
       teamData.pending_invites = teamData.pending_invites || [];
+      const columnsChanged = columnsStructureSig(teamData.columns) !== prevColSig;
       applyTeamHeader();
-      renderKanbanBoard();
-      populateStatusDropdowns();
+      if (columnsChanged) {
+        renderKanbanBoard();
+        populateStatusDropdowns();
+      }
       renderMemberAvatars(teamData.members);
       renderMemberList(teamData.members);
       populateAssigneeDropdowns(teamData.members);
@@ -2634,6 +2637,7 @@
       initMentionComposers();
       applyInviteSectionState();
       if (tasks.length) renderBoard();
+      ensureBoardTasksRendered();
       return true;
     }
 
@@ -2712,6 +2716,34 @@
       return teamColumns.length ? teamColumns : (teamData?.columns || []);
     }
 
+    function columnsStructureSig(columns) {
+      return JSON.stringify(
+        (columns || [])
+          .map((c) => `${c.id}:${c.name}:${c.slug}:${c.sort_order}`)
+          .sort(),
+      );
+    }
+
+    function columnDropZoneId(slug) {
+      return `col-${slug}`;
+    }
+
+    function getColumnDropZone(slug) {
+      const id = columnDropZoneId(slug);
+      return (
+        document.getElementById(id)
+        || document.querySelector(`#kanbanBoard .kanban-col[data-status="${slug}"] .drop-zone`)
+      );
+    }
+
+    function boardHasTaskSkeletons() {
+      return !!document.querySelector('#kanbanBoard .task-skeleton');
+    }
+
+    function ensureBoardTasksRendered() {
+      if (tasks.length && boardHasTaskSkeletons()) renderBoard();
+    }
+
     function columnLabel(slug) {
       const col = getTeamColumns().find((c) => c.slug === slug);
       return col?.name || slug;
@@ -2763,7 +2795,7 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
             </button>
           </div>
-          <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2" id="col-${escHtml(col.slug)}"
+          <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2" id="${columnDropZoneId(col.slug)}"
             ondragover="dragOver(event)" ondrop="drop(event)" ondragleave="dragLeave(event)">
             ${taskSkeletonHtml()}${taskSkeletonHtml()}
           </div>
@@ -2814,7 +2846,7 @@
       );
       getTeamColumns().forEach((col) => {
         const status = col.slug;
-        const zone = document.getElementById(`col-${status}`);
+        const zone = getColumnDropZone(status);
         const countEl = document.getElementById(`count-${status}`);
         if (!zone) return;
         const colTasks = getSortedColumnTasks(status);
@@ -4660,6 +4692,12 @@
       renderChatMessages();
     }
 
+    function showActivityLoading() {
+      const list = document.getElementById('activityList');
+      if (!list) return;
+      list.innerHTML = activityListSkeletonHtml();
+    }
+
     // Activity Panel
     function openActivityPanel() {
       closeBoardOverlayBeforeOpen('activity');
@@ -4667,7 +4705,7 @@
       closeAllSidePanels();
       document.getElementById('activityPanel').classList.remove('hidden');
       setSidePanelMobileOpen(true);
-      loadActivity();
+      loadActivity({ background: activityLogs.length > 0 });
       pushBoardOverlay('activity');
     }
     function closeActivityPanelUi() {
@@ -5253,7 +5291,9 @@
       }
     }
 
-    async function loadActivity() {
+    async function loadActivity(options = {}) {
+      const { background = false } = options;
+      if (!background && !activityLogs.length) showActivityLoading();
       const r = await apiFetch(`/api/teams/${teamId}/activity`);
       const logs = await r.json();
       if (!Array.isArray(logs)) return;
@@ -5491,6 +5531,7 @@
           tasks = merged;
           if (boardDirty) {
             renderBoard();
+            ensureBoardTasksRendered();
             if (activeTaskId && !editingTaskField) {
               const task = tasks.find(t => t.id === activeTaskId);
               if (task) {
@@ -5501,11 +5542,12 @@
           } else {
             merged.forEach((t) => updateTaskCardUnreadBadge(t.id, t.unread_comment_count || 0));
           }
-          if (document.getElementById('activityPanel').offsetParent !== null) loadActivity();
+          if (document.getElementById('activityPanel').offsetParent !== null) loadActivity({ background: true });
         }
         if (activeTaskId && !document.getElementById('taskModal').classList.contains('hidden')) {
           loadComments(activeTaskId);
         }
+        ensureBoardTasksRendered();
       }, 5000);
     }
 

@@ -411,6 +411,19 @@ function messageListSkeletonHtml(count = 4) {
   return `<div class="space-y-4">${variants.slice(0, n).join('')}</div>`;
 }
 
+/** Shimmer rows for the board activity side panel. */
+function activityListSkeletonHtml(count = 5) {
+  const variants = [
+    `<div class="flex gap-3"><div class="skeleton w-7 h-7 rounded-full shrink-0 mt-0.5"></div><div class="flex-1 min-w-0 space-y-2"><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-4/5 rounded"></div><div class="skeleton h-2.5 w-14 rounded"></div></div></div>`,
+    `<div class="flex gap-3"><div class="skeleton w-7 h-7 rounded-full shrink-0 mt-0.5"></div><div class="flex-1 min-w-0 space-y-2"><div class="skeleton h-3 w-11/12 rounded"></div><div class="skeleton h-2.5 w-12 rounded"></div></div></div>`,
+    `<div class="flex gap-3"><div class="skeleton w-7 h-7 rounded-full shrink-0 mt-0.5"></div><div class="flex-1 min-w-0 space-y-2"><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-2/3 rounded"></div><div class="skeleton h-2.5 w-16 rounded"></div></div></div>`,
+    `<div class="flex gap-3"><div class="skeleton w-7 h-7 rounded-full shrink-0 mt-0.5"></div><div class="flex-1 min-w-0 space-y-2"><div class="skeleton h-3 w-5/6 rounded"></div><div class="skeleton h-2.5 w-10 rounded"></div></div></div>`,
+    `<div class="flex gap-3"><div class="skeleton w-7 h-7 rounded-full shrink-0 mt-0.5"></div><div class="flex-1 min-w-0 space-y-2"><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-3/4 rounded"></div><div class="skeleton h-2.5 w-12 rounded"></div></div></div>`,
+  ];
+  const n = Math.min(count, variants.length);
+  return variants.slice(0, n).join('');
+}
+
 const GUEST_DASHBOARD_NOTICE_KEY = 'taskflow_guest_dashboard_notice';
 
 function clearGuestDashboardNotice() {
