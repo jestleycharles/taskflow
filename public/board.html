@@ -1998,12 +1998,22 @@
       teamRoleStateSig = teamRoleStateSignature(teamData);
     }
 
+    function applyCurrentUserTeamRoleUi() {
+      if (!teamData) return;
+      const isOwner = teamData.userRole === 'owner';
+      document.getElementById('settingsNavBtn')?.classList.toggle('hidden', !isOwner);
+      if (!isOwner && !document.getElementById('settingsPanel')?.classList.contains('hidden')) {
+        closeSettingsPanelUi();
+      }
+      applyMembershipActionsUi();
+    }
+
     function refreshTeamRoleVisuals() {
       if (!teamData) return;
       renderMemberAvatars(teamData.members);
       renderMemberList(teamData.members);
       populateAssigneeDropdowns(teamData.members);
-      applyMembershipActionsUi();
+      applyCurrentUserTeamRoleUi();
       if (!document.getElementById('teamRolesModal').classList.contains('hidden')) {
         syncSeparateRoleToggleUi();
         renderTeamRolesList();
@@ -2036,9 +2046,11 @@
       data.columns = data.columns || [];
       data.separate_role_members = !!data.separate_role_members;
       const columnsChanged = columnsStructureSig(data.columns) !== columnsStructureSig(teamColumns);
+      const userRoleChanged = data.userRole != null && data.userRole !== teamData.userRole;
       const sig = teamRoleStateSignature(data);
-      if (sig === teamRoleStateSig && !columnsChanged) return;
+      if (sig === teamRoleStateSig && !columnsChanged && !userRoleChanged) return;
       teamRoleStateSig = sig;
+      if (data.userRole != null) teamData.userRole = data.userRole;
       teamData.members = data.members;
       teamData.roles = data.roles;
       teamData.separate_role_members = data.separate_role_members;
@@ -2625,12 +2637,7 @@
       renderMemberAvatars(teamData.members);
       renderMemberList(teamData.members);
       populateAssigneeDropdowns(teamData.members);
-      if (teamData.userRole === 'owner') {
-        document.getElementById('settingsNavBtn').classList.remove('hidden');
-      } else {
-        document.getElementById('settingsNavBtn').classList.add('hidden');
-      }
-      applyMembershipActionsUi();
+      applyCurrentUserTeamRoleUi();
       fetchOnlineMembers();
       updateMemberStatsDisplay();
       captureTeamRoleStateSig();
@@ -5209,6 +5216,9 @@
     }
 
     async function executeTransferOwnership(targetUserId) {
+      closeSettingsPanelUi();
+      closeTeamPanelUi();
+      showNavigationLoading('Transferring ownership…');
       const r = await apiFetch(`/api/teams/${teamId}/transfer-ownership`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -5216,11 +5226,12 @@
       });
       const d = await r.json();
       if (!r.ok) {
+        hideNavigationLoading();
         showAlert(d.error || 'Could not transfer ownership');
         return;
       }
-      closeSettingsPanel();
       await loadTeam();
+      hideNavigationLoading();
       showAlert('Ownership transferred. You are now a team member.', 'Done');
     }
 

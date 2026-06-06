@@ -149,6 +149,22 @@
       dmHistoryPopping = false;
       return true;
     }
+
+    if (!$('dmBlockedEmailStartModal')?.classList.contains('hidden')) {
+      closeBlockedEmailStartModal();
+      if (panelOpen && !history.state?.tfDm) {
+        pushDmHistory(view === 'thread' ? 'thread' : 'panel');
+      }
+      return true;
+    }
+    if (!$('dmBlockedEmailsModal')?.classList.contains('hidden')) {
+      closeBlockedEmailsModal();
+      if (panelOpen && !history.state?.tfDm) {
+        pushDmHistory(view === 'thread' ? 'thread' : 'panel');
+      }
+      return true;
+    }
+
     if (!panelOpen) return false;
     const dm = history.state?.tfDm;
     if (view === 'thread' && dm === 'panel') {
@@ -1569,5 +1585,7 @@
 
   window.addEventListener('pagehide', leaveAppPresence);
 
+  window.closeBlockedEmailsModal = closeBlockedEmailsModal;
+  window.closeBlockedEmailStartModal = closeBlockedEmailStartModal;
   window.DirectChat = { init, onUserUpdated, openPanel, closePanel, leaveAppPresence, handlePopState };
 })();
