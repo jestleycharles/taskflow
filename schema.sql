@@ -249,6 +249,24 @@ CREATE TABLE IF NOT EXISTS dm_messages (
 CREATE INDEX IF NOT EXISTS dm_messages_conversation_created_idx
   ON dm_messages (conversation_id, created_at);
 
+CREATE TABLE IF NOT EXISTS message_attachments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'dm')),
+  message_id UUID NOT NULL,
+  file_url TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  file_size INTEGER NOT NULL DEFAULT 0,
+  uploaded_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS message_attachments_lookup_idx
+  ON message_attachments (message_type, message_id);
+
+CREATE INDEX IF NOT EXISTS message_attachments_uploaded_by_created_idx
+  ON message_attachments (uploaded_by, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS dm_read_state (
   conversation_id UUID NOT NULL REFERENCES dm_conversations (id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -349,6 +367,7 @@ ALTER TABLE team_chat_read_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE message_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE message_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_read_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_blocked_emails ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_user_blocks ENABLE ROW LEVEL SECURITY;
@@ -374,7 +393,10 @@ CREATE INDEX IF NOT EXISTS idx_session_expire ON session (expire);
 -- Storage (Supabase Dashboard → Storage, public buckets):
 --   avatars — {userId}/..., teams/{teamId}/...
 --   task-files — tasks/{taskId}/...
+--   chat-files — chat/{messageId}/..., dm/{messageId}/... (unguessable filenames)
 --   feature-posts — posts/{postId}/...
+--
+-- Migration (existing DBs): create message_attachments table (see CREATE above).
 --
 -- Migration (existing DBs): extend message_reactions.message_type CHECK:
 --   ALTER TABLE message_reactions DROP CONSTRAINT IF EXISTS message_reactions_message_type_check;

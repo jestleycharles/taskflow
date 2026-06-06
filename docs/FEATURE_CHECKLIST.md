@@ -16,7 +16,7 @@ The dashboard shows social-style posts below **Your Teams** (above the feedback 
 **Posting rules for agents (do this every feature PR):**
 
 1. **One “in progress” post at a time** — Do not publish the whole checklist. Only announce the feature you are actively building *right now*.
-2. **When you start a feature** — Under the admin account, create (or ensure there is) a single post with `post_type: in_progress`, title/caption describing that checklist item, optional picture, and `checklist_ref` (e.g. `§3`). If a seed post already exists for the same item, update it instead of duplicating.
+2. **When you start a feature** — Under the admin account, create (or ensure there is) a single post with `post_type: in_progress`, title/caption describing that checklist item, and an optional picture, and `checklist_ref` (e.g. `§3`). If a seed post already exists for the same item, update it instead of duplicating.
 3. **When you finish that feature** — Add a **second** post with `post_type: completed` (“Shipped”) summarizing what landed. Then create a new **in progress** post for the *next* unchecked item only (not all remaining items).
 4. **Example timeline:** §3 in progress → ship §3 (completed post) → §4 in progress → ship §4 → §5 in progress …
 5. On first deploy with an empty `feature_posts` table, the server seeds the current in-progress post for the next checklist item (see `lib/feature-post-seed.js`). After that, agents maintain posts through the admin UI or API.
@@ -116,7 +116,7 @@ Posts support the same emoji reactions as team chat (`love`, `haha`, `fire`, etc
 
 ## 3. File/image sharing in team chat & DMs
 
-**Status:** `[ ]` Not started
+**Status:** `[x]` Done
 
 ### Goal
 
@@ -130,23 +130,23 @@ Posts support the same emoji reactions as team chat (`love`, `haha`, `fire`, etc
 
 ### Schema / API
 
-- [ ] `chat_attachments` / `dm_attachments` or polymorphic `message_attachments` (`message_type`, `message_id`, `file_url`, `mime_type`, `file_size`, `uploaded_by`).
-- [ ] Storage bucket (e.g. `chat-files`) documented in `schema.sql`.
-- [ ] `POST` message with multipart or separate upload-then-link; max size (e.g. 5–10 MB), allowed MIME whitelist.
-- [ ] Per-user hourly upload cap; reuse/extend `lib/message-send-guard.js` or new `lib/upload-guard.js`.
-- [ ] Guests: `GET` only; no upload endpoints (403).
+- [x] `chat_attachments` / `dm_attachments` or polymorphic `message_attachments` (`message_type`, `message_id`, `file_url`, `mime_type`, `file_size`, `uploaded_by`).
+- [x] Storage bucket (e.g. `chat-files`) documented in `schema.sql`.
+- [x] `POST` message with multipart or separate upload-then-link; max size (e.g. 5–10 MB), allowed MIME whitelist.
+- [x] Per-user hourly upload cap; reuse/extend `lib/message-send-guard.js` or new `lib/upload-guard.js`.
+- [x] Guests: `GET` only; no upload endpoints (403).
 
 ### UI
 
-- [ ] `public/board.html` — chat composer attach button; thumbnail + lightbox (reuse attachment preview modal).
-- [ ] `public/direct-chat.js` — same for DMs.
-- [ ] Show attachment in message bubble; soft-deleted messages hide or orphan per product decision (document choice).
+- [x] `public/board.html` — chat composer attach button; thumbnail + lightbox (reuse attachment preview modal).
+- [x] `public/direct-chat.js` — same for DMs.
+- [x] Show attachment in message bubble; soft-deleted messages hide or orphan per product decision (document choice).
 
 ### Acceptance criteria
 
-- [ ] Spam/upload limits return 429 with `retry_after_ms` where applicable (align with `public/api.js` cooldown UI).
-- [ ] Storage paths are not guessable; auth checked on download if not public bucket.
-- [ ] `FEATURES.md` lists limits (size, types, guest read-only).
+- [x] Spam/upload limits return 429 with `retry_after_ms` where applicable (align with `public/api.js` cooldown UI).
+- [x] Storage paths are not guessable; auth checked on download if not public bucket.
+- [x] `FEATURES.md` lists limits (size, types, guest read-only).
 
 ---
 

@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { supabaseAdmin } = require('../lib/supabase');
 const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
@@ -13,8 +14,45 @@ const {
   isUserIgnored,
 } = require('../lib/dm-blocks');
 const { ping, leave, getOnlineUserIds, APP_SCOPE } = require('../lib/presence');
+const { assertCanUploadFile } = require('../lib/upload-guard');
+const {
+  MAX_ATTACHMENT_BYTES,
+  fetchAttachmentsForMessages,
+  attachAttachmentsToItems,
+  uploadMessageAttachment,
+} = require('../lib/message-attachments');
 
 const router = express.Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_ATTACHMENT_BYTES },
+});
+
+function optionalFileUpload(req, res, next) {
+  if (!req.is('multipart/form-data')) return next();
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File must be 8 MB or smaller' });
+      }
+      return sendError(res, 400, err, 'save');
+    }
+    next();
+  });
+}
+
+async function enrichDmMessages(messages) {
+  const list = messages || [];
+  const reactionsMap = await fetchReactionsForMessages('dm', list.map((m) => m.id));
+  const attachmentsMap = await fetchAttachmentsForMessages('dm', list.map((m) => m.id));
+  return attachAttachmentsToItems(attachReactionsToItems(list, reactionsMap), attachmentsMap);
+}
+
+async function enrichSingleDmMessage(data) {
+  const [enriched] = await enrichDmMessages([data]);
+  return enriched;
+}
 
 const MESSAGE_SELECT =
   'id, conversation_id, user_id, content, content_before_edit, edited_at, deleted_at, created_at, user:user_id(id, username, avatar_color, avatar_url)';
@@ -255,9 +293,7 @@ router.get('/api/dm/conversations/:conversationId/messages', requireAuth, async 
     .order('created_at', { ascending: true });
 
   if (error) return sendError(res, 500, error, 'load');
-  const messages = data || [];
-  const reactionsMap = await fetchReactionsForMessages('dm', messages.map((m) => m.id));
-  res.json(attachReactionsToItems(messages, reactionsMap));
+  res.json(await enrichDmMessages(data || []));
 });
 
 // GET /api/dm/conversations/:conversationId/read
@@ -320,8 +356,8 @@ router.put('/api/dm/conversations/:conversationId/read', requireAuth, async (req
   res.json({ last_read_at: data.last_read_at });
 });
 
-// POST /api/dm/conversations/:conversationId/messages
-router.post('/api/dm/conversations/:conversationId/messages', requireAuth, async (req, res) => {
+// POST /api/dm/conversations/:conversationId/messages — JSON or multipart (optional file)
+router.post('/api/dm/conversations/:conversationId/messages', requireAuth, optionalFileUpload, async (req, res) => {
   if (rejectGuest(req, res)) return;
 
   const { conversationId } = req.params;
@@ -335,25 +371,39 @@ router.post('/api/dm/conversations/:conversationId/messages', requireAuth, async
   if (blockErr) return res.status(blockErr.status).json({ error: blockErr.error });
 
   const raw = (req.body?.content || '').trim();
-  if (!raw) return res.status(400).json({ error: 'Message cannot be empty' });
+  const hasFile = !!req.file;
+  if (!raw && !hasFile) return res.status(400).json({ error: 'Message cannot be empty' });
   if (raw.length > 4000) return res.status(400).json({ error: 'Message is too long' });
 
-  const { is_self: isSelfChat } = otherParticipant(conv, userId);
-  const guard = await assertCanSendUserMessage(supabaseAdmin, {
-    table: 'dm_messages',
-    scopeColumn: 'conversation_id',
-    scopeId: conversationId,
-    userId,
-    content: raw,
-    skipSpamGuard: isSelfChat || canBypassSpamGuard(req.session.user),
-  });
-  if (!guard.ok) {
-    return res.status(guard.status).json({
-      error: guard.error,
-      retry_after_ms: guard.retry_after_ms,
-    });
+  if (hasFile) {
+    const uploadGuard = await assertCanUploadFile(supabaseAdmin, userId);
+    if (!uploadGuard.ok) {
+      return res.status(uploadGuard.status).json({
+        error: uploadGuard.error,
+        retry_after_ms: uploadGuard.retry_after_ms,
+      });
+    }
   }
-  const content = guard.content;
+
+  let content = raw;
+  if (raw) {
+    const { is_self: isSelfChat } = otherParticipant(conv, userId);
+    const guard = await assertCanSendUserMessage(supabaseAdmin, {
+      table: 'dm_messages',
+      scopeColumn: 'conversation_id',
+      scopeId: conversationId,
+      userId,
+      content: raw,
+      skipSpamGuard: isSelfChat || canBypassSpamGuard(req.session.user),
+    });
+    if (!guard.ok) {
+      return res.status(guard.status).json({
+        error: guard.error,
+        retry_after_ms: guard.retry_after_ms,
+      });
+    }
+    content = guard.content;
+  }
 
   const now = new Date().toISOString();
   const { data, error } = await supabaseAdmin
@@ -364,13 +414,25 @@ router.post('/api/dm/conversations/:conversationId/messages', requireAuth, async
 
   if (error) return sendError(res, 500, error, 'load');
 
+  if (hasFile) {
+    const uploaded = await uploadMessageAttachment({
+      messageType: 'dm',
+      messageId: data.id,
+      file: req.file,
+      userId,
+    });
+    if (!uploaded.ok) {
+      await supabaseAdmin.from('dm_messages').delete().eq('id', data.id);
+      return res.status(uploaded.status).json({ error: uploaded.error });
+    }
+  }
+
   await supabaseAdmin
     .from('dm_conversations')
     .update({ last_message_at: now })
     .eq('id', conversationId);
 
-  const reactionsMap = await fetchReactionsForMessages('dm', [data.id]);
-  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
+  res.json(await enrichSingleDmMessage(data));
 });
 
 // PATCH /api/dm/conversations/:conversationId/messages/:messageId
@@ -413,8 +475,7 @@ router.patch('/api/dm/conversations/:conversationId/messages/:messageId', requir
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  const reactionsMap = await fetchReactionsForMessages('dm', [data.id]);
-  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
+  res.json(await enrichSingleDmMessage(data));
 });
 
 // DELETE /api/dm/conversations/:conversationId/messages/:messageId
@@ -448,8 +509,7 @@ router.delete('/api/dm/conversations/:conversationId/messages/:messageId', requi
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  const reactionsMap = await fetchReactionsForMessages('dm', [data.id]);
-  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
+  res.json(await enrichSingleDmMessage(data));
 });
 
 // POST /api/presence/app/ping — heartbeat while logged into the dashboard

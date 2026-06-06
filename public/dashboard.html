@@ -228,6 +228,81 @@
         border-left: 2px solid rgba(79, 110, 247, 0.45);
         padding-left: 0.625rem;
       }
+      .chat-msg-attachment { margin-top: 0.5rem; }
+      .chat-msg-attachment-thumb {
+        max-width: 12rem;
+        max-height: 10rem;
+        border-radius: 0.5rem;
+        border: 1px solid rgba(255,255,255,0.1);
+        cursor: pointer;
+        object-fit: cover;
+      }
+      .chat-msg-attachment-file {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        font-size: 0.75rem;
+        color: #d1d5db;
+        cursor: pointer;
+        max-width: 100%;
+      }
+      .chat-msg-attachment-file:hover { border-color: rgba(79, 110, 247, 0.4); }
+      .chat-attach-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .attachment-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.5rem;
+        color: #9ca3af;
+        transition: background 0.15s, color 0.15s;
+      }
+      .attachment-icon-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+      .attachment-icon-btn.danger:hover { color: #f87171; background: rgba(239,68,68,0.12); }
+      .attachment-file-thumb {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.375rem;
+        object-fit: cover;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .attachment-file-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.375rem;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+      }
+      #dmAttachmentPreviewBody iframe {
+        width: 100%;
+        min-height: 70vh;
+        border: none;
+        border-radius: 0.5rem;
+        background: #fff;
+      }
+      #dmAttachmentPreviewBody img {
+        max-width: 100%;
+        max-height: 75vh;
+        border-radius: 0.5rem;
+      }
       .reaction-pill.reaction-pill-active {
         background: rgba(79, 110, 247, 0.2);
         border-color: rgba(79, 110, 247, 0.45);
@@ -990,7 +1065,21 @@
           id="dmChatComposer"
           class="px-4 pt-4 pb-4 border-t border-white/10 shrink-0 bg-ink-800"
         >
+          <div id="dmAttachPreview" class="chat-attach-preview hidden" role="status">
+            <div id="dmAttachPreviewThumb" class="shrink-0"></div>
+            <div class="min-w-0 flex-1">
+              <p id="dmAttachPreviewName" class="text-xs text-gray-200 truncate"></p>
+              <p id="dmAttachPreviewSize" class="text-[10px] text-gray-500"></p>
+            </div>
+            <button type="button" id="dmAttachClearBtn" class="attachment-icon-btn danger shrink-0" title="Remove attachment" aria-label="Remove attachment">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </div>
           <div class="flex gap-2">
+            <input type="file" id="dmAttachInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+            <button type="button" id="dmAttachBtn" class="attachment-icon-btn shrink-0 self-center" title="Attach image or PDF" aria-label="Attach file">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+            </button>
             <input
               id="dmChatInput"
               type="text"
@@ -1773,7 +1862,21 @@
       aria-hidden="true"
     ></div>
 
-    <script src="/direct-chat.js?v=3"></script>
+    <div id="dmAttachmentPreviewModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="dmAttachmentPreviewTitle">
+      <div class="absolute inset-0 bg-black/70" data-dm-close-preview></div>
+      <div class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 shrink-0">
+          <h3 id="dmAttachmentPreviewTitle" class="text-sm font-medium text-white truncate"></h3>
+          <button type="button" data-dm-close-preview class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10" aria-label="Close preview">&times;</button>
+        </div>
+        <div id="dmAttachmentPreviewBody" class="flex-1 min-h-0 overflow-auto p-4 flex items-center justify-center"></div>
+        <div class="px-4 py-3 border-t border-white/10 shrink-0">
+          <a id="dmAttachmentPreviewOpenLink" href="#" target="_blank" rel="noopener" class="text-xs text-brand-500 hover:text-brand-400 font-medium">Open in new tab</a>
+        </div>
+      </div>
+    </div>
+
+    <script src="/direct-chat.js?v=4"></script>
     <script>
       let confirmCallback = null;
       let dashboardHistoryPopping = false;

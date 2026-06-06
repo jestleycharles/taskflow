@@ -38,6 +38,8 @@
   let blockedEmailStartTarget = null;
   let headerAvatarMenuOpen = false;
   let dialogConfirmCallback = null;
+  let dmPendingFile = null;
+  let dmAttachPreviewUrl = null;
 
   function ensureDialogModals() {
     if (document.getElementById('tfConfirmModal')) return;
@@ -187,6 +189,124 @@
     return new Date(dateStr).toLocaleString(undefined, {
       month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
     });
+  }
+
+  function formatFileSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function attachmentFileIconHtml(mimeType) {
+    if ((mimeType || '').startsWith('image/')) {
+      return '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
+    }
+    return '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>';
+  }
+
+  function renderMessageAttachmentsHtml(attachments) {
+    if (!attachments?.length) return '';
+    return attachments.map((a) => {
+      const previewUrl = `/api/message-attachments/${a.id}`;
+      const mime = a.mime_type || '';
+      const name = escHtml(a.file_name || 'Attachment');
+      if (mime.startsWith('image/')) {
+        return `<div class="chat-msg-attachment">
+          <img src="${escHtml(previewUrl)}" alt="${name}" class="chat-msg-attachment-thumb"
+            data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" />
+        </div>`;
+      }
+      return `<div class="chat-msg-attachment">
+        <button type="button" class="chat-msg-attachment-file"
+          data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}">
+          ${attachmentFileIconHtml(mime)}
+          <span class="truncate">${name}</span>
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  function clearDmPendingFile() {
+    dmPendingFile = null;
+    if (dmAttachPreviewUrl) {
+      URL.revokeObjectURL(dmAttachPreviewUrl);
+      dmAttachPreviewUrl = null;
+    }
+    const input = $('dmAttachInput');
+    if (input) input.value = '';
+    $('dmAttachPreview')?.classList.add('hidden');
+  }
+
+  function renderDmAttachPreview() {
+    const wrap = $('dmAttachPreview');
+    if (!wrap || !dmPendingFile) {
+      wrap?.classList.add('hidden');
+      return;
+    }
+    wrap.classList.remove('hidden');
+    const nameEl = $('dmAttachPreviewName');
+    const sizeEl = $('dmAttachPreviewSize');
+    const thumb = $('dmAttachPreviewThumb');
+    if (nameEl) nameEl.textContent = dmPendingFile.name;
+    if (sizeEl) sizeEl.textContent = formatFileSize(dmPendingFile.size);
+    if (thumb) {
+      if (dmAttachPreviewUrl) URL.revokeObjectURL(dmAttachPreviewUrl);
+      if (dmPendingFile.type.startsWith('image/')) {
+        dmAttachPreviewUrl = URL.createObjectURL(dmPendingFile);
+        thumb.innerHTML = `<img src="${dmAttachPreviewUrl}" alt="" class="attachment-file-thumb" />`;
+      } else {
+        dmAttachPreviewUrl = null;
+        thumb.innerHTML = `<div class="attachment-file-icon">${attachmentFileIconHtml(dmPendingFile.type)}</div>`;
+      }
+    }
+  }
+
+  function setDmPendingFile(file) {
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      showAlert('File type not allowed. Use JPEG, PNG, WebP, GIF, or PDF.');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showAlert('File must be 8 MB or smaller.');
+      return;
+    }
+    dmPendingFile = file;
+    renderDmAttachPreview();
+  }
+
+  function openDmAttachmentPreview(url, fileName, mimeType) {
+    const modal = $('dmAttachmentPreviewModal');
+    const body = $('dmAttachmentPreviewBody');
+    const title = $('dmAttachmentPreviewTitle');
+    const openLink = $('dmAttachmentPreviewOpenLink');
+    if (!modal || !body) return;
+    const mime = String(mimeType || '').toLowerCase();
+    const name = fileName || 'Attachment';
+    if (title) title.textContent = name;
+    if (openLink) {
+      openLink.href = url;
+      openLink.classList.remove('hidden');
+    }
+    if (mime.startsWith('image/')) {
+      body.innerHTML = `<img src="${escHtml(url)}" alt="${escHtml(name)}" />`;
+    } else if (mime === 'application/pdf') {
+      body.innerHTML = `<iframe src="${escHtml(url)}" title="${escHtml(name)}"></iframe>`;
+    } else {
+      body.innerHTML = '<p class="text-sm text-gray-500">Preview not available for this file type.</p>';
+    }
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDmAttachmentPreview() {
+    const modal = $('dmAttachmentPreviewModal');
+    const body = $('dmAttachmentPreviewBody');
+    if (body) body.innerHTML = '';
+    modal?.classList.add('hidden');
+    document.body.style.overflow = '';
   }
 
   function conversationTitle(conv) {
@@ -439,6 +559,7 @@
     await flushDmReadState();
     closeReactionFloats();
     dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
+    clearDmPendingFile();
     resetDmMessageSearch();
     panelOpen = false;
     $('dmChatPanel')?.classList.add('hidden');
@@ -458,6 +579,7 @@
   async function goToListCore() {
     await flushDmReadState();
     dismissMessageComposer($('dmChatInput'), $('dmChatSendBtn'));
+    clearDmPendingFile();
     view = 'list';
     activeConversationId = null;
     activeConversation = null;
@@ -1079,10 +1201,14 @@
     const bodyHtml = msg.edited_at
       ? `<div class="chat-msg-edited-card rounded-lg bg-ink-700/40 border border-white/5 px-3 py-2">
           ${editedLabel}
-          <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatDmBodyHtml(displayContent)}</p>
+          ${displayContent ? `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatDmBodyHtml(displayContent)}</p>` : ''}
           ${versionToggle}
         </div>`
-      : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatDmBodyHtml(displayContent)}</p>`;
+      : (displayContent
+        ? `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatDmBodyHtml(displayContent)}</p>`
+        : '');
+
+    const attachmentsHtml = renderMessageAttachmentsHtml(msg.attachments);
 
     const versionActiveClass = showingOriginal ? ' chat-msg-version-active' : '';
     return `<div class="group flex items-start gap-3${versionActiveClass}" data-dm-msg-id="${msg.id}">
@@ -1096,6 +1222,7 @@
             ${renderDmMessageActions(msg)}
           </div>
           ${bodyHtml}
+          ${attachmentsHtml}
           ${renderReactionsBar(msg.id, msg.reactions || [])}
         </div>
       </div>`;
@@ -1174,6 +1301,56 @@
     if (!conversationId) return;
     const input = $('dmChatInput');
     const btn = $('dmChatSendBtn');
+    const file = dmPendingFile;
+    const textContent = prepareOutgoingDmMessage(input?.value);
+
+    if (file) {
+      const key = `dm:${conversationId}`;
+      if (messageSendInFlight.has(key) || sendCooldownTimers.has(key)) return;
+      if (!textContent && !file) return;
+
+      messageSendInFlight.add(key);
+      if (input) input.disabled = true;
+      if (btn) btn.disabled = true;
+
+      const form = new FormData();
+      if (textContent) form.append('content', textContent);
+      form.append('file', file);
+
+      try {
+        const r = await apiFetch(`/api/dm/conversations/${conversationId}/messages`, { method: 'POST', body: form });
+        const msg = await parseJsonResponse(r);
+        if (!r.ok) {
+          const limited = messageSendRateLimitResult(r.status, msg);
+          if (limited) {
+            applyMessageSendCooldown(key, {
+              retryAfterMs: limited.rateLimit.retryAfterMs,
+              error: limited.rateLimit.error,
+              inputEl: input,
+              sendBtnEl: btn,
+              noticeEl: $('dmSendCooldown'),
+            });
+            return;
+          }
+          showAlert(msg.error || 'Failed to send message');
+          return;
+        }
+        dmBatch.showLatestBatch();
+        dmMessages.push(msg);
+        if (input) input.value = '';
+        clearDmPendingFile();
+        renderDmMessages();
+        scrollDmToBottom();
+        markDmRead();
+        loadConversations();
+      } finally {
+        messageSendInFlight.delete(key);
+        if (input && !sendCooldownTimers.has(key)) input.disabled = false;
+        if (btn && !sendCooldownTimers.has(key)) btn.disabled = false;
+      }
+      return;
+    }
+
     await submitMessageOnce(`dm:${conversationId}`, {
       inputEl: input,
       sendBtnEl: btn,
@@ -1438,6 +1615,15 @@
       ?.addEventListener('click', () => blockActiveUser());
     $('dmChatHeaderIgnoreBtn')?.addEventListener('click', () => toggleIgnoreActiveUser());
     $('dmChatSendBtn')?.addEventListener('click', submitDmMessage);
+    $('dmAttachBtn')?.addEventListener('click', () => $('dmAttachInput')?.click());
+    $('dmAttachInput')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) setDmPendingFile(file);
+    });
+    $('dmAttachClearBtn')?.addEventListener('click', clearDmPendingFile);
+    document.querySelectorAll('[data-dm-close-preview]').forEach((el) => {
+      el.addEventListener('click', closeDmAttachmentPreview);
+    });
     $('dmMessageSearchBtn')?.addEventListener('click', openDmMessageSearch);
     $('dmMessageSearch')?.addEventListener('input', (e) => {
       dmBatch?.setSearchQuery(e.target.value);
@@ -1451,6 +1637,12 @@
     });
 
     $('dmMessagesList')?.addEventListener('click', (e) => {
+      const previewEl = e.target.closest('[data-preview-attachment]');
+      if (previewEl) {
+        e.preventDefault();
+        openDmAttachmentPreview(previewEl.dataset.url, previewEl.dataset.name, previewEl.dataset.mime);
+        return;
+      }
       const editBtn = e.target.closest('[data-dm-edit]');
       if (editBtn) return startEditDm(editBtn.dataset.dmEdit);
       const delBtn = e.target.closest('[data-dm-delete]');

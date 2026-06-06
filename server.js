@@ -17,6 +17,7 @@ const { router: reactionRoutes } = require('./routes/reactions');
 const feedbackRoutes = require('./routes/feedback');
 const inviteLinkRoutes = require('./routes/invite-links');
 const featurePostRoutes = require('./routes/feature-posts');
+const messageAttachmentRoutes = require('./routes/message-attachments');
 const { ensureFeaturePostSeed } = require('./lib/feature-post-seed');
 const { supabaseAdmin } = require('./lib/supabase');
 const { toSessionUser } = require('./lib/user');
@@ -91,6 +92,7 @@ app.use(reactionRoutes);
 app.use(feedbackRoutes);
 app.use(inviteLinkRoutes);
 app.use(featurePostRoutes);
+app.use(messageAttachmentRoutes);
 
 app.get('/features.md', (req, res) => {
   res.sendFile(path.join(__dirname, 'FEATURES.md'));

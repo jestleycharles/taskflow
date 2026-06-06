@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { supabaseAdmin } = require('../lib/supabase');
 const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
@@ -6,11 +7,36 @@ const { isGuestUser } = require('../lib/user');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
 const { assertCanSendUserMessage } = require('../lib/message-send-guard');
 const { canBypassSpamGuard } = require('../lib/spam-guard-override');
+const { assertCanUploadFile } = require('../lib/upload-guard');
+const {
+  MAX_ATTACHMENT_BYTES,
+  fetchAttachmentsForMessages,
+  attachAttachmentsToItems,
+  uploadMessageAttachment,
+} = require('../lib/message-attachments');
 
 const router = express.Router();
 
 const MESSAGE_SELECT =
   'id, team_id, user_id, content, content_before_edit, edited_at, deleted_at, created_at, user:user_id(id, username, avatar_color, avatar_url)';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_ATTACHMENT_BYTES },
+});
+
+function optionalFileUpload(req, res, next) {
+  if (!req.is('multipart/form-data')) return next();
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File must be 8 MB or smaller' });
+      }
+      return sendError(res, 400, err, 'save');
+    }
+    next();
+  });
+}
 
 async function assertTeamMember(teamId, userId) {
   const { data } = await supabaseAdmin
@@ -30,6 +56,18 @@ function rejectGuestWrite(req, res) {
   return false;
 }
 
+async function enrichChatMessages(messages) {
+  const list = messages || [];
+  const reactionsMap = await fetchReactionsForMessages('chat', list.map((m) => m.id));
+  const attachmentsMap = await fetchAttachmentsForMessages('chat', list.map((m) => m.id));
+  return attachAttachmentsToItems(attachReactionsToItems(list, reactionsMap), attachmentsMap);
+}
+
+async function enrichSingleChatMessage(data) {
+  const [enriched] = await enrichChatMessages([data]);
+  return enriched;
+}
+
 // GET /api/teams/:teamId/chat — all members (including guests) can read
 router.get('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
   const { teamId } = req.params;
@@ -43,9 +81,7 @@ router.get('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     .order('created_at', { ascending: true });
 
   if (error) return sendError(res, 500, error, 'load');
-  const messages = data || [];
-  const reactionsMap = await fetchReactionsForMessages('chat', messages.map((m) => m.id));
-  res.json(attachReactionsToItems(messages, reactionsMap));
+  res.json(await enrichChatMessages(data || []));
 });
 
 // GET /api/teams/:teamId/chat/read — last time this user read the team chat
@@ -99,8 +135,8 @@ router.put('/api/teams/:teamId/chat/read', requireAuth, async (req, res) => {
   res.json({ last_read_at: data.last_read_at });
 });
 
-// POST /api/teams/:teamId/chat
-router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
+// POST /api/teams/:teamId/chat — JSON or multipart (optional file)
+router.post('/api/teams/:teamId/chat', requireAuth, optionalFileUpload, async (req, res) => {
   if (rejectGuestWrite(req, res)) return;
 
   const { teamId } = req.params;
@@ -109,24 +145,38 @@ router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Not a member' });
 
   const raw = (req.body?.content || '').trim();
-  if (!raw) return res.status(400).json({ error: 'Message cannot be empty' });
+  const hasFile = !!req.file;
+  if (!raw && !hasFile) return res.status(400).json({ error: 'Message cannot be empty' });
   if (raw.length > 4000) return res.status(400).json({ error: 'Message is too long' });
 
-  const guard = await assertCanSendUserMessage(supabaseAdmin, {
-    table: 'team_chat_messages',
-    scopeColumn: 'team_id',
-    scopeId: teamId,
-    userId,
-    content: raw,
-    skipSpamGuard: canBypassSpamGuard(req.session.user),
-  });
-  if (!guard.ok) {
-    return res.status(guard.status).json({
-      error: guard.error,
-      retry_after_ms: guard.retry_after_ms,
-    });
+  if (hasFile) {
+    const uploadGuard = await assertCanUploadFile(supabaseAdmin, userId);
+    if (!uploadGuard.ok) {
+      return res.status(uploadGuard.status).json({
+        error: uploadGuard.error,
+        retry_after_ms: uploadGuard.retry_after_ms,
+      });
+    }
   }
-  const content = guard.content;
+
+  let content = raw;
+  if (raw) {
+    const guard = await assertCanSendUserMessage(supabaseAdmin, {
+      table: 'team_chat_messages',
+      scopeColumn: 'team_id',
+      scopeId: teamId,
+      userId,
+      content: raw,
+      skipSpamGuard: canBypassSpamGuard(req.session.user),
+    });
+    if (!guard.ok) {
+      return res.status(guard.status).json({
+        error: guard.error,
+        retry_after_ms: guard.retry_after_ms,
+      });
+    }
+    content = guard.content;
+  }
 
   const { data, error } = await supabaseAdmin
     .from('team_chat_messages')
@@ -135,8 +185,21 @@ router.post('/api/teams/:teamId/chat', requireAuth, async (req, res) => {
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  const reactionsMap = await fetchReactionsForMessages('chat', [data.id]);
-  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
+
+  if (hasFile) {
+    const uploaded = await uploadMessageAttachment({
+      messageType: 'chat',
+      messageId: data.id,
+      file: req.file,
+      userId,
+    });
+    if (!uploaded.ok) {
+      await supabaseAdmin.from('team_chat_messages').delete().eq('id', data.id);
+      return res.status(uploaded.status).json({ error: uploaded.error });
+    }
+  }
+
+  res.json(await enrichSingleChatMessage(data));
 });
 
 // PATCH /api/teams/:teamId/chat/:messageId — edit own message
@@ -177,8 +240,7 @@ router.patch('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res)
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  const reactionsMap = await fetchReactionsForMessages('chat', [data.id]);
-  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
+  res.json(await enrichSingleChatMessage(data));
 });
 
 // DELETE /api/teams/:teamId/chat/:messageId — soft delete own message
@@ -210,8 +272,7 @@ router.delete('/api/teams/:teamId/chat/:messageId', requireAuth, async (req, res
     .single();
 
   if (error) return sendError(res, 500, error, 'load');
-  const reactionsMap = await fetchReactionsForMessages('chat', [data.id]);
-  res.json({ ...data, reactions: reactionsMap.get(data.id) || [] });
+  res.json(await enrichSingleChatMessage(data));
 });
 
 module.exports = router;

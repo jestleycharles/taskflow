@@ -39,6 +39,9 @@ Set `FEEDBACK_ADMIN_EMAIL` in `.env` to your account email to access the feedbac
 
 - Apply [schema.sql](schema.sql) in the Supabase SQL Editor.
 - Create a public Storage bucket named **`avatars`** for profile and team images.
+- Create a public Storage bucket named **`task-files`** for task attachments.
+- Create a public Storage bucket named **`feature-posts`** for adming feature post images.
+- Create a public Storage bucket named **`chat-files`** for team chat and DM attachments.
 - Enable Auth providers you need (Email, Google, GitHub).
 - Ensure the guest user exists (`guest@taskflow.app`) — `schema.sql` seeds this row.
 

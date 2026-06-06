@@ -27,6 +27,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Direct messages** — Private one-to-one conversations with other registered users from the dashboard.
 - **DM privacy controls** — Block email addresses and block or ignore users in direct messages.
 - **Team chat participation** — Send, edit, and delete your own messages in team-wide chat (guests can only read).
+- **Chat & DM attachments** — Attach images or PDFs to team chat and direct messages (guests can view only).
 - **Emoji reactions** — React to team chat, direct messages, and task comments.
 - **@mentions** — Mention teammates in task comments and team chat.
 - **Full task editing** — Edit task title and description and delete tasks (guests have limited task editing in the UI).
@@ -154,7 +155,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **View reactions** — See emoji reactions on comments; cannot add reactions.
 - **Unread comment badges** — Per-task unread counts and read-state tracking.
 - **Comment search & pagination** — Search within comments; batched loading for long threads.
-- **Team chat** — Read-only; composer hidden with guest notice.
+- **Team chat** — Read-only; composer hidden with guest notice. Can view image/PDF attachments shared by members.
 - **Activity panel** — View team activity feed.
 - **Member list** — See owners, custom roles, and online status.
 
@@ -166,7 +167,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 - **Edit history** — System comments and activity entries when title, description, status, priority, due date, or assignee changes.
 - **@mentions** — Autocomplete `@username` in task comments and team chat.
 - **Emoji reactions** — Toggle reactions on task comments, team chat, and DMs.
-- **Team chat** — Send messages; edit or delete your own messages; read receipts (`last_read_at`).
+- **Team chat** — Send messages; edit or delete your own messages; read receipts (`last_read_at`). Attach one image or PDF per message (8 MB max).
 - **Chat search & pagination** — Search and batch navigation in team chat.
 - **Spam protection** — Per-thread cooldown, duplicate detection, and similar-message guards on send.
 
@@ -181,7 +182,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 
 - **Start conversation** — By registered user’s email (guests and blocked users cannot be messaged).
 - **Conversation list** — Recent DMs with preview and unread state.
-- **Send / edit / delete** — Own messages only; soft-delete support in UI.
+- **Send / edit / delete** — Own messages only; soft-delete support in UI. Attach one image or PDF per message (8 MB max).
 - **Read state** — Per-conversation `last_read_at`.
 - **Reactions** — Emoji on DM messages.
 - **Search & batch loading** — Same pagination pattern as team chat.
@@ -196,6 +197,7 @@ Short list shown to guest users in the app. Full details are in the sections bel
 ## Security & abuse prevention
 
 - **Message send guard** — Cooldown, duplicate, near-duplicate, and burst detection for chat, DMs, and comments; composers show a live countdown when rate-limited. The account matching `FEEDBACK_ADMIN_EMAIL` in `.env` bypasses these guards.
+- **Chat/DM upload guard** — Registered users only; max **8 MB** per file; allowed types: JPEG, PNG, WebP, GIF, PDF; **30 uploads per hour** per user. Rate-limited responses include `retry_after_ms` for composer countdown UI. Files are stored in Supabase Storage (`chat-files` bucket) with unguessable paths; download goes through `GET /api/message-attachments/:id` (team member or DM participant required). Soft-deleted messages hide attachments in the UI.
 - **Feedback honeypot** — Hidden field bot trap on feedback form.
 - **Guest feedback limits** — Per-session hourly/daily caps and cooldown (server-side).
 - **Turnstile** — Cloudflare captcha for guest feedback when keys are configured.

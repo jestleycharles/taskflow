@@ -325,6 +325,39 @@
       border-left: 2px solid rgba(79, 110, 247, 0.45);
       padding-left: 0.625rem;
     }
+    .chat-msg-attachment { margin-top: 0.5rem; }
+    .chat-msg-attachment-thumb {
+      max-width: 12rem;
+      max-height: 10rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer;
+      object-fit: cover;
+    }
+    .chat-msg-attachment-file {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.75rem;
+      color: #d1d5db;
+      cursor: pointer;
+      max-width: 100%;
+    }
+    .chat-msg-attachment-file:hover { border-color: rgba(79, 110, 247, 0.4); }
+    .chat-attach-preview {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
     #chatMessagesList.chat-viewing-original > [data-chat-msg-id]:not(.chat-msg-version-active) {
       filter: blur(4px);
       opacity: 0.4;
@@ -695,7 +728,21 @@
       </div>
       <div id="chatMessagesList" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"></div>
       <div id="chatComposer" class="px-4 pt-4 border-t border-white/10 shrink-0 bg-ink-800">
+        <div id="chatAttachPreview" class="chat-attach-preview hidden" role="status">
+          <div id="chatAttachPreviewThumb" class="shrink-0"></div>
+          <div class="min-w-0 flex-1">
+            <p id="chatAttachPreviewName" class="text-xs text-gray-200 truncate"></p>
+            <p id="chatAttachPreviewSize" class="text-[10px] text-gray-500"></p>
+          </div>
+          <button type="button" id="chatAttachClearBtn" class="attachment-icon-btn danger shrink-0" title="Remove attachment" aria-label="Remove attachment">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
+        </div>
         <div id="chatComposerActive" class="flex gap-2">
+          <input type="file" id="chatAttachInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+          <button type="button" id="chatAttachBtn" class="attachment-icon-btn shrink-0 self-center" title="Attach image or PDF" aria-label="Attach file">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+          </button>
           <input id="chatInput" type="text" placeholder="Message the team..." data-mention-prefer-above="1"
             class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
           <button id="chatSendBtn" type="button" onclick="submitChatMessage()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
@@ -1467,6 +1514,8 @@
     let taskSubmitSaving = false;
     let attachmentUploadBusy = false;
     let coverUploadBusy = false;
+    let chatPendingFile = null;
+    let chatAttachPreviewUrl = null;
 
     const ICON_EYE = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>';
     const ICON_TRASH = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
@@ -2580,6 +2629,80 @@
       const guest = isGuest();
       document.getElementById('chatComposerActive').classList.toggle('hidden', guest);
       document.getElementById('chatGuestNotice').classList.toggle('hidden', !guest);
+      document.getElementById('chatAttachPreview')?.classList.toggle('hidden', guest || !chatPendingFile);
+      if (guest) clearChatPendingFile();
+    }
+
+    function clearChatPendingFile() {
+      chatPendingFile = null;
+      if (chatAttachPreviewUrl) {
+        URL.revokeObjectURL(chatAttachPreviewUrl);
+        chatAttachPreviewUrl = null;
+      }
+      const input = document.getElementById('chatAttachInput');
+      if (input) input.value = '';
+      document.getElementById('chatAttachPreview')?.classList.add('hidden');
+    }
+
+    function renderChatAttachPreview() {
+      const wrap = document.getElementById('chatAttachPreview');
+      const thumb = document.getElementById('chatAttachPreviewThumb');
+      const nameEl = document.getElementById('chatAttachPreviewName');
+      const sizeEl = document.getElementById('chatAttachPreviewSize');
+      if (!wrap || !chatPendingFile) {
+        wrap?.classList.add('hidden');
+        return;
+      }
+      wrap.classList.remove('hidden');
+      if (nameEl) nameEl.textContent = chatPendingFile.name;
+      if (sizeEl) sizeEl.textContent = formatFileSize(chatPendingFile.size);
+      if (thumb) {
+        if (chatAttachPreviewUrl) URL.revokeObjectURL(chatAttachPreviewUrl);
+        if (chatPendingFile.type.startsWith('image/')) {
+          chatAttachPreviewUrl = URL.createObjectURL(chatPendingFile);
+          thumb.innerHTML = `<img src="${chatAttachPreviewUrl}" alt="" class="attachment-file-thumb" />`;
+        } else {
+          chatAttachPreviewUrl = null;
+          thumb.innerHTML = `<div class="attachment-file-icon">${attachmentFileIconHtml(chatPendingFile.type)}</div>`;
+        }
+      }
+    }
+
+    function setChatPendingFile(file) {
+      if (!file) return;
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+      if (!allowed.includes(file.type)) {
+        showAlert('File type not allowed. Use JPEG, PNG, WebP, GIF, or PDF.');
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        showAlert('File must be 8 MB or smaller.');
+        return;
+      }
+      chatPendingFile = file;
+      renderChatAttachPreview();
+    }
+
+    function renderMessageAttachmentsHtml(attachments) {
+      if (!attachments?.length) return '';
+      return attachments.map((a) => {
+        const previewUrl = `/api/message-attachments/${a.id}`;
+        const mime = a.mime_type || '';
+        const name = escHtml(a.file_name || 'Attachment');
+        if (mime.startsWith('image/')) {
+          return `<div class="chat-msg-attachment">
+            <img src="${escHtml(previewUrl)}" alt="${name}" class="chat-msg-attachment-thumb"
+              data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" />
+          </div>`;
+        }
+        return `<div class="chat-msg-attachment">
+          <button type="button" class="chat-msg-attachment-file"
+            data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}">
+            ${attachmentFileIconHtml(mime)}
+            <span class="truncate">${name}</span>
+          </button>
+        </div>`;
+      }).join('');
     }
 
     function applyGuestTeamAvatarUploadUi() {
@@ -4289,10 +4412,14 @@
       const bodyHtml = msg.edited_at
         ? `<div class="chat-msg-edited-card rounded-lg bg-ink-700/40 border border-white/5 px-3 py-2">
             ${editedLabel}
-            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(displayContent)}</p>
+            ${displayContent ? `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(displayContent)}</p>` : ''}
             ${versionToggle}
           </div>`
-        : `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(displayContent)}</p>`;
+        : (displayContent
+          ? `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatMessageBodyHtml(displayContent)}</p>`
+          : '');
+
+      const attachmentsHtml = renderMessageAttachmentsHtml(msg.attachments);
 
       const mentionedYou = messageMentionsCurrentUser(displayContent);
       const mentionRowClass = mentionedYou ? ' msg-mentioned-you' : '';
@@ -4308,6 +4435,7 @@
               ${renderChatMessageActions(msg)}
             </div>
             ${bodyHtml}
+            ${attachmentsHtml}
             ${renderReactionsBar('chat', msg.id, msg.reactions || [])}
           </div>
         </div>`;
@@ -4606,6 +4734,55 @@
       if (isGuest()) return;
       const input = document.getElementById('chatInput');
       const btn = document.getElementById('chatSendBtn');
+      const file = chatPendingFile;
+      const textContent = prepareOutgoingMessage(input?.value);
+
+      if (file) {
+        const key = `team-chat:${teamId}`;
+        if (messageSendInFlight.has(key) || sendCooldownTimers.has(key)) return;
+        if (!textContent && !file) return;
+
+        messageSendInFlight.add(key);
+        if (input) { input.disabled = true; }
+        if (btn) btn.disabled = true;
+
+        const form = new FormData();
+        if (textContent) form.append('content', textContent);
+        form.append('file', file);
+
+        try {
+          const r = await apiFetch(`/api/teams/${teamId}/chat`, { method: 'POST', body: form });
+          const msg = await parseJsonResponse(r);
+          if (!r.ok) {
+            const limited = messageSendRateLimitResult(r.status, msg);
+            if (limited) {
+              applyMessageSendCooldown(key, {
+                retryAfterMs: limited.rateLimit.retryAfterMs,
+                error: limited.rateLimit.error,
+                inputEl: input,
+                sendBtnEl: btn,
+                noticeEl: document.getElementById('chatSendCooldown'),
+              });
+              return;
+            }
+            showAlert(msg.error || 'Failed to send message');
+            return;
+          }
+          chatBatch.showLatestBatch();
+          chatMessages.push(msg);
+          if (input) input.value = '';
+          clearChatPendingFile();
+          renderChatMessages();
+          scrollChatToBottom();
+          markChatRead();
+        } finally {
+          messageSendInFlight.delete(key);
+          if (input && !sendCooldownTimers.has(key)) input.disabled = false;
+          if (btn && !sendCooldownTimers.has(key)) btn.disabled = false;
+        }
+        return;
+      }
+
       await submitMessageOnce(`team-chat:${teamId}`, {
         inputEl: input,
         sendBtnEl: btn,
@@ -5634,6 +5811,22 @@
         e.preventDefault();
         submitChatMessage();
       }
+    });
+
+    document.getElementById('chatAttachBtn')?.addEventListener('click', () => {
+      if (isGuest()) return;
+      document.getElementById('chatAttachInput')?.click();
+    });
+    document.getElementById('chatAttachInput')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) setChatPendingFile(file);
+    });
+    document.getElementById('chatAttachClearBtn')?.addEventListener('click', clearChatPendingFile);
+    document.getElementById('chatMessagesList')?.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-preview-attachment]');
+      if (!el) return;
+      e.preventDefault();
+      openAttachmentPreview(el.dataset.url, el.dataset.name, el.dataset.mime);
     });
 
     document.getElementById('chatMessagesList')?.addEventListener('scroll', () => {
