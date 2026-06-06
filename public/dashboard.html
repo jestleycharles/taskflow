@@ -883,13 +883,8 @@
     <!-- Direct messages panel (full viewport overlay) -->
     <div
       id="dmChatPanel"
-      class="hidden fixed inset-0 bg-ink-800 border border-white/10 flex flex-col min-h-0 relative"
+      class="hidden fixed inset-0 bg-ink-800 border border-white/10 flex flex-col min-h-0"
     >
-      <div
-        id="dmPanelLoadingOverlay"
-        class="hidden absolute inset-0 z-20 bg-ink-800 flex flex-col min-h-0 overflow-hidden"
-        aria-hidden="true"
-      ></div>
       <div
         class="shrink-0 px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-ink-800"
       >
@@ -1017,6 +1012,13 @@
         </button>
       </div>
 
+      <div class="relative flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div
+          id="dmPanelLoadingOverlay"
+          class="hidden absolute inset-0 z-20 bg-ink-800 flex flex-col min-h-0 overflow-hidden"
+          aria-hidden="true"
+        ></div>
+
       <div
         id="dmChatListView"
         class="flex-1 flex flex-col min-h-0 overflow-hidden"
@@ -1102,6 +1104,7 @@
           </div>
           <p id="dmSendCooldown" class="hidden text-xs text-amber-400/90 mt-2 leading-snug" role="status" aria-live="polite"></p>
         </div>
+      </div>
       </div>
     </div>
 

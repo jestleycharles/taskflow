@@ -1242,7 +1242,7 @@
       ? `<span class="text-gray-600"> · edited ${escHtml(formatDateTime(msg.edited_at))}</span>`
       : '';
 
-    const hasOriginal = msg.edited_at && msg.content_before_edit;
+    const hasOriginal = !!msg.edited_at;
     const showingOriginal = hasOriginal && dmViewingOriginalId === msg.id;
     const displayContent = showingOriginal ? msg.content_before_edit : msg.content;
     const versionToggle = hasOriginal
