@@ -583,6 +583,19 @@ function messageListSkeletonHtml(count = 4) {
   return `<div class="space-y-4">${variants.slice(0, n).join('')}</div>`;
 }
 
+/** Shimmer rows for settings column/role management lists. */
+function settingsMgmtListSkeletonHtml(count = 3) {
+  return Array.from({ length: count }, () =>
+    `<div class="flex items-center gap-2 p-2.5 rounded-xl bg-ink-700/60 border border-white/10">
+      <div class="skeleton w-4 h-4 rounded shrink-0"></div>
+      <div class="skeleton w-4 h-4 rounded-md shrink-0"></div>
+      <div class="skeleton flex-1 h-4 max-w-[8rem] rounded"></div>
+      <div class="skeleton w-7 h-7 rounded-lg shrink-0"></div>
+      <div class="skeleton w-7 h-7 rounded-lg shrink-0"></div>
+    </div>`,
+  ).join('');
+}
+
 /** Shimmer rows for the board activity side panel. */
 function activityListSkeletonHtml(count = 5) {
   const variants = [

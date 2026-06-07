@@ -2244,6 +2244,29 @@
       showTeamRolesError('');
     }
 
+    function showTeamRolesListLoading() {
+      const listEl = document.getElementById('teamRolesList');
+      const emptyEl = document.getElementById('teamRolesEmpty');
+      if (!listEl) return;
+      emptyEl?.classList.add('hidden');
+      listEl.innerHTML = settingsMgmtListSkeletonHtml();
+    }
+
+    async function refreshTeamRolesList() {
+      showTeamRolesListLoading();
+      const r = await apiFetch(`/api/teams/${teamId}`);
+      const data = await parseJsonResponse(r);
+      if (r.ok && data) {
+        data.roles = data.roles || [];
+        teamData.roles = data.roles;
+        if (data.separate_role_members != null) {
+          teamData.separate_role_members = !!data.separate_role_members;
+        }
+        captureTeamRoleStateSig();
+      }
+      renderTeamRolesList();
+    }
+
     function renderTeamRolesList() {
       const roles = teamData?.roles || [];
       const listEl = document.getElementById('teamRolesList');
@@ -2302,6 +2325,7 @@
           if (from < 0 || to < 0) return;
           ids.splice(from, 1);
           ids.splice(to, 0, draggingTeamRoleId);
+          showTeamRolesListLoading();
           const r = await apiFetch(`/api/teams/${teamId}/roles/reorder`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -2310,6 +2334,7 @@
           const d = await r.json();
           if (!r.ok) {
             showTeamRolesError(d.error || 'Failed to reorder roles');
+            renderTeamRolesList();
             return;
           }
           teamData.roles = d;
@@ -2320,15 +2345,15 @@
       });
     }
 
-    function openTeamRolesModal() {
+    async function openTeamRolesModal() {
       if (teamData?.userRole !== 'owner') return;
       showTeamRolesError('');
       syncSeparateRoleToggleUi();
       resetTeamRoleForm();
       resetTeamRoleAddDrawer();
-      renderTeamRolesList();
       document.getElementById('teamRolesModal').classList.remove('hidden');
       pushBoardOverlay('teamRoles');
+      await refreshTeamRolesList();
     }
 
     function closeTeamRolesModal() {
@@ -2356,6 +2381,25 @@
       document.getElementById('columnSaveBtn').textContent = 'Add column';
       document.getElementById('columnFormCancelBtn').classList.add('hidden');
       showColumnMgmtError('');
+    }
+
+    function showColumnMgmtListLoading() {
+      const listEl = document.getElementById('columnMgmtList');
+      const emptyEl = document.getElementById('columnMgmtEmpty');
+      if (!listEl) return;
+      emptyEl?.classList.add('hidden');
+      listEl.innerHTML = settingsMgmtListSkeletonHtml();
+    }
+
+    async function refreshColumnMgmtList() {
+      showColumnMgmtListLoading();
+      const r = await apiFetch(`/api/teams/${teamId}/columns`);
+      const cols = await parseJsonResponse(r);
+      if (r.ok && Array.isArray(cols)) {
+        teamColumns = cols;
+        teamData.columns = cols;
+      }
+      renderColumnMgmtList();
     }
 
     function renderColumnMgmtList() {
@@ -2416,6 +2460,7 @@
           if (from < 0 || to < 0) return;
           ids.splice(from, 1);
           ids.splice(to, 0, draggedColumnId);
+          showColumnMgmtListLoading();
           const r = await apiFetch(`/api/teams/${teamId}/columns/reorder`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -2424,6 +2469,7 @@
           const d = await parseJsonResponse(r);
           if (!r.ok) {
             showColumnMgmtError(d.error || 'Failed to reorder columns');
+            renderColumnMgmtList();
             return;
           }
           teamColumns = d;
@@ -2436,13 +2482,13 @@
       });
     }
 
-    function openColumnMgmtModal() {
+    async function openColumnMgmtModal() {
       if (teamData?.userRole !== 'owner') return;
       resetColumnForm();
       resetColumnAddDrawer();
-      renderColumnMgmtList();
       document.getElementById('columnMgmtModal').classList.remove('hidden');
       pushBoardOverlay('columnMgmt');
+      await refreshColumnMgmtList();
     }
 
     function closeColumnMgmtModal() {
@@ -2473,6 +2519,7 @@
       }
       const btn = document.getElementById('columnSaveBtn');
       btn.disabled = true;
+      showColumnMgmtListLoading();
       const url = editingColumnId
         ? `/api/teams/${teamId}/columns/${editingColumnId}`
         : `/api/teams/${teamId}/columns`;
@@ -2485,6 +2532,7 @@
       btn.disabled = false;
       if (!r.ok) {
         showColumnMgmtError(d.error || 'Failed to save column');
+        renderColumnMgmtList();
         return;
       }
       if (editingColumnId) {
@@ -2519,6 +2567,7 @@
     }
 
     async function executeDeleteColumn(columnId, moveTasksTo) {
+      showColumnMgmtListLoading();
       const r = await apiFetch(`/api/teams/${teamId}/columns/${columnId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -2527,6 +2576,7 @@
       const d = await parseJsonResponse(r);
       if (!r.ok) {
         showAlert(d.error || 'Failed to delete column');
+        renderColumnMgmtList();
         return;
       }
       teamColumns = teamColumns.filter((c) => c.id !== columnId);
@@ -2565,6 +2615,7 @@
       }
       const btn = document.getElementById('teamRoleSaveBtn');
       btn.disabled = true;
+      showTeamRolesListLoading();
       const url = editingTeamRoleId
         ? `/api/teams/${teamId}/roles/${editingTeamRoleId}`
         : `/api/teams/${teamId}/roles`;
@@ -2577,6 +2628,7 @@
       btn.disabled = false;
       if (!r.ok) {
         showTeamRolesError(d.error || 'Failed to save role');
+        renderTeamRolesList();
         return;
       }
       if (editingTeamRoleId) {
@@ -2606,10 +2658,12 @@
     }
 
     async function executeDeleteTeamRole(roleId) {
+      showTeamRolesListLoading();
       const r = await apiFetch(`/api/teams/${teamId}/roles/${roleId}`, { method: 'DELETE' });
       const d = await r.json();
       if (!r.ok) {
         showAlert(d.error || 'Failed to delete role');
+        renderTeamRolesList();
         return;
       }
       teamData.roles = (teamData.roles || []).filter((role) => role.id !== roleId);
@@ -3656,12 +3710,14 @@
           }
         }
       } finally {
-        setTaskModalBusy(false);
+        if (activeTaskId === taskId) setTaskModalBusy(false);
       }
     }
     async function closeTaskModalUi() {
       if (taskModalClosing) return;
       taskModalClosing = true;
+      const backdrop = document.querySelector('#taskModal > .modal-overlay');
+      backdrop?.classList.add('pointer-events-none');
       setTaskModalBusy(true, 'Saving…');
       closeReactionFloats();
       dismissMessageComposer(
@@ -3677,7 +3733,6 @@
         }
       } finally {
         setTaskModalBusy(false);
-        taskModalClosing = false;
       }
       document.getElementById('taskModal').classList.add('hidden');
       activeTaskId = null;
@@ -3694,8 +3749,11 @@
       commentEditDraft = '';
       commentViewingOriginalId = null;
       clearCommentPendingFile();
+      taskModalClosing = false;
+      backdrop?.classList.remove('pointer-events-none');
     }
     function closeTaskModal() {
+      if (taskModalClosing) return;
       requestCloseBoardOverlay();
     }
 
