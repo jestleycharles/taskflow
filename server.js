@@ -40,12 +40,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── Fix 2: lazy session pool — created once on first request, not at boot ────
+let sessionPoolPromise = null;
+function getSessionPool() {
+  if (!sessionPoolPromise) {
+    const sessionDbUrl = process.env.SESSION_DATABASE_URL || process.env.DATABASE_URL;
+    sessionPoolPromise = createSessionPool(sessionDbUrl);
+  }
+  return sessionPoolPromise;
+}
+
 async function start() {
   log('start() called');
 
-  const sessionDbUrl = process.env.SESSION_DATABASE_URL || process.env.DATABASE_URL;
-  log('creating session pool…');
-  const sessionPool = await createSessionPool(sessionDbUrl);
+  // ── Fix 2: resolve pool lazily so it doesn't block server start ─────────
+  const sessionPool = await getSessionPool();
   log('session pool ready');
 
   app.use(session({
@@ -152,15 +161,18 @@ async function start() {
     res.json(req.session.user);
   });
 
-  log('running ensureFeaturePostSeed…');
-  await ensureFeaturePostSeed();
-  log('ensureFeaturePostSeed done');
-
   const PORT = process.env.PORT || 3000;
+
+  // ── Fix 1: listen first, seed in background ──────────────────────────────
   app.listen(PORT, () => {
     log(`server listening on port ${PORT}`);
     console.log(`[startup] ── total startup time: ${Date.now() - t0}ms ──`);
     console.log(`TaskFlow running on port ${PORT}`);
+
+    log('running ensureFeaturePostSeed in background…');
+    ensureFeaturePostSeed()
+      .then(() => log('ensureFeaturePostSeed done (background)'))
+      .catch((err) => console.error('[startup] seed error:', err));
   });
 }
 
