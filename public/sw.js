@@ -1,5 +1,5 @@
-const SHELL_CACHE = 'taskflow-shell-v2';
-const STATIC_CACHE = 'taskflow-static-v2';
+const SHELL_CACHE = 'taskflow-shell-v3';
+const STATIC_CACHE = 'taskflow-static-v3';
 
 const SHELL_URLS = ['/login', '/register', '/dashboard'];
 
@@ -8,14 +8,14 @@ const PRECACHE_STATIC = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/manifest.webmanifest',
-  '/api.js',
-  '/auth-oauth.js',
-  '/avatar-utils.js',
+  '/js/api.js',
+  '/js/auth-oauth.js',
+  '/js/avatar-utils.js',
   '/images/unavailable.svg',
-  '/pwa-install.js',
-  '/viewport-breakpoints.js',
-  '/portrait-orientation.css',
-  '/mobile-orientation.js',
+  '/js/pwa-install.js',
+  '/js/viewport-breakpoints.js',
+  '/css/portrait-orientation.css',
+  '/js/mobile-orientation.js',
 ];
 
 self.addEventListener('install', (event) => {
