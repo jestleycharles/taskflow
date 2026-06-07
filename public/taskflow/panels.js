@@ -569,11 +569,15 @@ async function executeDeleteTeam() {
 }
 
 function renderActivityItem(log) {
-  return `<div class="flex gap-3">
-      ${userAvatarHtml(log.user || { username: '?', avatar_color: '#4f6ef7' }, 'w-7 h-7 mt-0.5')}
-      <div class="flex-1 min-w-0">
-        <p class="text-xs text-gray-300 leading-relaxed">${escHtml(log.description)}</p>
-        <p class="text-xs text-gray-600 mt-1">${timeAgo(log.created_at)}</p>
+  const user = log.user || { username: 'Someone', avatar_color: '#4f6ef7' };
+  return `<div class="flex gap-3 py-3 border-b border-white/5 last:border-0">
+      ${userAvatarHtml(user, 'w-8 h-8 shrink-0')}
+      <div class="min-w-0">
+        <p class="text-gray-300 text-sm leading-relaxed">
+          <span class="text-white font-medium">${escHtml(user.username)}</span>
+          ${escHtml(log.description)}
+        </p>
+        <p class="text-gray-600 text-xs mt-0.5">${new Date(log.created_at).toLocaleString()}</p>
       </div>
     </div>`;
 }

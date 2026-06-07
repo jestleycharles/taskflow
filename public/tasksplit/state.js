@@ -57,6 +57,8 @@ let expenseCommentEditDraft = '';
 let expenseCommentViewingOriginalId = null;
 let expenseCommentPendingFile = null;
 let expenseCommentAttachPreviewUrl = null;
+let editingExpenseField = null;
+let expenseEditDraft = '';
 
 function isTaskflowSidepanel(name) {
   return TASKFLOW_SIDEPANELS.has(name);

@@ -21,7 +21,6 @@ html { touch-action: manipulation; }
   flex: 1 1 0;
   min-height: 0;
 }
-#balanceSidebar,
 #balancePanel,
 #activityPanel,
 #teamPanel,
@@ -54,6 +53,10 @@ html { touch-action: manipulation; }
     overflow: auto;
   }
   #expensesZoomRoot {
+    width: max-content;
+    min-width: 100%;
+  }
+  #expensesList {
     min-width: 100%;
   }
 }

@@ -329,6 +329,65 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
   }
 });
 
+// PATCH /api/teams/:id/tasksplit/expenses/:expenseId
+router.patch('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async (req, res) => {
+  const { id, expenseId } = req.params;
+  const userId = req.session.user.id;
+  const { title, description } = req.body || {};
+
+  try {
+    const loaded = await loadExpenseTeam(id, userId);
+    if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+
+    const { data: existing } = await supabaseAdmin
+      .from('expenses')
+      .select('id, title, description, team_id')
+      .eq('id', expenseId)
+      .eq('team_id', id)
+      .single();
+
+    if (!existing) return res.status(404).json({ error: 'Expense not found' });
+
+    const updates = {};
+    if (title !== undefined) {
+      const trimmedTitle = String(title || '').trim();
+      if (!trimmedTitle) return res.status(400).json({ error: 'Expense title is required' });
+      updates.title = trimmedTitle;
+    }
+    if (description !== undefined) {
+      updates.description = description?.trim() || null;
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const { data: expense, error } = await supabaseAdmin
+      .from('expenses')
+      .update(updates)
+      .eq('id', expenseId)
+      .select()
+      .single();
+
+    if (error) return sendError(res, 400, error, 'save');
+
+    const members = await loadTeamMembers(id);
+    const full = await loadExpensesWithParticipants(id);
+    const enriched = full.find((e) => e.id === expenseId);
+    if (!enriched) return res.status(404).json({ error: 'Expense not found' });
+
+    if (updates.title && updates.title !== existing.title) {
+      await logTaskSplitActivity(id, userId, 'expense_updated', `Renamed expense to "${updates.title}"`);
+    } else if (description !== undefined) {
+      await logTaskSplitActivity(id, userId, 'expense_updated', `Updated description for "${expense.title}"`);
+    }
+
+    res.json(attachUsers([enriched], members)[0]);
+  } catch (err) {
+    return sendError(res, 500, err, 'save');
+  }
+});
+
 // DELETE /api/teams/:id/tasksplit/expenses/:expenseId
 router.delete('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async (req, res) => {
   const { id, expenseId } = req.params;

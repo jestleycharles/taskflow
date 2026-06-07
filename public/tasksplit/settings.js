@@ -85,6 +85,30 @@ function resetEditTeamDetailsDrawer() {
   setEditTeamDetailsDrawerOpen(false);
 }
 
+function setTeamRoleAddDrawerOpen(open) {
+  const content = document.getElementById('teamRoleAddContent');
+  const btn = document.getElementById('teamRoleAddToggleBtn');
+  const label = document.getElementById('teamRoleAddLabel');
+  const chevron = document.getElementById('teamRoleAddChevron');
+  if (!content || !btn) return;
+  content.classList.toggle('hidden', !open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  btn.classList.toggle('drawer-open', open);
+  const editing = !!editingTeamRoleId;
+  if (label) label.textContent = open ? (editing ? 'Hide role editor' : 'Hide add role') : (editing ? 'Edit role' : 'Add role');
+  if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function toggleTeamRoleAddDrawer() {
+  const content = document.getElementById('teamRoleAddContent');
+  if (!content) return;
+  setTeamRoleAddDrawerOpen(content.classList.contains('hidden'));
+}
+
+function resetTeamRoleAddDrawer() {
+  setTeamRoleAddDrawerOpen(false);
+}
+
 async function reloadWorkspace() {
   await refreshAll();
   syncTeamDataFromWorkspace();
@@ -102,7 +126,6 @@ function openSettingsPanel() {
   closeAllPanels();
   document.getElementById('settingsPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
-  hideBalanceSidebarForPanel();
   pushTaskflowOverlay('settings');
   applyMembershipActionsUi();
 }
@@ -111,7 +134,6 @@ function closeSettingsPanelUi() {
   document.getElementById('settingsPanel').classList.add('hidden');
   setSidePanelMobileOpen(false);
   setSettingsDangerZoneOpen(false);
-  restoreBalanceSidebarIfNeeded();
 }
 
 function closeSettingsPanel() {

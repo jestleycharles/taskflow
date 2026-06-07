@@ -24,5 +24,4 @@ function closeAllPanels() {
   closeSettingsPanelUi?.();
   closeChatPanelUi?.();
   setSidePanelMobileOpen(false);
-  restoreBalanceSidebarIfNeeded();
 }

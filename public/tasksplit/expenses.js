@@ -172,18 +172,18 @@ function openExpenseDetail(expenseId) {
   if (!expense) return;
 
   closeTaskflowOverlayBeforeOpen('expenseDetail');
+  resetExpenseDetailComments();
   activeExpenseId = expenseId;
   expenseDetailTab = 'details';
-  resetExpenseDetailComments();
+  editingExpenseField = null;
+  expenseEditDraft = '';
 
-  document.getElementById('expenseDetailTitle').textContent = expense.title;
+  renderExpenseTitleArea(expense);
   document.getElementById('expenseDetailAmount').textContent = formatMoney(expense.amount);
   document.getElementById('expenseDetailDate').textContent = formatDate(expense.expense_date);
   document.getElementById('expenseDetailPaidBy').textContent =
     expense.paid_by_user?.username || 'Unknown';
-  document.getElementById('expenseDetailDescription').textContent =
-    expense.description || 'No description';
-  document.getElementById('expenseDetailDescription').classList.toggle('hidden', !expense.description);
+  renderExpenseDescArea(expense);
 
   const splitsEl = document.getElementById('expenseDetailSplits');
   const isSolo = workspaceData?.team?.expense_mode === 'solo';
@@ -205,25 +205,125 @@ function openExpenseDetail(expenseId) {
       .join('');
   }
 
-  document.getElementById('expenseDetailDeleteBtn').onclick = () => {
-    closeExpenseDetailModal();
-    dismissTaskflowOverlayHistory('expenseDetail');
-    showConfirm({
-      title: 'Delete expense?',
-      message: `"${expense.title}" will be removed and balances will update.`,
-      confirmLabel: 'Delete',
-      danger: true,
-      onConfirm: () => deleteExpense(expenseId),
-    });
-  };
-
   document.getElementById('expenseDetailModal').classList.remove('hidden');
   setExpenseDetailTab('details');
   pushTaskflowOverlay('expenseDetail');
 }
 
+function renderExpenseTitleArea(expense) {
+  const area = document.getElementById('expenseDetailTitleArea');
+  if (!area || !expense) return;
+  if (editingExpenseField === 'title') {
+    area.innerHTML = `<div class="space-y-2">
+      <input id="expenseTitleEditInput" type="text" oninput="expenseEditDraft=this.value"
+        class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-lg font-semibold focus:outline-none focus:border-brand-500 transition" />
+      <div class="flex gap-2 justify-end">
+        <button type="button" onclick="cancelEditExpense()" class="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Cancel</button>
+        <button type="button" onclick="saveEditExpense('title')" class="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded-lg transition font-medium">Save</button>
+      </div>
+    </div>`;
+    const input = document.getElementById('expenseTitleEditInput');
+    input.value = expenseEditDraft || expense.title;
+    input.focus();
+    return;
+  }
+  area.innerHTML = `<h2 class="text-lg font-semibold text-white leading-snug truncate">${escHtml(expense.title)}</h2>`;
+}
+
+function renderExpenseDescArea(expense) {
+  const area = document.getElementById('expenseDetailDescArea');
+  if (!area || !expense) return;
+  if (editingExpenseField === 'description') {
+    area.innerHTML = `<div class="space-y-2 w-full">
+      <textarea id="expenseDescEditInput" rows="3" oninput="expenseEditDraft=this.value"
+        class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition resize-none"></textarea>
+      <div class="flex gap-2 justify-end">
+        <button type="button" onclick="cancelEditExpense()" class="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Cancel</button>
+        <button type="button" onclick="saveEditExpense('description')" class="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded-lg transition font-medium">Save</button>
+      </div>
+    </div>`;
+    const ta = document.getElementById('expenseDescEditInput');
+    ta.value = expenseEditDraft !== '' ? expenseEditDraft : (expense.description || '');
+    ta.focus();
+    return;
+  }
+  const desc = expense.description || '';
+  area.innerHTML = desc
+    ? `<p class="whitespace-pre-wrap break-words">${escHtml(desc)}</p>`
+    : '<span class="text-gray-500">No description provided.</span>';
+}
+
+function startEditExpense(field) {
+  if (!activeExpenseId) return;
+  const expense = expenses.find((e) => e.id === activeExpenseId);
+  if (!expense) return;
+  editingExpenseField = field;
+  expenseEditDraft = field === 'title' ? expense.title : (expense.description || '');
+  renderExpenseTitleArea(expense);
+  renderExpenseDescArea(expense);
+}
+
+function cancelEditExpense() {
+  editingExpenseField = null;
+  expenseEditDraft = '';
+  const expense = expenses.find((e) => e.id === activeExpenseId);
+  if (expense) {
+    renderExpenseTitleArea(expense);
+    renderExpenseDescArea(expense);
+  }
+}
+
+async function saveEditExpense(field) {
+  if (!activeExpenseId) return;
+  const input = document.getElementById(field === 'title' ? 'expenseTitleEditInput' : 'expenseDescEditInput');
+  const value = (input?.value ?? '').trim();
+  if (field === 'title' && !value) {
+    showAlert('Title cannot be empty');
+    return;
+  }
+  const body = field === 'title' ? { title: value } : { description: value };
+  const r = await apiFetch(`/api/teams/${teamId}/tasksplit/expenses/${activeExpenseId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const updated = await parseJsonResponse(r);
+  if (!r.ok) {
+    showAlert(updated.error || 'Failed to save');
+    return;
+  }
+  const idx = expenses.findIndex((e) => e.id === activeExpenseId);
+  if (idx !== -1) expenses[idx] = updated;
+  editingExpenseField = null;
+  expenseEditDraft = '';
+  renderExpenseTitleArea(updated);
+  renderExpenseDescArea(updated);
+  renderExpensesList();
+  updateSummaryBar();
+}
+
+function deleteExpenseFromModal() {
+  const expenseId = activeExpenseId;
+  if (!expenseId) return;
+  const expense = expenses.find((e) => e.id === expenseId);
+  if (!expense) return;
+  showConfirm({
+    title: 'Delete expense?',
+    message: `"${expense.title}" will be removed and balances will update.`,
+    confirmLabel: 'Delete',
+    danger: true,
+    onConfirm: async () => {
+      closeExpenseDetailPanel();
+      await deleteExpense(expenseId);
+    },
+  });
+}
+
 function closeExpenseDetailModal() {
   document.getElementById('expenseDetailModal').classList.add('hidden');
+  activeExpenseId = null;
+  editingExpenseField = null;
+  expenseEditDraft = '';
   resetExpenseDetailComments();
 }
 

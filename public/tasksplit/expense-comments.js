@@ -376,7 +376,6 @@ async function executeDeleteExpenseComment(commentId) {
 }
 
 function resetExpenseDetailComments() {
-  activeExpenseId = null;
   expenseComments = [];
   expenseCommentsReady = false;
   editingExpenseCommentId = null;

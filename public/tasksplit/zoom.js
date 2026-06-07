@@ -111,6 +111,7 @@ function applyZoomLevelFromModal() {
 
 function closeZoomLevelModal() {
   document.getElementById('zoomLevelModal')?.classList.add('hidden');
+  if (typeof dismissTaskflowOverlayHistory === 'function') dismissTaskflowOverlayHistory('zoomLevel');
 }
 
 function preventBrowserPinchZoom() {
@@ -154,7 +155,7 @@ function initTaskflowZoom() {
   container.addEventListener('wheel', (e) => {
     if (mobileMq.matches) return;
     if (!(e.ctrlKey || e.metaKey)) return;
-    if (e.target.closest('.task-card, button, input, textarea, select, a, label, #taskflowZoomWrap')) return;
+    if (e.target.closest('.task-card, .expense-card, button, input, textarea, select, a, label, #taskflowZoomWrap')) return;
     const rect = container.getBoundingClientRect();
     onTaskflowZoomWheel(e, e.clientX - rect.left, e.clientY - rect.top);
   }, { passive: false });
@@ -228,7 +229,7 @@ function initTaskflowPan() {
 
   function isBoardPanTarget(target) {
     if (!target?.closest) return false;
-    if (target.closest('.task-card, button, input, textarea, select, a, label')) return false;
+    if (target.closest('.task-card, .expense-card, button, input, textarea, select, a, label')) return false;
     return !!target.closest('.taskflow-pan-surface, #expensesContainer');
   }
 

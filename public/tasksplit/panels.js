@@ -4,24 +4,10 @@
 
 let activitySearchQuery = '';
 
-function hideBalanceSidebarForPanel() {
-  document.getElementById('balanceSidebar')?.classList.add('hidden');
-  document.getElementById('balanceSidebar')?.classList.remove('lg:flex');
-}
-
-function restoreBalanceSidebarIfNeeded() {
-  const isSolo = workspaceData?.team?.expense_mode === 'solo';
-  const sidebar = document.getElementById('balanceSidebar');
-  if (!sidebar || isSolo) return;
-  sidebar.classList.remove('hidden');
-  sidebar.classList.add('lg:flex');
-}
-
 function openActivityPanel() {
   closeTaskflowOverlayBeforeOpen('activity');
   if (chatPanelOpen) closeChatPanelUi();
   closeAllPanels();
-  hideBalanceSidebarForPanel();
   document.getElementById('activityPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
   loadActivity();
@@ -31,7 +17,6 @@ function openActivityPanel() {
 function closeActivityPanelUi() {
   document.getElementById('activityPanel').classList.add('hidden');
   setSidePanelMobileOpen(false);
-  restoreBalanceSidebarIfNeeded();
 }
 
 function closeActivityPanel() {
@@ -42,7 +27,6 @@ function openTeamPanel() {
   closeTaskflowOverlayBeforeOpen('team');
   if (chatPanelOpen) closeChatPanelUi();
   closeAllPanels();
-  hideBalanceSidebarForPanel();
   document.getElementById('teamPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
   renderMemberList(teamData?.members || workspaceData?.members || []);
@@ -113,7 +97,6 @@ async function tasksplitCopyInviteLink() {
 function closeTeamPanelUi() {
   document.getElementById('teamPanel').classList.add('hidden');
   setSidePanelMobileOpen(false);
-  restoreBalanceSidebarIfNeeded();
 }
 
 function closeTeamPanel() {
