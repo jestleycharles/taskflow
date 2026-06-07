@@ -1,0 +1,59 @@
+body {
+  font-family: "DM Sans", sans-serif;
+  background: #0f1117;
+}
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(79, 110, 247, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 110, 247, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.expense-card {
+  transition: border-color 0.15s, background 0.15s;
+}
+.expense-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(37, 40, 64, 0.9);
+}
+.balance-positive { color: #34d399; }
+.balance-negative { color: #f87171; }
+.poll-dot { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.sidebar-slide {
+  transition: transform 0.25s ease;
+}
+@media (max-width: 767px) {
+  .sidebar-slide.mobile-open {
+    position: fixed;
+    inset: 0;
+    top: var(--nav-h, 3.5rem);
+    z-index: 45;
+    width: 100% !important;
+    max-width: 100%;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1a1d2e 25%, #252840 50%, #1a1d2e 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: 6px;
+}
+@keyframes shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+.btn-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btnSpin 0.65s linear infinite;
+}
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}

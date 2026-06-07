@@ -21,6 +21,7 @@ const {
   buildInviteUrl,
 } = require('../lib/invite-links');
 const { deleteStoredTeamFiles } = require('../lib/storage-cleanup');
+const { normalizeExpenseMode } = require('../lib/tasksplit-team');
 const router = express.Router();
 
 const AVATAR_BUCKET = 'avatars';
@@ -242,7 +243,7 @@ router.get('/api/teams', requireAuth, async (req, res) => {
   const userId = req.session.user.id;
   const { data, error } = await supabaseAdmin
     .from('team_members')
-    .select('role, teams(id, name, description, avatar_color, avatar_url, created_by, created_at)')
+    .select('role, teams(id, name, description, avatar_color, avatar_url, created_by, created_at, workspace_type, expense_mode)')
     .eq('user_id', userId);
 
   if (error) return sendError(res, 500, error, 'load');
@@ -299,15 +300,21 @@ router.get('/api/teams/online', requireAuth, async (req, res) => {
   res.json(onlineTeamIds);
 });
 
-// POST /api/teams - create team
+// POST /api/teams - create team or TaskSplit expense workspace
 router.post('/api/teams', requireAuth, async (req, res) => {
-  const { name, description, avatar_url, kanban_preset } = req.body;
+  const { name, description, avatar_url, kanban_preset, workspace_type, expense_mode } = req.body;
   const userId = req.session.user.id;
 
   const trimmedName = String(name || '').trim();
   if (!trimmedName) return res.status(400).json({ error: 'Team name is required' });
 
-  const preset = getKanbanPreset(kanban_preset);
+  const isExpense = workspace_type === 'expense';
+  const mode = isExpense ? normalizeExpenseMode(expense_mode) : null;
+  if (isExpense && !mode) {
+    return res.status(400).json({ error: 'Expense mode must be solo, duo, or group' });
+  }
+
+  const preset = isExpense ? null : getKanbanPreset(kanban_preset);
 
   let presetUrl = null;
   if (avatar_url) {
@@ -323,6 +330,8 @@ router.post('/api/teams', requireAuth, async (req, res) => {
       created_by: userId,
       avatar_color: randomColor(),
       avatar_url: presetUrl,
+      workspace_type: isExpense ? 'expense' : 'task',
+      expense_mode: mode,
     })
     .select()
     .single();
@@ -331,15 +340,18 @@ router.post('/api/teams', requireAuth, async (req, res) => {
 
   await supabaseAdmin.from('team_members').insert({ team_id: team.id, user_id: userId, role: 'owner' });
 
-  try {
-    await seedTeamColumns(team.id, preset.id);
-  } catch (colErr) {
-    await supabaseAdmin.from('teams').delete().eq('id', team.id);
-    return sendError(res, 500, colErr, 'save');
+  if (!isExpense) {
+    try {
+      await seedTeamColumns(team.id, preset.id);
+    } catch (colErr) {
+      await supabaseAdmin.from('teams').delete().eq('id', team.id);
+      return sendError(res, 500, colErr, 'save');
+    }
   }
 
-  await logActivity(team.id, userId, 'team_created', `Created team "${trimmedName}"`);
-  res.json({ ...team, kanban_preset: preset.id });
+  const createdLabel = isExpense ? `TaskSplit workspace "${trimmedName}"` : `team "${trimmedName}"`;
+  await logActivity(team.id, userId, 'team_created', `Created ${createdLabel}`);
+  res.json({ ...team, kanban_preset: preset?.id || null });
 });
 
 // PATCH /api/teams/:id — update name & description (owner only)
@@ -504,10 +516,12 @@ router.get('/api/teams/:id', requireAuth, async (req, res) => {
   }
 
   let columns = [];
-  try {
-    columns = await ensureTeamColumns(id);
-  } catch (colErr) {
-    return sendError(res, 500, colErr, 'load');
+  if (team.workspace_type !== 'expense') {
+    try {
+      columns = await ensureTeamColumns(id);
+    } catch (colErr) {
+      return sendError(res, 500, colErr, 'load');
+    }
   }
 
   const memberList = attachCustomRoles(

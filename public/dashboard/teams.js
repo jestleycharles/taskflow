@@ -110,6 +110,12 @@ window.showTeamsLoading = function showTeamsLoading() {
  * @param {HTMLElement|null} cardEl
  */
 window.beginOpeningTeam = function beginOpeningTeam(teamId, cardEl) {
+  const team = window.teamsList.find((t) => String(t.id) === String(teamId));
+  const dest =
+    team?.workspace_type === "expense"
+      ? `/tasksplit/${teamId}`
+      : `/board/${teamId}`;
+
   const grid = document.getElementById("teamsGrid");
   if (cardEl) {
     cardEl.classList.remove(
@@ -124,7 +130,7 @@ window.beginOpeningTeam = function beginOpeningTeam(teamId, cardEl) {
     if (c !== cardEl) c.classList.add("pointer-events-none", "opacity-60");
   });
   setNavigatingAway(true);
-  window.location = `/board/${teamId}`;
+  window.location = dest;
 };
 
 function renderTeamsGrid() {
@@ -153,12 +159,24 @@ function renderTeamsGrid() {
     card.style.animationDelay = `${i * 0.07}s`;
     card.dataset.teamId = team.id;
     card.onclick = () => beginOpeningTeam(team.id, card);
+    const isTaskSplit = team.workspace_type === "expense";
+    const modeBadge = isTaskSplit
+      ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mr-1">TaskSplit</span>`
+      : "";
+    const modeLabel = isTaskSplit && team.expense_mode
+      ? `<span class="text-[10px] text-gray-500 capitalize">${escHtml(team.expense_mode)}</span>`
+      : "";
+
     card.innerHTML = `
       <div class="flex items-start justify-between mb-4">
         ${teamAvatarWithPresenceHtml(team)}
         <span class="text-xs px-2.5 py-1 rounded-full border ${team.role === "owner" ? "border-brand-500/40 text-brand-500 bg-brand-500/10" : "border-white/10 text-gray-400 bg-white/5"}">${team.role}</span>
       </div>
-      <h3 class="text-white font-semibold mb-1">${escHtml(team.name)}</h3>
+      <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+        <h3 class="text-white font-semibold">${escHtml(team.name)}</h3>
+        ${modeBadge}
+      </div>
+      ${modeLabel ? `<p class="mb-1">${modeLabel}</p>` : ""}
       <p class="text-gray-500 text-sm mb-4 line-clamp-2">${escHtml(team.description || "No description")}</p>
       <div class="flex items-center justify-between">
         <div class="flex flex-col gap-0.5">

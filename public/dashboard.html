@@ -579,7 +579,7 @@
         <div>
           <h1 class="text-3xl font-bold text-white mb-1">Your Teams</h1>
           <p class="text-gray-400 text-sm">
-            Select a team to view its Kanban board.
+            Open a task board or a TaskSplit expense workspace.
           </p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -603,6 +603,15 @@
               />
             </svg>
             Join via invite link
+          </button>
+          <button
+            onclick="openCreateTaskSplitModal()"
+            class="flex items-center justify-center gap-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-sm font-medium px-5 py-2.5 rounded-xl transition"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            New TaskSplit
           </button>
           <button
             onclick="openCreateModal()"
@@ -1238,6 +1247,107 @@
               role="status"
               aria-live="polite"
             ></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create TaskSplit Modal -->
+    <div
+      id="createTaskSplitModal"
+      class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto"
+    >
+      <div
+        class="modal-overlay absolute inset-0 bg-black/60"
+        onclick="closeCreateTaskSplitModal()"
+      ></div>
+      <div
+        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto"
+      >
+        <h2 class="text-lg font-semibold text-white mb-1">New TaskSplit</h2>
+        <p class="text-gray-500 text-sm mb-5">
+          Track shared expenses with equal splits, running balances, and settle up.
+        </p>
+        <div
+          id="taskSplitModalError"
+          class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
+        ></div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Workspace name</label>
+            <input
+              id="taskSplitName"
+              type="text"
+              placeholder="e.g. Trip to Japan"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm"
+            />
+          </div>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Mode</label>
+            <select
+              id="taskSplitMode"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition text-sm"
+            >
+              <option value="solo">Solo — personal spending</option>
+              <option value="duo">Duo — couples, roommates, partners</option>
+              <option value="group">Group — trips, shared households</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1.5">Duo and group modes split expenses equally. Invite members after creating.</p>
+          </div>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
+            <div class="flex items-center gap-4 mb-4">
+              <div
+                id="createTaskSplitAvatarPreview"
+                class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"
+              ></div>
+              <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
+            </div>
+            <div id="createTaskSplitAvatarGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
+            <label
+              id="createTaskSplitAvatarUploadLabel"
+              class="inline-flex items-center gap-2 text-sm text-emerald-500 hover:text-emerald-400 cursor-pointer transition"
+            >
+              Upload custom image
+              <input
+                id="createTaskSplitAvatarFile"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                class="hidden"
+              />
+            </label>
+            <p
+              id="createTaskSplitAvatarGuestNote"
+              class="hidden text-xs text-amber-400/90 mt-2"
+            >
+              Custom images require a registered account.
+            </p>
+          </div>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
+            <input
+              id="taskSplitDesc"
+              type="text"
+              placeholder="What is this workspace for?"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition text-sm"
+            />
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button
+              type="button"
+              onclick="closeCreateTaskSplitModal()"
+              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              id="createTaskSplitBtn"
+              onclick="createTaskSplit()"
+              class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition text-sm"
+            >
+              Create TaskSplit
+            </button>
           </div>
         </div>
       </div>
@@ -2202,6 +2312,7 @@
     <script src="/dashboard/feedback-admin.js"></script>
     <script src="/dashboard/feature-posts.js"></script>
     <script src="/dashboard/teams.js"></script>
+    <script src="/dashboard/tasksplit.js"></script>
     <script src="/dashboard/team-invites.js"></script>
     <script src="/dashboard/init.js"></script>
   </body>

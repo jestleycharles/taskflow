@@ -30,6 +30,7 @@ window.getTopDashboardOverlay = function getTopDashboardOverlay() {
   if (!hidden("featurePostImageModal")) return "featurePostImage";
   if (!hidden("profileModal")) return "profile";
   if (!hidden("createModal")) return "createTeam";
+  if (!hidden("createTaskSplitModal")) return "createTaskSplit";
   return null;
 };
 
@@ -81,6 +82,9 @@ window.closeDashboardOverlayUi = async function closeDashboardOverlayUi(
       break;
     case "createTeam":
       closeCreateModal();
+      break;
+    case "createTaskSplit":
+      closeCreateTaskSplitModal();
       break;
   }
 };

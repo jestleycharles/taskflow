@@ -35,7 +35,15 @@ CREATE TABLE IF NOT EXISTS teams (
   avatar_color TEXT NOT NULL DEFAULT '#4f6ef7',
   avatar_url TEXT,
   separate_role_members BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  -- task = Kanban board (default); expense = TaskSplit shared expenses
+  workspace_type TEXT NOT NULL DEFAULT 'task' CHECK (workspace_type IN ('task', 'expense')),
+  -- solo | duo | group — only for expense workspaces
+  expense_mode TEXT CHECK (expense_mode IS NULL OR expense_mode IN ('solo', 'duo', 'group')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (
+    (workspace_type = 'task' AND expense_mode IS NULL)
+    OR (workspace_type = 'expense' AND expense_mode IS NOT NULL)
+  )
 );
 
 CREATE INDEX IF NOT EXISTS teams_created_by_idx ON teams (created_by);
@@ -178,6 +186,49 @@ CREATE TABLE IF NOT EXISTS activity_log (
 );
 
 CREATE INDEX IF NOT EXISTS activity_log_team_created_idx ON activity_log (team_id, created_at DESC);
+
+-- =============================================================================
+-- TaskSplit — shared expenses (v1: equal split, running balances, settle up)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS expenses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  paid_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  split_type TEXT NOT NULL DEFAULT 'equal' CHECK (split_type IN ('equal')),
+  expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS expenses_team_created_idx ON expenses (team_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS expense_participants (
+  expense_id UUID NOT NULL REFERENCES expenses (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  share_amount NUMERIC(12, 2) NOT NULL CHECK (share_amount >= 0),
+  PRIMARY KEY (expense_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS expense_participants_user_idx ON expense_participants (user_id);
+
+CREATE TABLE IF NOT EXISTS expense_settlements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
+  from_user UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  to_user UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+  note TEXT,
+  created_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  paid_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (from_user <> to_user)
+);
+
+CREATE INDEX IF NOT EXISTS expense_settlements_team_paid_idx
+  ON expense_settlements (team_id, paid_at DESC);
 
 -- =============================================================================
 -- Team chat
@@ -365,6 +416,9 @@ ALTER TABLE task_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_comment_read_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expense_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expense_settlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_chat_read_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE message_reactions ENABLE ROW LEVEL SECURITY;

@@ -18,6 +18,7 @@ const feedbackRoutes = require('./routes/feedback');
 const inviteLinkRoutes = require('./routes/invite-links');
 const featurePostRoutes = require('./routes/feature-posts');
 const messageAttachmentRoutes = require('./routes/message-attachments');
+const tasksplitRoutes = require('./routes/tasksplit');
 const { ensureFeaturePostSeed } = require('./lib/feature-post-seed');
 const { supabaseAdmin } = require('./lib/supabase');
 const { toSessionUser } = require('./lib/user');
@@ -93,6 +94,7 @@ app.use(feedbackRoutes);
 app.use(inviteLinkRoutes);
 app.use(featurePostRoutes);
 app.use(messageAttachmentRoutes);
+app.use(tasksplitRoutes);
 
 app.get('/features.md', (req, res) => {
   res.sendFile(path.join(__dirname, 'FEATURES.md'));
@@ -110,6 +112,10 @@ app.get('/dashboard', requireAuth, (req, res) => {
 
 app.get('/board/:teamId', requireAuth, (req, res) => {
   res.sendFile('board.html', { root: './public' });
+});
+
+app.get('/tasksplit/:teamId', requireAuth, (req, res) => {
+  res.sendFile('tasksplit.html', { root: './public' });
 });
 
 // API: current user (refreshed from DB for avatar_url etc.)

@@ -195,6 +195,10 @@ async function loadTeam() {
     window.location = '/dashboard';
     return false;
   }
+  if (data.workspace_type === 'expense') {
+    window.location = `/tasksplit/${teamId}`;
+    return false;
+  }
   teamData = data;
   teamData.roles = teamData.roles || [];
   teamData.columns = teamData.columns || [];
