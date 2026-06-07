@@ -1,7 +1,7 @@
 /**
- * board/presence.js
+ * taskflow/presence.js
  * Online presence, toasts, and navigation away.
- * Depends on: state.js, helpers.js, team-board.js
+ * Depends on: state.js, helpers.js, team-taskflow.js
  */
 
 // Presence: heartbeat while on board; leave on tab close / navigate away;
@@ -52,7 +52,7 @@ function showPresenceToast(member, kind) {
   const dotClass = online
     ? 'online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800'
     : 'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-gray-500 border-2 border-ink-800';
-  const message = online ? 'joined the board' : 'left the board';
+  const message = online ? 'came online' : 'went offline';
   toast.innerHTML = `
     <div class="relative shrink-0">
       ${userAvatarHtml(member, 'w-9 h-9 text-sm')}
@@ -105,11 +105,17 @@ async function fetchOnlineMembers() {
   onlineUserIds = next;
   if (teamData) {
     teamData.online_count = next.size;
-    updateMemberStatsDisplay();
+    if (typeof updateMemberStatsDisplay === 'function') updateMemberStatsDisplay();
   }
   if (changed && teamData?.members) {
-    renderMemberList(teamData.members);
-    renderMemberAvatars(teamData.members);
+    renderMemberList();
+    const container = document.getElementById('memberAvatars');
+    if (container) {
+      container.innerHTML = teamData.members
+        .slice(0, 4)
+        .map((m) => userAvatarHtml(m, 'w-7 h-7 pointer-events-none'))
+        .join('');
+    }
   }
   if (changed && chatMessages.length && chatPanelOpen) renderChatMessages();
 }

@@ -1,5 +1,5 @@
 /**
- * board/tasks.js
+ * taskflow/tasks.js
  * Task detail modal, comments, and attachments.
  * Depends on: state.js, helpers.js, members.js
  */
@@ -27,7 +27,7 @@ async function openTaskModal(taskId) {
   document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
   document.getElementById('taskModal').classList.remove('hidden');
   setTaskModalBusy(true, 'Loading task…');
-  pushBoardOverlay('task');
+  pushTaskflowOverlay('task');
   const showUnreadBadgeLoading = (task.unread_comment_count || 0) > 0;
   if (showUnreadBadgeLoading) showCommentUnreadBadgeLoading();
   try {
@@ -103,7 +103,7 @@ async function closeTaskModalUi() {
 }
 function closeTaskModal() {
   if (taskModalClosing) return;
-  requestCloseBoardOverlay();
+  requestCloseTaskflowOverlay();
 }
 
 function commentSearchText(c) {
@@ -279,7 +279,7 @@ async function saveEditTask(field) {
   taskEditDraft = '';
   renderTaskTitleArea(updated);
   renderTaskDescArea(updated);
-  renderBoard();
+  renderTaskflow();
   loadComments(activeTaskId);
 }
 
@@ -342,7 +342,7 @@ function openAttachmentPreview(url, fileName, mimeType) {
   }
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  pushBoardOverlay('attachmentPreview');
+  pushTaskflowOverlay('attachmentPreview');
 }
 
 function closeAttachmentPreviewUi() {
@@ -353,7 +353,7 @@ function closeAttachmentPreviewUi() {
   document.body.style.overflow = '';
 }
 function closeAttachmentPreview() {
-  requestCloseBoardOverlay();
+  requestCloseTaskflowOverlay();
 }
 
 function renderTaskAttachmentsUi(task) {
@@ -449,7 +449,7 @@ async function setCoverFromAttachment(attachmentId) {
   const idx = tasks.findIndex((t) => t.id === activeTaskId);
   if (idx !== -1) tasks[idx] = updated;
   renderTaskAttachmentsUi(updated);
-  renderBoard();
+  renderTaskflow();
 }
 
 async function clearTaskCover() {
@@ -467,7 +467,7 @@ async function clearTaskCover() {
   const idx = tasks.findIndex((t) => t.id === activeTaskId);
   if (idx !== -1) tasks[idx] = updated;
   renderTaskAttachmentsUi(updated);
-  renderBoard();
+  renderTaskflow();
 }
 
 async function deleteTaskAttachment(attachmentId) {
@@ -483,7 +483,7 @@ async function deleteTaskAttachment(attachmentId) {
   if (task) {
     task.attachment_count = Math.max(0, (task.attachment_count || 1) - 1);
     renderTaskAttachmentsUi(task);
-    renderBoard();
+    renderTaskflow();
   }
 }
 
@@ -504,7 +504,7 @@ async function onTaskAttachmentSelected(file) {
         const idx = tasks.findIndex((t) => t.id === activeTaskId);
         if (idx !== -1) tasks[idx] = updated;
         renderTaskAttachmentsUi(updated);
-        renderBoard();
+        renderTaskflow();
       }
     }
   } catch (err) {
@@ -527,7 +527,7 @@ async function onTaskCoverFileSelected(file) {
     if (idx !== -1) tasks[idx] = updated;
     await loadTaskAttachments(activeTaskId);
     renderTaskAttachmentsUi(updated);
-    renderBoard();
+    renderTaskflow();
   } catch (err) {
     showAlert(err.message || 'Upload failed');
   } finally {
@@ -547,7 +547,7 @@ async function updateTaskField(field, value) {
   if (r.ok && !updated.error) {
     const idx = tasks.findIndex(t => t.id === activeTaskId);
     if (idx !== -1) tasks[idx] = updated;
-    renderBoard();
+    renderTaskflow();
     const task = tasks.find(t => t.id === activeTaskId);
     if (task) {
       renderTaskTitleArea(task);
@@ -580,7 +580,7 @@ async function executeDeleteTask() {
   }
   tasks = tasks.filter(t => t.id !== taskId);
   closeTaskModal();
-  renderBoard();
+  renderTaskflow();
 }
 
 function renderCommentActions(c) {

@@ -1,7 +1,7 @@
 /**
- * board/invites.js
+ * taskflow/invites.js
  * Team invite links and email invites.
- * Depends on: state.js, helpers.js, team-board.js
+ * Depends on: state.js, helpers.js, team-taskflow.js
  */
 
 // Invite link

@@ -29,6 +29,7 @@
     }
   </script>
   <link rel="stylesheet" href="/tasksplit/tasksplit.css" />
+  <link rel="stylesheet" href="/taskflow/taskflow.css" />
 </head>
 <body class="grid-bg h-screen text-white flex flex-col overflow-hidden portrait-locked">
 
@@ -51,13 +52,9 @@
         </a>
         <div class="w-px h-5 bg-white/10"></div>
         <div id="teamNavAvatar" class="w-6 h-6 rounded-md overflow-hidden flex items-center justify-center text-white text-[10px] font-bold shrink-0"></div>
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <h1 id="teamName" class="font-semibold text-white text-sm truncate">Loading…</h1>
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">TaskSplit</span>
-          </div>
-          <span id="expenseModeBadge" class="text-[10px] text-gray-500">—</span>
-        </div>
+        <span id="teamModeIcon" class="shrink-0"></span>
+        <h1 id="teamName" class="font-semibold text-white text-sm truncate">Loading…</h1>
+        <span id="teamMemberStats" class="text-[10px] text-gray-500 shrink-0 hidden sm:inline" title="Members online"></span>
         <div class="poll-dot w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Live updates active"></div>
       </div>
       <div class="flex items-center gap-2">
@@ -73,12 +70,20 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span class="hidden sm:inline">Team</span>
+          <span id="teamBtnMemberStats" class="text-[10px] text-gray-500 hidden sm:inline"></span>
         </button>
         <button type="button" onclick="openActivityPanel()" class="text-gray-400 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition flex items-center gap-1.5">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span class="hidden sm:inline">Activity</span>
+        </button>
+        <button type="button" id="settingsNavBtn" onclick="openSettingsPanel()" class="hidden text-gray-400 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span class="hidden sm:inline">Settings</span>
         </button>
       </div>
     </div>
@@ -103,13 +108,54 @@
     </button>
   </div>
 
+  <!-- Mobile chat backdrop (tap to close) -->
+  <div id="chatMobileBackdrop" class="hidden fixed inset-0 bg-black/50 z-[44] md:hidden" style="top: var(--nav-h);" onclick="closeChatPanel()" aria-hidden="true"></div>
+
   <!-- Mobile panel backdrop (tap to close) -->
   <div id="panelMobileBackdrop" class="hidden fixed inset-0 bg-black/50 z-[44] lg:hidden" style="top: var(--nav-h);" onclick="closeAllPanels()" aria-hidden="true"></div>
 
   <!-- Main layout -->
   <div id="tasksplitMainRow" class="flex overflow-hidden">
-    <!-- Expenses list -->
-    <main id="expensesContainer" class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+    <!-- Team Chat Panel -->
+    <div id="chatPanel" class="sidebar-slide hidden border-r border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
+      <div class="p-4 border-b border-white/10 flex items-center gap-2 shrink-0 bg-ink-800 w-full">
+        <h2 class="font-semibold text-sm text-white shrink-0">Team Chat</h2>
+        <input type="search" id="chatMessageSearch" placeholder="Search…" aria-label="Search team chat"
+          class="flex-1 min-w-0 bg-ink-700 border border-white/10 rounded-lg px-2 py-1 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition" />
+        <button type="button" onclick="closeChatPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center shrink-0 ml-0" aria-label="Close chat">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div id="chatMessagesList" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"></div>
+      <div id="chatComposer" class="px-4 pt-4 border-t border-white/10 shrink-0 bg-ink-800">
+        <div id="chatAttachPreview" class="chat-attach-preview hidden" role="status">
+          <div id="chatAttachPreviewThumb" class="shrink-0"></div>
+          <div class="min-w-0 flex-1">
+            <p id="chatAttachPreviewName" class="text-xs text-gray-200 truncate"></p>
+            <p id="chatAttachPreviewSize" class="text-[10px] text-gray-500"></p>
+          </div>
+          <button type="button" id="chatAttachClearBtn" class="attachment-icon-btn danger shrink-0" title="Remove attachment" aria-label="Remove attachment">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
+        </div>
+        <div id="chatComposerActive" class="flex gap-2">
+          <input type="file" id="chatAttachInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+          <button type="button" id="chatAttachBtn" class="attachment-icon-btn shrink-0 self-center" title="Attach image or PDF" aria-label="Attach file">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+          </button>
+          <input id="chatInput" type="text" placeholder="Message the team..." data-mention-prefer-above="1"
+            class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
+          <button id="chatSendBtn" type="button" onclick="submitChatMessage()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
+        </div>
+        <p id="chatSendCooldown" class="send-cooldown-notice hidden" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <!-- Expenses list (zoomable) -->
+    <div id="expensesContainer" class="flex-1 min-h-0 overflow-x-auto p-4 sm:p-6">
+      <div id="taskflowZoomScaler">
+        <div id="taskflowZoomInner">
+          <div id="expensesZoomRoot" class="min-h-[calc(100vh-7rem-2rem)]">
       <div id="expensesEmpty" class="hidden flex flex-col items-center justify-center py-20 text-center">
         <div class="w-16 h-16 bg-ink-800 border border-white/10 rounded-2xl flex items-center justify-center mb-4">
           <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -119,7 +165,10 @@
         <button type="button" onclick="openAddExpenseModal()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">Add expense</button>
       </div>
       <div id="expensesList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
-    </main>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Balance sidebar (desktop) -->
     <aside id="balanceSidebar" class="sidebar-slide hidden lg:flex w-80 border-l border-white/10 bg-ink-800 flex-col shrink-0 min-h-0">
@@ -162,7 +211,7 @@
       <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
         <div>
           <h2 class="font-semibold text-sm text-white">Team Members</h2>
-          <p class="text-xs text-gray-500 mt-0.5">Shared expense workspace</p>
+          <p id="teamPanelMemberStats" class="text-xs text-gray-500 mt-0.5"></p>
         </div>
         <button type="button" onclick="closeTeamPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close team members">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -191,7 +240,71 @@
         to unlock this feature.
       </p>
       <div id="teamMemberList" class="flex-1 overflow-y-auto p-4 space-y-2 min-h-0"></div>
+      <div id="teamPanelLeaveSection" class="hidden shrink-0 p-4 border-t border-white/10 bg-ink-800">
+        <p class="text-xs text-gray-400 mb-3">Membership</p>
+        <button type="button" id="leaveTeamBtn" onclick="confirmLeaveTeam()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">Leave team</button>
+      </div>
     </div>
+
+    <!-- Team Settings Panel (owners only) -->
+    <div id="settingsPanel" class="sidebar-slide hidden border-l border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-ink-800">
+        <h2 class="font-semibold text-sm text-white">Team Settings</h2>
+        <button type="button" onclick="closeSettingsPanel()" class="text-gray-400 hover:text-white transition p-2 -m-2 rounded-lg hover:bg-white/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center" aria-label="Close settings">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div class="p-4 border-b border-white/10 shrink-0 bg-ink-800 space-y-2">
+        <button type="button" onclick="openEditTeamModal()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+          Edit team details
+        </button>
+      </div>
+      <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 p-4">
+        <div id="settingsDangerZone" class="mt-auto shrink-0 border-t border-white/10 pt-4">
+          <button type="button" id="dangerZoneToggleBtn" onclick="toggleSettingsDangerZone()" aria-expanded="false" aria-controls="dangerZoneContent"
+            class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+            <span id="dangerZoneToggleLabel">Danger zone</span>
+            <svg id="dangerZoneChevron" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div id="dangerZoneContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <div id="transferOwnershipSection" class="hidden space-y-2">
+              <p class="text-xs text-gray-400 font-medium">Transfer ownership</p>
+              <p class="text-xs text-gray-500 leading-relaxed">Make another registered member the owner. You will become a regular member and keep access to this workspace.</p>
+              <select id="transferOwnershipSelect" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500/50 transition">
+                <option value="">Select a member…</option>
+              </select>
+              <button type="button" id="transferOwnershipBtn" onclick="confirmTransferOwnership()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium disabled:opacity-50 disabled:pointer-events-none">Transfer ownership</button>
+            </div>
+            <div id="dangerZoneDeleteBlock" class="space-y-2">
+              <p class="text-xs text-gray-400 font-medium">Delete team</p>
+              <p class="text-xs text-gray-500 leading-relaxed">Permanently delete this team, all expenses, chat, and activity. This cannot be undone.</p>
+              <button type="button" onclick="deleteTeam()" class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm py-2.5 rounded-xl transition font-medium">Delete team</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat toggle -->
+  <div id="chatFabWrap" class="fixed" style="bottom: 1rem; left: 1rem;">
+    <button type="button" id="chatFab" onclick="openChatPanel()"
+      class="relative w-12 h-12 rounded-full bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25 flex items-center justify-center transition hover:scale-105"
+      aria-label="Open team chat">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+      <span id="chatUnreadBadge" class="hidden absolute flex items-center justify-center rounded-full bg-red-500 text-white font-bold px-1 pointer-events-none" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <!-- Zoom controls -->
+  <div id="taskflowZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Zoom">
+    <button type="button" id="taskflowZoomIn" class="taskflow-zoom-btn" aria-label="Zoom in (closer view)">+</button>
+    <input type="range" id="taskflowZoomSlider" class="hidden md:block" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Zoom level" />
+    <button type="button" id="taskflowZoomPct" class="taskflow-zoom-btn" aria-label="Set zoom level">100%</button>
+    <button type="button" id="taskflowZoomOut" class="taskflow-zoom-btn" aria-label="Zoom out (wider view)">−</button>
   </div>
 
   <!-- Toast notifications -->
@@ -282,7 +395,126 @@
     </div>
   </div>
 
-  <!-- Confirm Modal -->
+<!-- Team deleted / access lost (cannot dismiss) -->
+  <div id="teamGoneModal" class="hidden fixed inset-0 z-[80] flex items-center justify-center px-4" role="alertdialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/70" style="backdrop-filter: blur(6px);"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
+      <h2 class="text-lg font-semibold text-white mb-2">Team no longer available</h2>
+      <p class="text-sm text-gray-400 leading-relaxed mb-6">
+        This team was deleted or you no longer have access. You will be returned to your dashboard.
+      </p>
+      <a href="/dashboard" onclick="showNavigationLoading('Returning to dashboard…')" class="block w-full text-center bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Go to dashboard</a>
+    </div>
+  </div>
+
+  <!-- Edit Team Modal -->
+  <div id="editTeamModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
+      <h2 class="text-lg font-semibold text-white mb-1">Team details</h2>
+      <p class="text-gray-500 text-sm mb-5">Update your team name, description, and avatar.</p>
+      <div id="editTeamError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Team name</label>
+          <input id="editTeamName" type="text" placeholder="e.g. Engineering"
+            class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+        </div>
+
+        <div>
+          <button type="button" id="editTeamDetailsToggleBtn" onclick="toggleEditTeamDetails()" aria-expanded="false" aria-controls="editTeamDetailsContent"
+            class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+            <span id="editTeamDetailsLabel">Avatar &amp; description</span>
+            <svg id="editTeamDetailsChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div id="editTeamDetailsContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div>
+              <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
+              <div class="flex items-center gap-4 mb-4">
+                <div id="editTeamAvatarPreview" class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"></div>
+                <div>
+                  <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
+                  <p class="text-xs text-gray-500 mt-0.5">JPEG, PNG, WebP, or GIF — max 2 MB</p>
+                </div>
+              </div>
+              <div id="editTeamAvatarPresetGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
+              <label id="editTeamAvatarUploadLabel" class="inline-flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 cursor-pointer transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                Upload custom image
+                <input id="editTeamAvatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+              </label>
+              <p id="editTeamAvatarUploadGuestNote" class="hidden text-xs text-amber-400/90 mt-2 leading-relaxed">Custom team images are only available with a registered account. Choose a preset above.</p>
+            </div>
+            <div>
+              <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
+              <input id="editTeamDesc" type="text" placeholder="What does this team work on?"
+                class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="requestCloseTaskflowOverlay()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
+          <button type="button" id="editTeamSaveBtn" onclick="saveEditTeam()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guest protected team delete lock -->
+  <div id="teamDeleteLockModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4" role="alertdialog" aria-modal="true" aria-labelledby="teamDeleteLockTitle">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
+      <div class="flex items-start gap-3 mb-4">
+        <div class="shrink-0 w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center" aria-hidden="true">
+          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+        </div>
+        <div class="min-w-0">
+          <h2 id="teamDeleteLockTitle" class="text-base font-semibold text-white mb-1">Demo team protected</h2>
+          <p class="text-sm text-gray-400 leading-relaxed">This is the default demo team for guest accounts. It cannot be deleted so new guests always have a workspace to explore.</p>
+        </div>
+      </div>
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-5">
+        <p class="text-sm text-amber-200/90 leading-relaxed">
+          Create a <a href="/register" class="text-brand-400 hover:text-brand-300 font-medium">free registered account</a> to manage your own teams, including deletion.
+        </p>
+      </div>
+      <button type="button" onclick="requestCloseTaskflowOverlay()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+    </div>
+  </div>
+
+  <!-- Zoom Level Modal -->
+  <div id="zoomLevelModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeZoomLevelModal()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl fade-up">
+      <h2 class="text-base font-semibold text-white mb-2">Set zoom level</h2>
+      <p class="text-sm text-gray-400 leading-relaxed mb-4">Zoom level (100% = normal, 500% = zoomed out)</p>
+      <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5" for="zoomLevelInput">
+        Zoom %
+      </label>
+      <input
+        id="zoomLevelInput"
+        type="number"
+        inputmode="numeric"
+        min="100"
+        max="500"
+        step="10"
+        class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm mb-5"
+        aria-label="Zoom level in percent"
+      />
+      <div class="flex gap-3">
+        <button type="button" onclick="closeZoomLevelModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">
+          Cancel
+        </button>
+        <button type="button" id="zoomLevelApplyBtn" onclick="applyZoomLevelFromModal()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">
+          Set
+        </button>
+      </div>
+    </div>
+  </div>
+
+    <!-- Confirm Modal -->
   <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
     <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeConfirmModal()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
@@ -305,14 +537,27 @@
     </div>
   </div>
 
+  <div id="reactionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
+  <div id="mentionFloatLayer" class="fixed inset-0 pointer-events-none" aria-hidden="true"></div>
+
   <script src="/js/mobile-orientation.js"></script>
+  <script src="/js/member-stats.js"></script>
   <script src="/js/avatar-utils.js"></script>
+  <script src="/js/message-format.js"></script>
+  <script src="/js/mention-autocomplete.js"></script>
   <script src="/js/api.js"></script>
+  <script src="/js/message-batch.js"></script>
   <script src="/tasksplit/state.js"></script>
+  <script src="/taskflow/helpers.js"></script>
   <script src="/tasksplit/helpers.js"></script>
   <script src="/tasksplit/expenses.js"></script>
   <script src="/tasksplit/balances.js"></script>
   <script src="/tasksplit/panels.js"></script>
+  <script src="/tasksplit/settings.js"></script>
+  <script src="/taskflow/chat.js"></script>
+  <script src="/tasksplit/workspace.js"></script>
+  <script src="/tasksplit/presence.js"></script>
+  <script src="/tasksplit/zoom.js"></script>
   <script src="/tasksplit/boot.js"></script>
 </body>
 </html>

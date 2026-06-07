@@ -1,5 +1,5 @@
 /**
- * board/add-task.js
+ * taskflow/add-task.js
  * Add-task modal and task creation.
  * Depends on: state.js, helpers.js, kanban.js
  */
@@ -20,7 +20,7 @@ function openAddTask(status) {
   syncAddTaskModalUi();
   resetAddTaskOptionalDrawer();
   document.getElementById('addTaskModal').classList.remove('hidden');
-  pushBoardOverlay('addTask');
+  pushTaskflowOverlay('addTask');
   setTimeout(() => document.getElementById('taskTitle').focus(), 50);
 }
 function openAddTaskWithColumnPicker() {
@@ -32,7 +32,7 @@ function openAddTaskWithColumnPicker() {
   syncAddTaskModalUi();
   resetAddTaskOptionalDrawer();
   document.getElementById('addTaskModal').classList.remove('hidden');
-  pushBoardOverlay('addTask');
+  pushTaskflowOverlay('addTask');
   setTimeout(() => document.getElementById('taskTitle').focus(), 50);
 }
 function closeAddTaskUi() {
@@ -52,7 +52,7 @@ function closeAddTaskUi() {
   taskSubmitSaving = false;
 }
 function closeAddTask() {
-  requestCloseBoardOverlay();
+  requestCloseTaskflowOverlay();
 }
 async function uploadTaskAttachment(taskId, file, setAsCover = false) {
   const form = new FormData();
@@ -127,13 +127,13 @@ async function submitTask() {
       }
     }
     tasks.push(task);
-    renderBoard({ animateNew: true });
+    renderTaskflow({ animateNew: true });
     closeAddTaskUi();
-    if (history.state?.tfBoardOverlay) {
-      boardHistoryPopping = true;
+    if (history.state?.tfTaskflowOverlay) {
+      taskflowHistoryPopping = true;
       history.back();
     } else {
-      boardHistoryPopping = false;
+      taskflowHistoryPopping = false;
     }
   } finally {
     taskSubmitSaving = false;

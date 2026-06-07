@@ -1,5 +1,5 @@
 /**
- * board/state.js
+ * taskflow/state.js
  * Shared mutable state and constants for the Kanban board page.
  * Load first.
  */
@@ -66,11 +66,11 @@ let chatBatch = null;
 let activityLogs = [];
 let activityBatch = null;
 let commentBatch = null;
-let boardHistoryPopping = false;
-const BOARD_SIDEPANELS = new Set(['activity', 'team', 'settings', 'chat']);
+let taskflowHistoryPopping = false;
+const TASKFLOW_SIDEPANELS = new Set(['activity', 'team', 'settings', 'chat']);
 
-function isBoardSidepanel(name) {
-  return BOARD_SIDEPANELS.has(name);
+function isTaskflowSidepanel(name) {
+  return TASKFLOW_SIDEPANELS.has(name);
 }
 let taskModalClosing = false;
 let taskSubmitSaving = false;

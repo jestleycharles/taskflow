@@ -381,7 +381,7 @@ select option { background: #1a1d2e; }
 html {
   touch-action: manipulation;
 }
-#boardMainRow {
+#taskflowMainRow {
   flex: 1 1 0;
   min-height: 0;
 }
@@ -462,18 +462,18 @@ html {
 #chatFabWrap {
   z-index: 20;
 }
-#boardZoomWrap {
+#taskflowZoomWrap {
   z-index: 20;
 }
-#boardZoomInner {
+#taskflowZoomInner {
   transform-origin: 0 0;
   will-change: transform;
 }
-#boardZoomScaler {
+#taskflowZoomScaler {
   position: relative;
   flex-shrink: 0;
 }
-.board-zoom-btn {
+.taskflow-zoom-btn {
   width: 2.5rem;
   min-height: 2rem;
   padding: 0 0.25rem;
@@ -486,27 +486,27 @@ html {
   transition: background 0.15s, color 0.15s;
   touch-action: manipulation;
 }
-.board-zoom-btn:hover:not(:disabled) {
+.taskflow-zoom-btn:hover:not(:disabled) {
   background: rgba(37, 40, 64, 0.98);
   color: #fff;
 }
-.board-zoom-btn:disabled {
+.taskflow-zoom-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
-#boardZoomIn {
+#taskflowZoomIn {
   border-radius: 0.625rem 0.625rem 0 0;
 }
-#boardZoomPct {
+#taskflowZoomPct {
   border-radius: 0;
   font-size: 0.6875rem;
   font-weight: 500;
   min-height: 2.25rem;
 }
-#boardZoomOut {
+#taskflowZoomOut {
   border-radius: 0 0 0.625rem 0.625rem;
 }
-#boardZoomSlider {
+#taskflowZoomSlider {
   -webkit-appearance: slider-vertical;
   appearance: slider-vertical;
   width: 2.5rem;
@@ -519,13 +519,13 @@ html {
   cursor: pointer;
   accent-color: #4f6ef7;
 }
-#boardZoomSlider::-webkit-slider-thumb {
+#taskflowZoomSlider::-webkit-slider-thumb {
   cursor: grab;
 }
-#boardContainer.board-zoom-pinching {
+#taskflowContainer.taskflow-zoom-pinching {
   touch-action: none;
 }
-#boardContainer.board-zoom-pinching .task-card {
+#taskflowContainer.taskflow-zoom-pinching .task-card {
   pointer-events: none;
 }
 #activityPanel:not(.hidden),
@@ -572,30 +572,30 @@ html {
 #dmBlockedEmailsList {
   scrollbar-width: thin;
 }
-#boardContainer {
+#taskflowContainer {
   padding-bottom: 5rem;
   padding-right: 5rem;
   min-height: 0;
   overscroll-behavior: contain;
 }
-#boardContainer.board-panning {
+#taskflowContainer.taskflow-panning {
   cursor: grabbing;
   user-select: none;
 }
-#boardContainer.board-panning .task-card {
+#taskflowContainer.taskflow-panning .task-card {
   pointer-events: none;
 }
 .drop-zone {
   padding-bottom: 4.5rem;
 }
-.board-pan-surface {
+.taskflow-pan-surface {
   cursor: default;
 }
-#boardContainer.board-panning .board-pan-surface {
+#taskflowContainer.taskflow-panning .taskflow-pan-surface {
   cursor: grabbing;
 }
 @media (min-width: 768px) and (min-height: 768px) {
-  #boardContainer {
+  #taskflowContainer {
     overflow: auto;
   }
   #kanbanBoard {

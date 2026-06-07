@@ -1,5 +1,5 @@
 /**
- * board/team-board.js
+ * taskflow/team-taskflow.js
  * Team loading, member rendering, board rendering, and init().
  * Depends on: state.js, helpers.js, members.js
  */
@@ -220,24 +220,29 @@ async function loadTeam() {
   captureTeamRoleStateSig();
   initMentionComposers();
   applyInviteSectionState();
-  if (tasks.length) renderBoard();
-  ensureBoardTasksRendered();
+  if (tasks.length) renderTaskflow();
+  ensureTaskflowTasksRendered();
   return true;
 }
 
 function updateMemberStatsDisplay() {
   const total = teamData?.member_count ?? teamData?.members?.length ?? 0;
   const online = teamData?.online_count ?? onlineUserIds.size;
-  const label = `${online}/${total} online`;
   const el = document.getElementById('teamMemberStats');
   const btnEl = document.getElementById('teamBtnMemberStats');
   const panelEl = document.getElementById('teamPanelMemberStats');
   if (el) {
-    el.textContent = label;
+    el.innerHTML = memberStatsWithDotHtml(online, total);
     el.classList.toggle('hidden', !total);
   }
-  if (btnEl) btnEl.textContent = total ? ` · ${label}` : '';
-  if (panelEl) panelEl.textContent = total ? `${total} member${total === 1 ? '' : 's'} · ${label}` : '';
+  if (btnEl) {
+    btnEl.innerHTML = total ? ` · ${memberStatsWithDotHtml(online, total)}` : '';
+  }
+  if (panelEl) {
+    panelEl.innerHTML = total
+      ? `${total} member${total === 1 ? '' : 's'} · ${memberStatsWithDotHtml(online, total)}`
+      : '';
+  }
 }
 
 function renderMemberAvatars(members) {
@@ -262,7 +267,7 @@ function isUserOnline(userId) {
 function chatMessageAvatarHtml(user, userId) {
   const id = userId || user?.id;
   const online = id && isUserOnline(id);
-  const title = online ? 'Online on this board' : escHtml(user?.username || '?');
+  const title = online ? 'Online' : escHtml(user?.username || '?');
   return `<div class="relative shrink-0 self-start w-8 h-8" title="${title}">
       ${userAvatarHtml(user, 'w-8 h-8')}
       ${online ? '<span class="online-dot absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Online"></span>' : ''}
@@ -320,12 +325,12 @@ function getColumnDropZone(slug) {
   );
 }
 
-function boardHasTaskSkeletons() {
+function taskflowHasTaskSkeletons() {
   return !!document.querySelector('#kanbanBoard .task-skeleton');
 }
 
-function ensureBoardTasksRendered() {
-  if (tasks.length && boardHasTaskSkeletons()) renderBoard();
+function ensureTaskflowTasksRendered() {
+  if (tasks.length && taskflowHasTaskSkeletons()) renderTaskflow();
 }
 
 function columnLabel(slug) {
@@ -372,8 +377,8 @@ function renderKanbanBoard() {
   }
   board.innerHTML = cols.map((col) => {
     const color = col.color_hex || '#64748b';
-    return `<div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="${escHtml(col.slug)}">
-      <div class="board-pan-surface flex items-center justify-between mb-3 px-1">
+    return `<div class="kanban-col taskflow-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="${escHtml(col.slug)}">
+      <div class="taskflow-pan-surface flex items-center justify-between mb-3 px-1">
         <div class="flex items-center gap-2 min-w-0">
           <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${escHtml(color)}"></div>
           <span class="text-xs font-semibold uppercase tracking-widest truncate" style="color:${escHtml(color)}">${escHtml(col.name)}</span>
@@ -383,13 +388,13 @@ function renderKanbanBoard() {
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
         </button>
       </div>
-      <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2" id="${columnDropZoneId(col.slug)}"
+      <div class="drop-zone taskflow-pan-surface flex-1 rounded-xl p-2 space-y-2" id="${columnDropZoneId(col.slug)}"
         ondragover="dragOver(event)" ondrop="drop(event)" ondragleave="dragLeave(event)">
         ${taskSkeletonHtml()}${taskSkeletonHtml()}
       </div>
     </div>`;
   }).join('') + '<div class="kanban-pan-spacer hidden md:block" aria-hidden="true"></div>';
-  scheduleBoardZoomRemeasure();
+  scheduleTaskflowZoomRemeasure();
 }
 
 async function loadTasks() {
@@ -400,10 +405,10 @@ async function loadTasks() {
     return;
   }
   tasks = data;
-  renderBoard();
+  renderTaskflow();
 }
 
-function boardTaskFieldsChanged(a, b) {
+function taskflowTaskFieldsChanged(a, b) {
   if (!a || !b) return true;
   const keys = ['id', 'title', 'description', 'status', 'priority', 'due_date', 'assigned_to', 'position', 'cover_image_url', 'attachment_count'];
   if (keys.some((k) => a[k] !== b[k])) return true;
@@ -414,7 +419,7 @@ function mergePolledTasks(newTasks) {
   const prevMap = new Map(tasks.map((t) => [t.id, t]));
   const prevIds = new Set(tasks.map((t) => t.id));
   const nextIds = new Set(newTasks.map((t) => t.id));
-  let boardDirty = prevIds.size !== nextIds.size;
+  let taskflowDirty = prevIds.size !== nextIds.size;
   const merged = newTasks.map((nt) => {
     const prev = prevMap.get(nt.id);
     let unread = nt.unread_comment_count || 0;
@@ -422,13 +427,13 @@ function mergePolledTasks(newTasks) {
     if (lastRead != null && (prev?.unread_comment_count || 0) === 0) unread = 0;
     if (nt.id === activeTaskId && taskCommentsTabActive) unread = 0;
     const mergedTask = { ...nt, unread_comment_count: unread };
-    if (!boardDirty && (!prev || boardTaskFieldsChanged(prev, mergedTask))) boardDirty = true;
+    if (!taskflowDirty && (!prev || taskflowTaskFieldsChanged(prev, mergedTask))) taskflowDirty = true;
     return mergedTask;
   });
-  return { merged, boardDirty };
+  return { merged, taskflowDirty };
 }
 
-function renderBoard({ animateNew = false } = {}) {
+function renderTaskflow({ animateNew = false } = {}) {
   const existingIds = new Set(
     [...document.querySelectorAll('.task-card[data-id]')].map((el) => el.dataset.id)
   );
@@ -445,7 +450,7 @@ function renderBoard({ animateNew = false } = {}) {
       zone.appendChild(createTaskCard(task, isNew));
     });
   });
-  scheduleBoardZoomRemeasure();
+  scheduleTaskflowZoomRemeasure();
 }
 
 function getSortedColumnTasks(status) {

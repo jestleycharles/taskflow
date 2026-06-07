@@ -4,15 +4,6 @@
 
 let activitySearchQuery = '';
 
-function isMobileTasksplitLayout() {
-  return TF_VIEWPORT.isMobile();
-}
-
-function setSidePanelMobileOpen(open) {
-  document.body.classList.toggle('side-panel-mobile-open', open && isMobileTasksplitLayout());
-  document.getElementById('panelMobileBackdrop')?.classList.toggle('hidden', !open || !isMobileTasksplitLayout());
-}
-
 function hideBalanceSidebarForPanel() {
   document.getElementById('balanceSidebar')?.classList.add('hidden');
   document.getElementById('balanceSidebar')?.classList.remove('lg:flex');
@@ -47,6 +38,8 @@ function openTeamPanel() {
   setSidePanelMobileOpen(true);
   renderMemberList();
   applyTasksplitInviteUi();
+  applyMembershipActionsUi?.();
+  updateMemberStatsDisplay();
 }
 
 function applyTasksplitInviteUi() {
@@ -123,15 +116,21 @@ function renderMemberList() {
 
   list.innerHTML = members
     .map(
-      (m) => `
+      (m) => {
+        const online = typeof isUserOnline === 'function' ? isUserOnline(m.id) : false;
+        const avatar = typeof memberAvatarHtml === 'function'
+          ? memberAvatarHtml(m, 'w-9 h-9 shrink-0')
+          : userAvatarHtml(m, 'w-9 h-9 shrink-0');
+        return `
     <div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
-      ${userAvatarHtml(m, 'w-9 h-9 shrink-0')}
+      ${avatar}
       <div class="min-w-0 flex-1">
         <p class="text-white text-sm font-medium truncate">${escHtml(m.username)}</p>
         <p class="text-gray-500 text-xs truncate">${escHtml(m.email)}</p>
       </div>
       <span class="ml-auto text-xs px-2 py-0.5 rounded-full border shrink-0 ${m.role === 'owner' ? 'border-brand-500/40 text-brand-500 bg-brand-500/10' : 'border-white/10 text-gray-400'}">${m.role}</span>
-    </div>`,
+    </div>`;
+      },
     )
     .join('');
 }

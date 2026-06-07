@@ -19,8 +19,8 @@ async function handleInviteLanding(req, res, page) {
         userId: req.session.user.id,
         username: req.session.user.username,
       });
-      if (result.success) return res.redirect(`/board/${result.team_id}`);
-      if (result.team_id) return res.redirect(`/board/${result.team_id}`);
+      if (result.success) return res.redirect(`/taskflow/${result.team_id}`);
+      if (result.team_id) return res.redirect(`/taskflow/${result.team_id}`);
     } catch (err) {
       console.error('[auth] invite landing', err);
     }

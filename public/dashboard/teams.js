@@ -44,7 +44,7 @@ function isTeamOnline(teamId) {
 
 function teamAvatarWithPresenceHtml(team) {
   const online = isTeamOnline(team.id);
-  return `<div class="relative shrink-0" title="${online ? "Someone is online on this board" : escHtml(team.name)}">
+  return `<div class="relative shrink-0" title="${online ? "Someone is online" : escHtml(team.name)}">
     ${teamAvatarHtml(team, "w-11 h-11 text-sm")}
     ${online ? '<span class="online-dot absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-ink-800" title="Someone is online"></span>' : ""}
   </div>`;
@@ -121,7 +121,7 @@ window.beginOpeningTeam = function beginOpeningTeam(teamId, cardEl) {
     return;
   }
 
-  const dest = isTaskSplit ? `/tasksplit/${teamId}` : `/board/${teamId}`;
+  const dest = isTaskSplit ? `/tasksplit/${teamId}` : `/taskflow/${teamId}`;
 
   const grid = document.getElementById("teamsGrid");
   if (cardEl) {
@@ -149,24 +149,6 @@ function teamTypeBadgeHtml(team) {
     return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">TaskSplit</span>`;
   }
   return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30 shrink-0">TaskFlow</span>`;
-}
-
-function taskSplitModeIconHtml(mode) {
-  const labels = { solo: "Solo", duo: "Duo", group: "Group" };
-  const title = labels[mode] || "TaskSplit";
-  const paths = {
-    solo:
-      "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
-    duo: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
-    group:
-      "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
-  };
-  const path = paths[mode] || paths.solo;
-  return `<span class="inline-flex shrink-0" title="${escHtml(title)}">
-    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="${path}" />
-    </svg>
-  </span>`;
 }
 
 function teamCardTitleHtml(team) {
@@ -217,7 +199,7 @@ function renderTeamsGrid() {
       <div class="flex items-center justify-between">
         <div class="flex flex-col gap-0.5">
           <span class="text-gray-600 text-xs">${new Date(team.created_at).toLocaleDateString()}</span>
-          <span class="text-gray-500 text-xs" title="Members online on this board">${team.online_count ?? 0}/${team.member_count ?? 0} online</span>
+          <span class="text-gray-500 text-xs" title="Members online">${memberStatsWithDotHtml(team.online_count ?? 0, team.member_count ?? 0)}</span>
         </div>
         <svg class="arrow w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -604,7 +586,7 @@ window.createTeam = async function createTeam() {
   setCreateTeamBtnLoading(false);
   closeCreateModal();
   setNavigatingAway(true);
-  window.location = isExpense ? `/tasksplit/${d.id}` : `/board/${d.id}`;
+  window.location = isExpense ? `/tasksplit/${d.id}` : `/taskflow/${d.id}`;
 };
 
 // ---------------------------------------------------------------------------

@@ -115,7 +115,11 @@ app.get('/dashboard', requireAuth, (req, res) => {
 });
 
 app.get('/board/:teamId', requireAuth, (req, res) => {
-  res.sendFile('board.html', { root: './public' });
+  res.redirect(301, `/taskflow/${req.params.teamId}`);
+});
+
+app.get('/taskflow/:teamId', requireAuth, (req, res) => {
+  res.sendFile('taskflow.html', { root: './public' });
 });
 
 app.get('/tasksplit/:teamId', requireAuth, (req, res) => {

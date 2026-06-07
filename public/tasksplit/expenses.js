@@ -230,5 +230,6 @@ async function loadExpenses() {
   expenses = data;
   renderExpensesList();
   updateSummaryBar();
+  if (typeof scheduleTaskflowZoomRemeasure === 'function') scheduleTaskflowZoomRemeasure();
   return true;
 }

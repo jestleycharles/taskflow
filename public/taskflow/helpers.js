@@ -1,5 +1,5 @@
 /**
- * board/helpers.js
+ * taskflow/helpers.js
  * Overlay management, modals, attachments, and shared utilities.
  * Depends on: state.js
  */
@@ -27,7 +27,7 @@ function setTaskModalBusy(show, text) {
   if (label && text) label.textContent = text;
 }
 
-function getTopBoardOverlay() {
+function getTopTaskflowOverlay() {
   if (!document.getElementById('zoomLevelModal')?.classList.contains('hidden')) return 'zoomLevel';
   if (!document.getElementById('confirmModal')?.classList.contains('hidden')) return 'confirm';
   if (!document.getElementById('alertModal')?.classList.contains('hidden')) return 'alert';
@@ -45,38 +45,38 @@ function getTopBoardOverlay() {
   return null;
 }
 
-function pushBoardOverlay(name) {
-  if (boardHistoryPopping) return;
-  const current = history.state?.tfBoardOverlay;
-  if (current && isBoardSidepanel(current) && isBoardSidepanel(name)) {
-    history.replaceState({ tfBoardOverlay: name, t: Date.now() }, '');
+function pushTaskflowOverlay(name) {
+  if (taskflowHistoryPopping) return;
+  const current = history.state?.tfTaskflowOverlay;
+  if (current && isTaskflowSidepanel(current) && isTaskflowSidepanel(name)) {
+    history.replaceState({ tfTaskflowOverlay: name, t: Date.now() }, '');
   } else {
-    history.pushState({ tfBoardOverlay: name, t: Date.now() }, '');
+    history.pushState({ tfTaskflowOverlay: name, t: Date.now() }, '');
   }
 }
 
-function requestCloseBoardOverlay() {
-  if (getTopBoardOverlay()) history.back();
+function requestCloseTaskflowOverlay() {
+  if (getTopTaskflowOverlay()) history.back();
 }
 
-function dismissBoardOverlayHistory(expected) {
-  const state = history.state?.tfBoardOverlay;
+function dismissTaskflowOverlayHistory(expected) {
+  const state = history.state?.tfTaskflowOverlay;
   if (state && (!expected || state === expected)) {
-    boardHistoryPopping = true;
+    taskflowHistoryPopping = true;
     history.back();
   }
 }
 
-function closeBoardOverlayBeforeOpen(name) {
-  const prev = getTopBoardOverlay();
+function closeTaskflowOverlayBeforeOpen(name) {
+  const prev = getTopTaskflowOverlay();
   if (!prev || prev === name) return;
-  closeBoardOverlayUi(prev);
-  if (!isBoardSidepanel(prev) && history.state?.tfBoardOverlay === prev) {
-    dismissBoardOverlayHistory(prev);
+  closeTaskflowOverlayUi(prev);
+  if (!isTaskflowSidepanel(prev) && history.state?.tfTaskflowOverlay === prev) {
+    dismissTaskflowOverlayHistory(prev);
   }
 }
 
-async function closeBoardOverlayUi(overlay) {
+async function closeTaskflowOverlayUi(overlay) {
   switch (overlay) {
     case 'zoomLevel': closeZoomLevelModal(); break;
     case 'confirm': closeConfirmModal(); break;
@@ -203,7 +203,7 @@ function showConfirm({ title, message, confirmLabel = 'Confirm', danger = false,
     : 'flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm';
   confirmCallback = onConfirm;
   document.getElementById('confirmModal').classList.remove('hidden');
-  pushBoardOverlay('confirm');
+  pushTaskflowOverlay('confirm');
 }
 
 function closeConfirmModal() {
@@ -214,7 +214,7 @@ function closeConfirmModal() {
 function runConfirmAction() {
   const cb = confirmCallback;
   closeConfirmModal();
-  dismissBoardOverlayHistory('confirm');
+  dismissTaskflowOverlayHistory('confirm');
   if (cb) cb();
 }
 
@@ -222,7 +222,7 @@ function showAlert(message, title = 'Something went wrong') {
   document.getElementById('alertTitle').textContent = title;
   document.getElementById('alertMessage').textContent = message;
   document.getElementById('alertModal').classList.remove('hidden');
-  pushBoardOverlay('alert');
+  pushTaskflowOverlay('alert');
 }
 
 function closeAlertModal() {
@@ -231,7 +231,7 @@ function closeAlertModal() {
 
 function showTeamDeleteLockModal() {
   document.getElementById('teamDeleteLockModal').classList.remove('hidden');
-  pushBoardOverlay('teamDeleteLock');
+  pushTaskflowOverlay('teamDeleteLock');
 }
 
 function closeTeamDeleteLockModal() {

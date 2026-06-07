@@ -1,22 +1,22 @@
 /**
- * board/chat.js
+ * taskflow/chat.js
  * Team chat panel, messages, and reactions.
  * Depends on: state.js, helpers.js, members.js
  */
 
 // Team Chat
-function isMobileBoardLayout() {
+function isMobileTaskflowLayout() {
   return TF_VIEWPORT.isMobile();
 }
 
 function setChatPanelOpenUi(open) {
-  const mobile = isMobileBoardLayout();
+  const mobile = isMobileTaskflowLayout();
   document.body.classList.toggle('chat-panel-mobile-open', open && mobile);
   document.getElementById('chatMobileBackdrop')?.classList.toggle('hidden', !open);
 }
 
 function setSidePanelMobileOpen(open) {
-  document.body.classList.toggle('side-panel-mobile-open', open && isMobileBoardLayout());
+  document.body.classList.toggle('side-panel-mobile-open', open && isMobileTaskflowLayout());
 }
 
 function showChatMessagesLoading() {
@@ -24,7 +24,7 @@ function showChatMessagesLoading() {
 }
 
 function openChatPanel() {
-  closeBoardOverlayBeforeOpen('chat');
+  closeTaskflowOverlayBeforeOpen('chat');
   closeAllSidePanels();
   chatPanelOpen = true;
   applyChatComposerState();
@@ -36,7 +36,7 @@ function openChatPanel() {
   else renderChatMessages();
   scrollChatToBottom();
   if (!isGuest()) setTimeout(() => document.getElementById('chatInput')?.focus(), 50);
-  pushBoardOverlay('chat');
+  pushTaskflowOverlay('chat');
 }
 
 function closeChatPanelUi() {
@@ -59,7 +59,7 @@ function closeChatPanelUi() {
   updateChatUnreadBadge();
 }
 function closeChatPanel() {
-  requestCloseBoardOverlay();
+  requestCloseTaskflowOverlay();
 }
 
 function toggleChatMessageVersion(messageId) {

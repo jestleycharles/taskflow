@@ -1,5 +1,5 @@
 /**
- * board/members.js
+ * taskflow/members.js
  * Team members, roles, mentions, and message formatting.
  * Depends on: state.js, helpers.js
  */
@@ -327,7 +327,7 @@ function refreshTeamRoleVisuals() {
     syncSeparateRoleToggleUi();
     renderTeamRolesList();
   }
-  if (tasks.length) renderBoard();
+  if (tasks.length) renderTaskflow();
   if (chatMessages.length && chatPanelOpen) renderChatMessages();
   if (activeTaskId && !document.getElementById('taskModal').classList.contains('hidden')) {
     const task = tasks.find((t) => t.id === activeTaskId);
@@ -371,14 +371,14 @@ async function pollTeamRoleState() {
     teamData.columns = data.columns;
     renderKanbanBoard();
     populateStatusDropdowns();
-    renderBoard();
+    renderTaskflow();
     if (!document.getElementById('columnMgmtModal').classList.contains('hidden')) {
       renderColumnMgmtList();
     }
   }
   refreshTeamRoleVisuals();
   applyInviteSectionState();
-  ensureBoardTasksRendered();
+  ensureTaskflowTasksRendered();
 }
 
 function syncSeparateRoleToggleUi(checkedOverride) {
@@ -552,7 +552,7 @@ async function openTeamRolesModal() {
   resetTeamRoleForm();
   resetTeamRoleAddDrawer();
   document.getElementById('teamRolesModal').classList.remove('hidden');
-  pushBoardOverlay('teamRoles');
+  pushTaskflowOverlay('teamRoles');
   await refreshTeamRolesList();
 }
 
@@ -677,7 +677,7 @@ function bindColumnDragRows() {
       renderColumnMgmtList();
       renderKanbanBoard();
       populateStatusDropdowns();
-      renderBoard();
+      renderTaskflow();
     });
   });
 }
@@ -687,7 +687,7 @@ async function openColumnMgmtModal() {
   resetColumnForm();
   resetColumnAddDrawer();
   document.getElementById('columnMgmtModal').classList.remove('hidden');
-  pushBoardOverlay('columnMgmt');
+  pushTaskflowOverlay('columnMgmt');
   await refreshColumnMgmtList();
 }
 
@@ -745,7 +745,7 @@ async function saveColumn() {
   renderColumnMgmtList();
   renderKanbanBoard();
   populateStatusDropdowns();
-  renderBoard();
+  renderTaskflow();
 }
 
 function deleteColumn(columnId) {
@@ -786,7 +786,7 @@ async function executeDeleteColumn(columnId, moveTasksTo) {
   renderColumnMgmtList();
   renderKanbanBoard();
   populateStatusDropdowns();
-  renderBoard();
+  renderTaskflow();
 }
 
 function editTeamRole(roleId) {

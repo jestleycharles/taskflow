@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>TaskFlow — Board</title>
+  <title>TaskFlow</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/css/portrait-orientation.css" />
@@ -28,7 +28,7 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="/board/board.css" />
+  <link rel="stylesheet" href="/taskflow/taskflow.css" />
 </head>
 <body class="grid-bg h-screen text-white flex flex-col overflow-hidden portrait-locked">
 
@@ -52,7 +52,7 @@
         <div class="w-px h-5 bg-white/10"></div>
         <div id="teamNavAvatar" class="w-6 h-6 rounded-md overflow-hidden flex items-center justify-center text-white text-[10px] font-bold shrink-0"></div>
         <h1 id="teamName" class="font-semibold text-white text-sm truncate">Loading...</h1>
-        <span id="teamMemberStats" class="text-[10px] text-gray-500 shrink-0 hidden sm:inline" title="Members online on this board"></span>
+        <span id="teamMemberStats" class="text-[10px] text-gray-500 shrink-0 hidden sm:inline" title="Members online"></span>
         <div class="poll-dot w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Live updates active"></div>
       </div>
       <div class="flex items-center gap-2">
@@ -81,8 +81,8 @@
     </div>
   </nav>
 
-  <!-- Board toolbar: create task with column picker -->
-  <div id="boardToolbar" class="border-b border-white/10 bg-ink-900/60 px-4 sm:px-6 py-2 flex items-center justify-between gap-3 shrink-0">
+  <!-- TaskFlow toolbar: create task with column picker -->
+  <div id="taskflowToolbar" class="border-b border-white/10 bg-ink-900/60 px-4 sm:px-6 py-2 flex items-center justify-between gap-3 shrink-0">
     <p class="text-xs text-gray-500 hidden sm:block">Drag cards between columns · click a card for details</p>
     <button type="button" onclick="openAddTaskWithColumnPicker()" class="ml-auto flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-2 rounded-xl transition shrink-0">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -93,8 +93,8 @@
   <!-- Mobile chat backdrop (tap to close) -->
   <div id="chatMobileBackdrop" class="hidden fixed inset-0 bg-black/50 z-[44] md:hidden" style="top: var(--nav-h);" onclick="closeChatPanel()" aria-hidden="true"></div>
 
-  <!-- Board -->
-  <div id="boardMainRow" class="flex overflow-hidden">
+  <!-- TaskFlow workspace -->
+  <div id="taskflowMainRow" class="flex overflow-hidden">
     <!-- Team Chat Panel (left, full height) -->
     <div id="chatPanel" class="sidebar-slide hidden border-r border-white/10 bg-ink-800 w-80 flex flex-col shrink-0 min-h-0">
       <div class="p-4 border-b border-white/10 flex items-center gap-2 shrink-0 bg-ink-800 w-full">
@@ -135,19 +135,19 @@
       </div>
     </div>
 
-    <div id="boardContainer" class="flex-1 min-h-0 overflow-x-auto p-4 sm:p-6">
-      <div id="boardZoomScaler">
-        <div id="boardZoomInner">
+    <div id="taskflowContainer" class="flex-1 min-h-0 overflow-x-auto p-4 sm:p-6">
+      <div id="taskflowZoomScaler">
+        <div id="taskflowZoomInner">
           <div id="kanbanBoard" class="flex gap-4 h-full min-h-[calc(100vh-7rem-2rem)]">
-            <div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-0">
-              <div class="board-pan-surface flex items-center justify-between mb-3 px-1">
+            <div class="kanban-col taskflow-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-0">
+              <div class="taskflow-pan-surface flex items-center justify-between mb-3 px-1">
                 <div class="flex items-center gap-2 min-w-0">
                   <div class="skeleton w-2.5 h-2.5 rounded-full shrink-0"></div>
                   <div class="skeleton h-3 w-16 rounded"></div>
                   <div class="skeleton h-5 w-6 rounded-full shrink-0"></div>
                 </div>
               </div>
-              <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2">
+              <div class="drop-zone taskflow-pan-surface flex-1 rounded-xl p-2 space-y-2">
                 <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
                   <div class="skeleton h-3.5 w-3/4 rounded mb-2.5"></div>
                   <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
@@ -160,15 +160,15 @@
                 </div>
               </div>
             </div>
-            <div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-1">
-              <div class="board-pan-surface flex items-center justify-between mb-3 px-1">
+            <div class="kanban-col taskflow-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-1">
+              <div class="taskflow-pan-surface flex items-center justify-between mb-3 px-1">
                 <div class="flex items-center gap-2 min-w-0">
                   <div class="skeleton w-2.5 h-2.5 rounded-full shrink-0"></div>
                   <div class="skeleton h-3 w-14 rounded"></div>
                   <div class="skeleton h-5 w-6 rounded-full shrink-0"></div>
                 </div>
               </div>
-              <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2">
+              <div class="drop-zone taskflow-pan-surface flex-1 rounded-xl p-2 space-y-2">
                 <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
                   <div class="skeleton h-3.5 w-4/5 rounded mb-2.5"></div>
                   <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
@@ -181,15 +181,15 @@
                 </div>
               </div>
             </div>
-            <div class="kanban-col board-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-2">
-              <div class="board-pan-surface flex items-center justify-between mb-3 px-1">
+            <div class="kanban-col taskflow-pan-surface flex-1 flex flex-col min-w-[200px]" data-status="loading-2">
+              <div class="taskflow-pan-surface flex items-center justify-between mb-3 px-1">
                 <div class="flex items-center gap-2 min-w-0">
                   <div class="skeleton w-2.5 h-2.5 rounded-full shrink-0"></div>
                   <div class="skeleton h-3 w-12 rounded"></div>
                   <div class="skeleton h-5 w-6 rounded-full shrink-0"></div>
                 </div>
               </div>
-              <div class="drop-zone board-pan-surface flex-1 rounded-xl p-2 space-y-2">
+              <div class="drop-zone taskflow-pan-surface flex-1 rounded-xl p-2 space-y-2">
                 <div class="task-skeleton border-l-2 border-gray-700 bg-ink-800 border border-white/10 rounded-xl p-3.5">
                   <div class="skeleton h-3.5 w-3/5 rounded mb-2.5"></div>
                   <div class="skeleton h-2.5 w-full rounded mb-3.5"></div>
@@ -294,7 +294,7 @@
           <div id="dangerZoneContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-3">
             <div id="transferOwnershipSection" class="hidden space-y-2">
               <p class="text-xs text-gray-400 font-medium">Transfer ownership</p>
-              <p class="text-xs text-gray-500 leading-relaxed">Make another registered member the owner. You will become a regular member and keep access to this board.</p>
+              <p class="text-xs text-gray-500 leading-relaxed">Make another registered member the owner. You will become a regular member and keep access to this team.</p>
               <select id="transferOwnershipSelect" class="w-full bg-ink-700 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500/50 transition">
                 <option value="">Select a member…</option>
               </select>
@@ -328,11 +328,11 @@
   </div>
 
   <!-- Board zoom (bottom-right; same layer as chat FAB, below toasts) -->
-  <div id="boardZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Board zoom">
-    <button type="button" id="boardZoomIn" class="board-zoom-btn" aria-label="Zoom in (closer view)">+</button>
-    <input type="range" id="boardZoomSlider" class="hidden md:block" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom (100% normal, 500% zoomed out)" />
-    <button type="button" id="boardZoomPct" class="board-zoom-btn" aria-label="Set zoom level">100%</button>
-    <button type="button" id="boardZoomOut" class="board-zoom-btn" aria-label="Zoom out (wider view)">−</button>
+  <div id="taskflowZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Zoom">
+    <button type="button" id="taskflowZoomIn" class="taskflow-zoom-btn" aria-label="Zoom in (closer view)">+</button>
+    <input type="range" id="taskflowZoomSlider" class="hidden md:block" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom (100% normal, 500% zoomed out)" />
+    <button type="button" id="taskflowZoomPct" class="taskflow-zoom-btn" aria-label="Set zoom level">100%</button>
+    <button type="button" id="taskflowZoomOut" class="taskflow-zoom-btn" aria-label="Zoom out (wider view)">−</button>
   </div>
 
   <!-- Toast notifications (bottom-right stack) -->
@@ -352,7 +352,7 @@
 
   <!-- Edit Team Modal -->
   <div id="editTeamModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
       <h2 class="text-lg font-semibold text-white mb-1">Team details</h2>
       <p class="text-gray-500 text-sm mb-5">Update your team name, description, and avatar.</p>
@@ -398,7 +398,7 @@
         </div>
 
         <div class="flex gap-3 pt-2">
-          <button type="button" onclick="requestCloseBoardOverlay()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
+          <button type="button" onclick="requestCloseTaskflowOverlay()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
           <button type="button" id="editTeamSaveBtn" onclick="saveEditTeam()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Save changes</button>
         </div>
       </div>
@@ -407,7 +407,7 @@
 
   <!-- Team Roles Modal -->
   <div id="teamRolesModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
       <h2 class="text-lg font-semibold text-white mb-1">Team roles</h2>
       <p class="text-gray-500 text-sm mb-5">Create display roles, set colors, and control how members are grouped on the board.</p>
@@ -458,13 +458,13 @@
         </div>
       </div>
 
-      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
+      <button type="button" onclick="requestCloseTaskflowOverlay()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
     </div>
   </div>
 
   <!-- Column Management Modal -->
   <div id="columnMgmtModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
       <h2 class="text-lg font-semibold text-white mb-1">Board columns</h2>
       <p class="text-gray-500 text-sm mb-5">Rename, reorder, add, or remove columns. Tasks in a removed column must be moved first.</p>
@@ -504,18 +504,18 @@
           </div>
         </div>
       </div>
-      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
+      <button type="button" onclick="requestCloseTaskflowOverlay()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
     </div>
   </div>
 
   <!-- Confirm Modal -->
   <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
       <h2 id="confirmTitle" class="text-base font-semibold text-white mb-2"></h2>
       <p id="confirmMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
       <div class="flex gap-3">
-        <button type="button" onclick="requestCloseBoardOverlay()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
+        <button type="button" onclick="requestCloseTaskflowOverlay()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
         <button type="button" id="confirmActionBtn" onclick="runConfirmAction()" class="flex-1 text-white font-medium py-2.5 rounded-xl transition text-sm">Confirm</button>
       </div>
     </div>
@@ -523,17 +523,17 @@
 
   <!-- Alert Modal -->
   <div id="alertModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
       <h2 id="alertTitle" class="text-base font-semibold text-white mb-2">Something went wrong</h2>
       <p id="alertMessage" class="text-sm text-gray-400 leading-relaxed mb-6"></p>
-      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+      <button type="button" onclick="requestCloseTaskflowOverlay()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
     </div>
   </div>
 
   <!-- Guest protected team delete lock -->
   <div id="teamDeleteLockModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4" role="alertdialog" aria-modal="true" aria-labelledby="teamDeleteLockTitle">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseBoardOverlay()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-up">
       <div class="flex items-start gap-3 mb-4">
         <div class="shrink-0 w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center" aria-hidden="true">
@@ -549,7 +549,7 @@
           Create a <a href="/register" class="text-brand-400 hover:text-brand-300 font-medium">free registered account</a> to manage your own teams, including deletion.
         </p>
       </div>
-      <button type="button" onclick="requestCloseBoardOverlay()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
+      <button type="button" onclick="requestCloseTaskflowOverlay()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">OK</button>
     </div>
   </div>
 
@@ -860,24 +860,25 @@
 
 
   <script src="/js/mobile-orientation.js"></script>
+  <script src="/js/member-stats.js"></script>
   <script src="/js/avatar-utils.js"></script>
   <script src="/js/message-format.js"></script>
   <script src="/js/mention-autocomplete.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/message-batch.js"></script>
-  <script src="/board/state.js"></script>
-  <script src="/board/helpers.js"></script>
-  <script src="/board/members.js"></script>
-  <script src="/board/team-board.js"></script>
-  <script src="/board/kanban.js"></script>
-  <script src="/board/add-task.js"></script>
-  <script src="/board/tasks.js"></script>
-  <script src="/board/chat.js"></script>
-  <script src="/board/panels.js"></script>
-  <script src="/board/invites.js"></script>
-  <script src="/board/presence.js"></script>
-  <script src="/board/polling.js"></script>
-  <script src="/board/zoom.js"></script>
-  <script src="/board/boot.js"></script>
+  <script src="/taskflow/state.js"></script>
+  <script src="/taskflow/helpers.js"></script>
+  <script src="/taskflow/members.js"></script>
+  <script src="/taskflow/team-taskflow.js"></script>
+  <script src="/taskflow/kanban.js"></script>
+  <script src="/taskflow/add-task.js"></script>
+  <script src="/taskflow/tasks.js"></script>
+  <script src="/taskflow/chat.js"></script>
+  <script src="/taskflow/panels.js"></script>
+  <script src="/taskflow/invites.js"></script>
+  <script src="/taskflow/presence.js"></script>
+  <script src="/taskflow/polling.js"></script>
+  <script src="/taskflow/zoom.js"></script>
+  <script src="/taskflow/boot.js"></script>
 </body>
 </html>

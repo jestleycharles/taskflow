@@ -1,7 +1,7 @@
 /**
- * board/boot.js
+ * taskflow/boot.js
  * DOM event wiring and page bootstrap. Load last.
- * Depends on: all other board/* modules.
+ * Depends on: all other taskflow/* modules.
  */
 
 document.getElementById('commentInput').addEventListener('keydown', e => {
@@ -274,15 +274,15 @@ window.tfResetPageNavigationUi = () => {
 };
 
 window.addEventListener('popstate', () => {
-  if (!boardHistoryPopping) resetTransientNavigationUi();
-  if (boardHistoryPopping) {
-    boardHistoryPopping = false;
+  if (!taskflowHistoryPopping) resetTransientNavigationUi();
+  if (taskflowHistoryPopping) {
+    taskflowHistoryPopping = false;
     return;
   }
-  const overlay = getTopBoardOverlay();
-  if (overlay) closeBoardOverlayUi(overlay);
+  const overlay = getTopTaskflowOverlay();
+  if (overlay) closeTaskflowOverlayUi(overlay);
 });
 
-initBoardZoom();
-initBoardPan();
+initTaskflowZoom();
+initTaskflowPan();
 init();

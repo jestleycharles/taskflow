@@ -1,52 +1,52 @@
 /**
- * board/panels.js
+ * taskflow/panels.js
  * Activity, team, and settings side panels; team management.
- * Depends on: state.js, helpers.js, members.js, team-board.js
+ * Depends on: state.js, helpers.js, members.js, team-taskflow.js
  */
 
 // Activity Panel
 function openActivityPanel() {
-  closeBoardOverlayBeforeOpen('activity');
+  closeTaskflowOverlayBeforeOpen('activity');
   if (chatPanelOpen) closeChatPanelUi();
   closeAllSidePanels();
   document.getElementById('activityPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
   loadActivity({ background: activityLogs.length > 0 });
-  pushBoardOverlay('activity');
+  pushTaskflowOverlay('activity');
 }
 function closeActivityPanelUi() {
   document.getElementById('activityPanel').classList.add('hidden');
   setSidePanelMobileOpen(false);
 }
 function closeActivityPanel() {
-  requestCloseBoardOverlay();
+  requestCloseTaskflowOverlay();
 }
 function openTeamPanel() {
-  closeBoardOverlayBeforeOpen('team');
+  closeTaskflowOverlayBeforeOpen('team');
   if (chatPanelOpen) closeChatPanelUi();
   closeAllSidePanels();
   document.getElementById('teamPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
   fetchOnlineMembers();
-  pushBoardOverlay('team');
+  pushTaskflowOverlay('team');
 }
 function closeTeamPanelUi() {
   document.getElementById('teamPanel').classList.add('hidden');
   setSidePanelMobileOpen(false);
 }
 function closeTeamPanel() {
-  requestCloseBoardOverlay();
+  requestCloseTaskflowOverlay();
 }
 
 // Settings Panel (owners only)
 function openSettingsPanel() {
   if (teamData?.userRole !== 'owner') return;
-  closeBoardOverlayBeforeOpen('settings');
+  closeTaskflowOverlayBeforeOpen('settings');
   if (chatPanelOpen) closeChatPanelUi();
   closeAllSidePanels();
   document.getElementById('settingsPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
-  pushBoardOverlay('settings');
+  pushTaskflowOverlay('settings');
 }
 function closeSettingsPanelUi() {
   document.getElementById('settingsPanel').classList.add('hidden');
@@ -54,7 +54,7 @@ function closeSettingsPanelUi() {
   setSettingsDangerZoneOpen(false);
 }
 function closeSettingsPanel() {
-  requestCloseBoardOverlay();
+  requestCloseTaskflowOverlay();
 }
 
 function setSettingsDangerZoneOpen(open) {
@@ -275,7 +275,7 @@ async function openEditTeamModal() {
   applyGuestTeamAvatarUploadUi();
   resetEditTeamDetailsDrawer();
   document.getElementById('editTeamModal').classList.remove('hidden');
-  pushBoardOverlay('editTeam');
+  pushTaskflowOverlay('editTeam');
   setTimeout(() => document.getElementById('editTeamName').focus(), 50);
 }
 
@@ -356,7 +356,7 @@ async function saveEditTeam() {
   btn.textContent = 'Save changes';
   applyTeamHeader();
   closeEditTeamModal();
-  dismissBoardOverlayHistory('editTeam');
+  dismissTaskflowOverlayHistory('editTeam');
 }
 
 document.getElementById('editTeamAvatarFile')?.addEventListener('change', (e) => {
@@ -459,14 +459,14 @@ function confirmLeaveTeam() {
   const name = teamData?.name || 'this team';
   showConfirm({
     title: 'Leave team',
-    message: `Leave "${name}"? You will lose access to its board, tasks, and chat.`,
+    message: `Leave "${name}"? You will lose access to this team, tasks, and chat.`,
     confirmLabel: 'Leave team',
     danger: true,
     onConfirm: () => executeLeaveTeam(),
   });
 }
 
-function stopBoardBackgroundWork() {
+function stopTaskflowBackgroundWork() {
   clearInterval(pollInterval);
   clearInterval(chatPollInterval);
   clearInterval(presenceInterval);
@@ -480,7 +480,7 @@ function stopBoardBackgroundWork() {
 async function executeLeaveTeam() {
   closeSettingsPanelUi();
   closeTeamPanelUi();
-  stopBoardBackgroundWork();
+  stopTaskflowBackgroundWork();
   setNavigatingAway(true);
   showNavigationLoading('Leaving team…');
   const r = await apiFetch(`/api/teams/${teamId}/leave`, { method: 'POST' });
@@ -552,7 +552,7 @@ function deleteTeam() {
 async function executeDeleteTeam() {
   closeSettingsPanelUi();
   closeTeamPanelUi();
-  stopBoardBackgroundWork();
+  stopTaskflowBackgroundWork();
   setNavigatingAway(true);
   showNavigationLoading('Deleting team…');
   const r = await apiFetch(`/api/teams/${teamId}`, { method: 'DELETE' });

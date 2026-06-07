@@ -1,7 +1,7 @@
 /**
- * board/polling.js
+ * taskflow/polling.js
  * Real-time task polling loop.
- * Depends on: state.js, helpers.js, team-board.js, kanban.js, tasks.js
+ * Depends on: state.js, helpers.js, team-taskflow.js, kanban.js, tasks.js
  */
 
 // Real-time polling (5s); only re-builds the board when task fields change, not on every unread tick
@@ -15,13 +15,13 @@ function startPolling() {
       return;
     }
     if (!Array.isArray(newTasks)) return;
-    const { merged, boardDirty } = mergePolledTasks(newTasks);
-    const unreadOnlyChange = !boardDirty && merged.some((t, i) => {
+    const { merged, taskflowDirty } = mergePolledTasks(newTasks);
+    const unreadOnlyChange = !taskflowDirty && merged.some((t, i) => {
       const prev = tasks.find((p) => p.id === t.id);
       return prev && (prev.unread_comment_count || 0) !== (t.unread_comment_count || 0);
     });
-    if (boardDirty || unreadOnlyChange) {
-      if (boardDirty && hasLayoutPersistPending()) {
+    if (taskflowDirty || unreadOnlyChange) {
+      if (taskflowDirty && hasLayoutPersistPending()) {
         merged.forEach((t) => {
           const local = tasks.find((p) => p.id === t.id);
           if (local) local.unread_comment_count = t.unread_comment_count || 0;
@@ -29,9 +29,9 @@ function startPolling() {
         });
       } else {
         tasks = merged;
-        if (boardDirty) {
-          renderBoard();
-          ensureBoardTasksRendered();
+        if (taskflowDirty) {
+          renderTaskflow();
+          ensureTaskflowTasksRendered();
           if (activeTaskId && !editingTaskField) {
             const task = tasks.find(t => t.id === activeTaskId);
             if (task) {
@@ -50,6 +50,6 @@ function startPolling() {
     if (activeTaskId && !document.getElementById('taskModal').classList.contains('hidden')) {
       loadComments(activeTaskId);
     }
-    ensureBoardTasksRendered();
+    ensureTaskflowTasksRendered();
   }, 5000);
 }

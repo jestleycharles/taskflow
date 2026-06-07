@@ -29,7 +29,7 @@ function clearStoredInviteToken() {
 function authRedirectUrl(data) {
   if (data?.invite_team_id) {
     clearStoredInviteToken();
-    return `/board/${data.invite_team_id}`;
+    return `/taskflow/${data.invite_team_id}`;
   }
   return '/dashboard';
 }

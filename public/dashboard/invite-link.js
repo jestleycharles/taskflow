@@ -313,6 +313,6 @@ window.joinByInviteLink = async function joinByInviteLink() {
 
   if (d.team_id) {
     setNavigatingAway(true);
-    window.location = `/board/${d.team_id}`;
+    window.location = `/taskflow/${d.team_id}`;
   }
 };

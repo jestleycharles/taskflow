@@ -1,7 +1,7 @@
 /**
- * board/kanban.js
+ * taskflow/kanban.js
  * Drag-and-drop, column layout, and task card ordering.
- * Depends on: state.js, helpers.js, team-board.js
+ * Depends on: state.js, helpers.js, team-taskflow.js
  */
 
 // Drag & Drop
@@ -19,7 +19,7 @@ function updateColumnTaskCount(status) {
   if (countEl) countEl.textContent = getSortedColumnTasks(status).length;
 }
 
-function patchBoardLayoutDom(statuses) {
+function patchTaskflowLayoutDom(statuses) {
   const affected = statuses || getTeamColumns().map((c) => c.slug);
   affected.forEach((status) => {
     const zone = getColumnDropZone(status);
@@ -31,7 +31,7 @@ function patchBoardLayoutDom(statuses) {
       zone.appendChild(card);
     });
   });
-  scheduleBoardZoomRemeasure();
+  scheduleTaskflowZoomRemeasure();
 }
 
 function collectFullLayoutPayload() {
@@ -83,7 +83,7 @@ async function flushLayoutPersist(isRetry = false) {
       }
       showAlert(d.error || 'Failed to save task order');
       await loadTasks();
-      renderBoard();
+      renderTaskflow();
     }
   } finally {
     layoutPersistInFlight = false;
@@ -113,7 +113,7 @@ function reorderTasksInColumn(status, draggedId, targetId, placement) {
   colTasks.splice(insertAt, 0, item);
   const taskIds = colTasks.map((t) => t.id);
   applyColumnOrder(status, taskIds);
-  patchBoardLayoutDom([status]);
+  patchTaskflowLayoutDom([status]);
   scheduleLayoutPersist();
 }
 
@@ -145,7 +145,7 @@ function handleTaskCardDrop(targetTask, e) {
   const destIds = colTasks.map((t) => t.id);
 
   applyColumnOrder(status, destIds);
-  patchBoardLayoutDom([status, oldStatus]);
+  patchTaskflowLayoutDom([status, oldStatus]);
   scheduleLayoutPersist();
   if (activeTaskId === draggedId) loadComments(activeTaskId);
 }
@@ -168,7 +168,7 @@ function drop(e) {
       colTasks.push(item);
       const taskIds = colTasks.map((t) => t.id);
       applyColumnOrder(newStatus, taskIds);
-      patchBoardLayoutDom([newStatus]);
+      patchTaskflowLayoutDom([newStatus]);
       scheduleLayoutPersist();
     }
     return;
@@ -180,7 +180,7 @@ function drop(e) {
   const destIds = colTasks.map((t) => t.id);
 
   applyColumnOrder(newStatus, destIds);
-  patchBoardLayoutDom([newStatus, oldStatus]);
+  patchTaskflowLayoutDom([newStatus, oldStatus]);
   scheduleLayoutPersist();
   if (activeTaskId === draggedId) loadComments(activeTaskId);
 }
