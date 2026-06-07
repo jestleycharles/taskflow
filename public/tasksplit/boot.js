@@ -94,4 +94,13 @@ async function init() {
   }
 }
 
+document.getElementById('activityMessageSearch')?.addEventListener('input', (e) => {
+  activitySearchQuery = e.target.value;
+  renderActivity();
+});
+
+window.tfResetPageNavigationUi = () => {
+  hideNavigationLoading();
+};
+
 init();

@@ -9,8 +9,12 @@ function renderBalances() {
   const balancePanel = document.getElementById('balancePanelContent');
   const balanceBtn = document.getElementById('balanceNavBtn');
 
+  const sidebar = document.getElementById('balanceSidebar');
+
   if (isSolo) {
     balanceBtn?.classList.add('hidden');
+    sidebar?.classList.add('hidden');
+    sidebar?.classList.remove('lg:flex');
     if (balancePanel) {
       balancePanel.innerHTML = `
         <p class="text-gray-500 text-sm">Solo mode tracks your spending only. No splits or balances.</p>`;
@@ -19,6 +23,14 @@ function renderBalances() {
   }
 
   balanceBtn?.classList.remove('hidden');
+  if (!document.getElementById('activityPanel')?.classList.contains('hidden')
+    || !document.getElementById('teamPanel')?.classList.contains('hidden')) {
+    sidebar?.classList.add('hidden');
+    sidebar?.classList.remove('lg:flex');
+  } else {
+    sidebar?.classList.remove('hidden');
+    sidebar?.classList.add('lg:flex');
+  }
 
   const youOwe = balances.you_owe || [];
   const youAreOwed = balances.you_are_owed || [];
@@ -110,11 +122,13 @@ function renderBalances() {
 function openBalancePanel() {
   closeAllPanels();
   document.getElementById('balancePanel').classList.remove('hidden');
+  setSidePanelMobileOpen(true);
   renderBalances();
 }
 
 function closeBalancePanel() {
   document.getElementById('balancePanel').classList.add('hidden');
+  setSidePanelMobileOpen(false);
 }
 
 function settleUp(toUserId, amount) {

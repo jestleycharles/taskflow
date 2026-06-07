@@ -1,15 +1,37 @@
-body {
-  font-family: "DM Sans", sans-serif;
-  background: #0f1117;
-}
+body { font-family: 'DM Sans', sans-serif; background: #0f1117; }
 .grid-bg {
-  background-image:
-    linear-gradient(rgba(79, 110, 247, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79, 110, 247, 0.04) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(79,110,247,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,110,247,0.03) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+.fade-up { animation: fadeUp 0.35s ease forwards; }
+.modal-overlay { backdrop-filter: blur(6px); }
+.sidebar-slide { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #363952; border-radius: 4px; }
+select option { background: #1a1d2e; }
+.poll-dot { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+:root { --nav-h: 3.5rem; }
+html { touch-action: manipulation; }
+#tasksplitMainRow {
+  flex: 1 1 0;
+  min-height: 0;
+}
+#balanceSidebar,
+#balancePanel,
+#activityPanel,
+#teamPanel {
+  height: 100%;
+  max-height: 100%;
+}
+
 .expense-card {
-  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
 }
 .expense-card:hover {
   border-color: rgba(255, 255, 255, 0.18);
@@ -17,33 +39,30 @@ body {
 }
 .balance-positive { color: #34d399; }
 .balance-negative { color: #f87171; }
-.poll-dot { animation: pulse 2s infinite; }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+/* Toast notifications */
+#toastContainer { pointer-events: none; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
-.sidebar-slide {
-  transition: transform 0.25s ease;
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-10px) scale(0.98); }
 }
-@media (max-width: 767px) {
-  .sidebar-slide.mobile-open {
-    position: fixed;
-    inset: 0;
-    top: var(--nav-h, 3.5rem);
-    z-index: 45;
-    width: 100% !important;
-    max-width: 100%;
-  }
+.toast-enter { animation: toastIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.toast-exit { animation: toastOut 0.3s ease forwards; }
+
+/* Shimmer skeleton */
+@keyframes shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
 }
 .skeleton {
   background: linear-gradient(90deg, #1a1d2e 25%, #252840 50%, #1a1d2e 75%);
   background-size: 600px 100%;
   animation: shimmer 1.6s infinite linear;
   border-radius: 6px;
-}
-@keyframes shimmer {
-  0% { background-position: -600px 0; }
-  100% { background-position: 600px 0; }
 }
 .btn-spinner {
   display: inline-block;
@@ -53,7 +72,29 @@ body {
   border-top-color: #fff;
   border-radius: 50%;
   animation: btnSpin 0.65s linear infinite;
+  flex-shrink: 0;
 }
 @keyframes btnSpin {
   to { transform: rotate(360deg); }
+}
+
+@media (max-width: 767px), (max-height: 767px) {
+  #balancePanel:not(.hidden),
+  #activityPanel:not(.hidden),
+  #teamPanel:not(.hidden) {
+    position: fixed;
+    top: var(--nav-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    max-width: none;
+    height: auto;
+    z-index: 45;
+    border-right: none;
+    border-left: none;
+  }
+  body.side-panel-mobile-open {
+    overflow: hidden;
+  }
 }

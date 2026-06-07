@@ -72,4 +72,6 @@ function closeAllPanels() {
   document.getElementById('activityPanel')?.classList.add('hidden');
   document.getElementById('teamPanel')?.classList.add('hidden');
   document.getElementById('balancePanel')?.classList.add('hidden');
+  setSidePanelMobileOpen(false);
+  restoreBalanceSidebarIfNeeded();
 }

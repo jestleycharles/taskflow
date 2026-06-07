@@ -1,20 +1,50 @@
 /**
- * TaskSplit side panels — activity and members.
+ * TaskSplit side panels — activity, members, and balances.
  */
+
+let activitySearchQuery = '';
+
+function isMobileTasksplitLayout() {
+  return TF_VIEWPORT.isMobile();
+}
+
+function setSidePanelMobileOpen(open) {
+  document.body.classList.toggle('side-panel-mobile-open', open && isMobileTasksplitLayout());
+  document.getElementById('panelMobileBackdrop')?.classList.toggle('hidden', !open || !isMobileTasksplitLayout());
+}
+
+function hideBalanceSidebarForPanel() {
+  document.getElementById('balanceSidebar')?.classList.add('hidden');
+  document.getElementById('balanceSidebar')?.classList.remove('lg:flex');
+}
+
+function restoreBalanceSidebarIfNeeded() {
+  const isSolo = workspaceData?.team?.expense_mode === 'solo';
+  const sidebar = document.getElementById('balanceSidebar');
+  if (!sidebar || isSolo) return;
+  sidebar.classList.remove('hidden');
+  sidebar.classList.add('lg:flex');
+}
 
 function openActivityPanel() {
   closeAllPanels();
+  hideBalanceSidebarForPanel();
   document.getElementById('activityPanel').classList.remove('hidden');
+  setSidePanelMobileOpen(true);
   loadActivity();
 }
 
 function closeActivityPanel() {
   document.getElementById('activityPanel').classList.add('hidden');
+  setSidePanelMobileOpen(false);
+  restoreBalanceSidebarIfNeeded();
 }
 
 function openTeamPanel() {
   closeAllPanels();
+  hideBalanceSidebarForPanel();
   document.getElementById('teamPanel').classList.remove('hidden');
+  setSidePanelMobileOpen(true);
   renderMemberList();
   applyTasksplitInviteUi();
 }
@@ -79,34 +109,55 @@ async function tasksplitCopyInviteLink() {
 
 function closeTeamPanel() {
   document.getElementById('teamPanel').classList.add('hidden');
+  setSidePanelMobileOpen(false);
+  restoreBalanceSidebarIfNeeded();
 }
 
 function renderMemberList() {
   const list = document.getElementById('teamMemberList');
   const members = workspaceData?.members || [];
+  if (!members.length) {
+    list.innerHTML = '<p class="text-gray-600 text-sm text-center py-8">No members yet</p>';
+    return;
+  }
+
   list.innerHTML = members
     .map(
       (m) => `
     <div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
-      ${userAvatarHtml(m, 'w-9 h-9')}
-      <div class="min-w-0">
+      ${userAvatarHtml(m, 'w-9 h-9 shrink-0')}
+      <div class="min-w-0 flex-1">
         <p class="text-white text-sm font-medium truncate">${escHtml(m.username)}</p>
         <p class="text-gray-500 text-xs truncate">${escHtml(m.email)}</p>
       </div>
-      <span class="ml-auto text-xs px-2 py-0.5 rounded-full border ${m.role === 'owner' ? 'border-brand-500/40 text-brand-500 bg-brand-500/10' : 'border-white/10 text-gray-400'}">${m.role}</span>
+      <span class="ml-auto text-xs px-2 py-0.5 rounded-full border shrink-0 ${m.role === 'owner' ? 'border-brand-500/40 text-brand-500 bg-brand-500/10' : 'border-white/10 text-gray-400'}">${m.role}</span>
     </div>`,
     )
     .join('');
 }
 
+function getFilteredActivityLogs() {
+  const q = activitySearchQuery.trim().toLowerCase();
+  if (!q) return activityLogs;
+  return activityLogs.filter((log) => {
+    const user = log.user?.username || '';
+    const desc = log.description || '';
+    return user.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
+  });
+}
+
 function renderActivity() {
   const list = document.getElementById('activityList');
-  if (!activityLogs.length) {
-    list.innerHTML = '<p class="text-gray-600 text-sm text-center py-8">No activity yet</p>';
+  const logs = getFilteredActivityLogs();
+
+  if (!logs.length) {
+    list.innerHTML = activitySearchQuery.trim()
+      ? '<p class="text-gray-600 text-sm text-center py-8">No matching activity</p>'
+      : '<p class="text-gray-600 text-sm text-center py-8">No activity yet</p>';
     return;
   }
 
-  list.innerHTML = activityLogs
+  list.innerHTML = logs
     .map((log) => {
       const user = log.user || { username: 'Someone', avatar_color: '#4f6ef7' };
       return `
