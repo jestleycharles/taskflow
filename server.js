@@ -26,7 +26,14 @@ const { requireAuth } = require('./middleware/auth');
 
 const app = express();
 
-// Render terminates TLS at the edge; without this, secure session cookies are never set.
+// ── Timing helper ────────────────────────────────────────────────────────────
+const t0 = Date.now();
+function elapsed() { return `+${Date.now() - t0}ms`; }
+function log(label) { console.log(`[startup] ${elapsed().padEnd(8)} ${label}`); }
+// ─────────────────────────────────────────────────────────────────────────────
+
+log('imports resolved');
+
 app.set('trust proxy', 1);
 
 app.use(express.json());
@@ -34,8 +41,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 async function start() {
+  log('start() called');
+
   const sessionDbUrl = process.env.SESSION_DATABASE_URL || process.env.DATABASE_URL;
+  log('creating session pool…');
   const sessionPool = await createSessionPool(sessionDbUrl);
+  log('session pool ready');
 
   app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -53,98 +64,107 @@ async function start() {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }));
+  log('session middleware mounted');
 
-// Health check (dummy table wakes Postgres without touching app data)
-app.get('/health', async (req, res) => {
-  const { error } = await supabaseAdmin
-    .from('_health_ping')
-    .select('id', { count: 'exact', head: true })
-    .limit(1);
+  // Health check
+  app.get('/health', async (req, res) => {
+    const { error } = await supabaseAdmin
+      .from('_health_ping')
+      .select('id', { count: 'exact', head: true })
+      .limit(1);
 
-  const dbOk = !error || error.code === 'PGRST205';
+    const dbOk = !error || error.code === 'PGRST205';
 
-  if (!dbOk) {
-    return res.status(503).json({
-      status: 'degraded',
-      db: 'error',
+    if (!dbOk) {
+      return res.status(503).json({
+        status: 'degraded',
+        db: 'error',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    res.status(200).json({
+      status: 'ok',
+      db: 'ok',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
-  }
-
-  res.status(200).json({
-    status: 'ok',
-    db: 'ok',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
   });
-});
 
-// Routes
-app.use(authRoutes);
-app.use(teamRoutes);
-app.use(taskRoutes);
-app.use(columnRoutes);
-app.use(profileRoutes);
-app.use(chatRoutes);
-app.use(dmChatRoutes);
-app.use(dmSettingsRoutes);
-app.use(reactionRoutes);
-app.use(feedbackRoutes);
-app.use(inviteLinkRoutes);
-app.use(featurePostRoutes);
-app.use(messageAttachmentRoutes);
-app.use(tasksplitRoutes);
+  // Routes
+  log('mounting routes…');
+  app.use(authRoutes);
+  app.use(teamRoutes);
+  app.use(taskRoutes);
+  app.use(columnRoutes);
+  app.use(profileRoutes);
+  app.use(chatRoutes);
+  app.use(dmChatRoutes);
+  app.use(dmSettingsRoutes);
+  app.use(reactionRoutes);
+  app.use(feedbackRoutes);
+  app.use(inviteLinkRoutes);
+  app.use(featurePostRoutes);
+  app.use(messageAttachmentRoutes);
+  app.use(tasksplitRoutes);
+  log('all routes mounted');
 
-app.get('/features.md', (req, res) => {
-  res.sendFile(path.join(__dirname, 'FEATURES.md'));
-});
+  app.get('/features.md', (req, res) => {
+    res.sendFile(path.join(__dirname, 'FEATURES.md'));
+  });
 
-app.get('/favicon.ico', (req, res) => {
-  res.redirect(301, '/favicon.svg');
-});
+  app.get('/favicon.ico', (req, res) => {
+    res.redirect(301, '/favicon.svg');
+  });
 
-// Pages
-app.get('/', (req, res) => {
-  if (req.session?.user) return res.redirect('/dashboard');
-  res.redirect('/login');
-});
+  // Pages
+  app.get('/', (req, res) => {
+    if (req.session?.user) return res.redirect('/dashboard');
+    res.redirect('/login');
+  });
 
-app.get('/dashboard', requireAuth, (req, res) => {
-  res.sendFile('dashboard.html', { root: './public' });
-});
+  app.get('/dashboard', requireAuth, (req, res) => {
+    res.sendFile('dashboard.html', { root: './public' });
+  });
 
-app.get('/board/:teamId', requireAuth, (req, res) => {
-  res.redirect(301, `/taskflow/${req.params.teamId}`);
-});
+  app.get('/board/:teamId', requireAuth, (req, res) => {
+    res.redirect(301, `/taskflow/${req.params.teamId}`);
+  });
 
-app.get('/taskflow/:teamId', requireAuth, (req, res) => {
-  res.sendFile('taskflow.html', { root: './public' });
-});
+  app.get('/taskflow/:teamId', requireAuth, (req, res) => {
+    res.sendFile('taskflow.html', { root: './public' });
+  });
 
-app.get('/tasksplit/:teamId', requireAuth, (req, res) => {
-  res.sendFile('tasksplit.html', { root: './public' });
-});
+  app.get('/tasksplit/:teamId', requireAuth, (req, res) => {
+    res.sendFile('tasksplit.html', { root: './public' });
+  });
 
-// API: current user (refreshed from DB for avatar_url etc.)
-app.get('/api/me', requireAuth, async (req, res) => {
-  const { data: user, error } = await supabaseAdmin
-    .from('users')
-    .select('id, username, email, avatar_color, avatar_url')
-    .eq('id', req.session.user.id)
-    .single();
-  if (error || !user) return res.status(401).json({ error: 'Unauthorized' });
-  req.session.user = toSessionUser(user);
-  res.json(req.session.user);
-});
+  // API: current user
+  app.get('/api/me', requireAuth, async (req, res) => {
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, username, email, avatar_color, avatar_url')
+      .eq('id', req.session.user.id)
+      .single();
+    if (error || !user) return res.status(401).json({ error: 'Unauthorized' });
+    req.session.user = toSessionUser(user);
+    res.json(req.session.user);
+  });
 
+  log('running ensureFeaturePostSeed…');
   await ensureFeaturePostSeed();
+  log('ensureFeaturePostSeed done');
 
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`TaskFlow running on port ${PORT}`));
+  app.listen(PORT, () => {
+    log(`server listening on port ${PORT}`);
+    console.log(`[startup] ── total startup time: ${Date.now() - t0}ms ──`);
+    console.log(`TaskFlow running on port ${PORT}`);
+  });
 }
 
 start().catch((err) => {
-  console.error('Failed to start server:', err);
+  console.error(`[startup] FATAL ${elapsed()}`, err);
   process.exit(1);
 });
