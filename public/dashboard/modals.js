@@ -30,8 +30,6 @@ window.getTopDashboardOverlay = function getTopDashboardOverlay() {
   if (!hidden("featurePostImageModal")) return "featurePostImage";
   if (!hidden("profileModal")) return "profile";
   if (!hidden("createModal")) return "createTeam";
-  if (!hidden("dmBlockedEmailsModal")) return "dmBlockedEmails";
-  if (!hidden("dmBlockedEmailStartModal")) return "dmBlockedEmailStart";
   return null;
 };
 
@@ -83,12 +81,6 @@ window.closeDashboardOverlayUi = async function closeDashboardOverlayUi(
       break;
     case "createTeam":
       closeCreateModal();
-      break;
-    case "dmBlockedEmails":
-      window.closeBlockedEmailsModal?.({ syncHistory: false });
-      break;
-    case "dmBlockedEmailStart":
-      window.closeBlockedEmailStartModal?.({ syncHistory: false });
       break;
   }
 };

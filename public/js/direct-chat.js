@@ -125,27 +125,75 @@
   let dmOnlinePollInterval = null;
   let appPresenceLeft = false;
   let dmHistoryPopping = false;
+  let dmOverlayDepth = 0;
 
-  function pushDmHistory(name) {
-    if (dmHistoryPopping) return;
-    history.pushState({ tfDm: name, t: Date.now() }, '');
+  function getTopDmOverlay() {
+    if (!$('dmAttachmentPreviewModal')?.classList.contains('hidden')) return 'attachmentPreview';
+    if (!$('dmBlockedEmailStartModal')?.classList.contains('hidden')) return 'dmBlockedEmailStart';
+    if (!$('dmBlockedEmailsModal')?.classList.contains('hidden')) return 'dmBlockedEmails';
+    if (!panelOpen) return null;
+    if (view === 'thread' && activeConversationId) return 'thread';
+    return 'panel';
   }
 
-  function dismissDmHistorySilent() {
-    const dm = history.state?.tfDm;
-    if (!dm) return;
+  function pushDmOverlay(name) {
+    if (dmHistoryPopping) return;
+    const current = history.state?.tfDmOverlay;
+    if (current === name) return;
+    history.pushState({ tfDmOverlay: name, t: Date.now() }, '');
+    dmOverlayDepth++;
+  }
+
+  function requestCloseDmOverlay() {
+    if (getTopDmOverlay()) history.back();
+  }
+
+  function dismissDmOverlayHistory(expected) {
+    const state = history.state?.tfDmOverlay;
+    if (state && (!expected || state === expected)) {
+      dmHistoryPopping = true;
+      if (dmOverlayDepth > 0) dmOverlayDepth--;
+      history.back();
+    }
+  }
+
+  function dismissDmOverlayStack() {
+    if (dmOverlayDepth <= 0) return;
+    const n = dmOverlayDepth;
     dmHistoryPopping = true;
-    history.go(dm === 'thread' ? -2 : -1);
+    dmOverlayDepth = 0;
+    history.go(-n);
+  }
+
+  function closeDmNestedOverlaysUi() {
+    closeDmAttachmentPreviewUi();
+    closeBlockedEmailsModal({ syncHistory: false });
+    closeBlockedEmailStartModal({ syncHistory: false });
+  }
+
+  async function closeDmOverlayUi(overlay) {
+    switch (overlay) {
+      case 'attachmentPreview':
+        closeDmAttachmentPreviewUi();
+        break;
+      case 'dmBlockedEmails':
+        closeBlockedEmailsModal({ syncHistory: false });
+        break;
+      case 'dmBlockedEmailStart':
+        closeBlockedEmailStartModal({ syncHistory: false });
+        break;
+      case 'thread':
+        await goToListCore();
+        break;
+      case 'panel':
+        await closePanelCore();
+        break;
+    }
   }
 
   function requestDmBack() {
     if (!panelOpen) return;
-    if (history.state?.tfDm) {
-      history.back();
-      return;
-    }
-    if (view === 'thread') goToListCore();
-    else closePanelCore();
+    requestCloseDmOverlay();
   }
 
   function handlePopState() {
@@ -153,33 +201,11 @@
       dmHistoryPopping = false;
       return true;
     }
-
-    if (!$('dmBlockedEmailStartModal')?.classList.contains('hidden')) {
-      closeBlockedEmailStartModal({ syncHistory: false });
-      if (panelOpen && !history.state?.tfDm) {
-        pushDmHistory(view === 'thread' ? 'thread' : 'panel');
-      }
-      return true;
-    }
-    if (!$('dmBlockedEmailsModal')?.classList.contains('hidden')) {
-      closeBlockedEmailsModal({ syncHistory: false });
-      if (panelOpen && !history.state?.tfDm) {
-        pushDmHistory(view === 'thread' ? 'thread' : 'panel');
-      }
-      return true;
-    }
-
-    if (!panelOpen) return false;
-    const dm = history.state?.tfDm;
-    if (view === 'thread' && dm === 'panel') {
-      goToListCore();
-      return true;
-    }
-    if (view === 'list' && !dm) {
-      closePanelCore();
-      return true;
-    }
-    return false;
+    if (dmOverlayDepth > 0) dmOverlayDepth--;
+    const overlay = getTopDmOverlay();
+    if (!overlay) return false;
+    closeDmOverlayUi(overlay);
+    return true;
   }
 
   function $(id) {
@@ -205,28 +231,6 @@
       return '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
     }
     return '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>';
-  }
-
-  function renderMessageAttachmentsHtml(attachments) {
-    if (!attachments?.length) return '';
-    return attachments.map((a) => {
-      const previewUrl = `/api/message-attachments/${a.id}`;
-      const mime = a.mime_type || '';
-      const name = escHtml(a.file_name || 'Attachment');
-      if (mime.startsWith('image/')) {
-        return `<div class="chat-msg-attachment">
-          <img src="${escHtml(previewUrl)}" alt="${name}" class="chat-msg-attachment-thumb"
-            data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" ${storageImageOnErrorAttr()} />
-        </div>`;
-      }
-      return `<div class="chat-msg-attachment">
-        <button type="button" class="chat-msg-attachment-file"
-          data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}">
-          ${attachmentFileIconHtml(mime)}
-          <span class="truncate">${name}</span>
-        </button>
-      </div>`;
-    }).join('');
   }
 
   function clearDmPendingFile() {
@@ -301,14 +305,19 @@
     }
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    pushDmOverlay('attachmentPreview');
   }
 
-  function closeDmAttachmentPreview() {
+  function closeDmAttachmentPreviewUi() {
     const modal = $('dmAttachmentPreviewModal');
     const body = $('dmAttachmentPreviewBody');
     if (body) body.innerHTML = '';
     modal?.classList.add('hidden');
     document.body.style.overflow = '';
+  }
+
+  function closeDmAttachmentPreview() {
+    requestCloseDmOverlay();
   }
 
   function conversationTitle(conv) {
@@ -569,7 +578,7 @@
     $('dmChatPanel')?.classList.remove('hidden');
     setPanelOpenUi(true);
     syncView();
-    pushDmHistory(view === 'thread' ? 'thread' : 'panel');
+    pushDmOverlay(view === 'thread' ? 'thread' : 'panel');
     if (view === 'thread' && activeConversationId) {
       setDmPanelLoading(false);
       showDmMessagesLoading();
@@ -593,6 +602,11 @@
     clearDmPendingFile();
     resetDmMessageSearch();
     panelOpen = false;
+    view = 'list';
+    activeConversationId = null;
+    activeConversation = null;
+    dmMessages = [];
+    dmLastReadAt = 0;
     $('dmChatPanel')?.classList.add('hidden');
     setPanelOpenUi(false);
     editingDmId = null;
@@ -607,8 +621,9 @@
   }
 
   async function closePanel() {
+    closeDmNestedOverlaysUi();
     await closePanelCore();
-    dismissDmHistorySilent();
+    dismissDmOverlayStack();
   }
 
   async function goToListCore() {
@@ -639,10 +654,7 @@
 
   async function goToList() {
     await goToListCore();
-    if (history.state?.tfDm === 'thread') {
-      dmHistoryPopping = true;
-      history.back();
-    }
+    dismissDmOverlayHistory('thread');
   }
 
   function closeHeaderAvatarMenu() {
@@ -779,13 +791,13 @@
     $('dmBlockedEmailAddError')?.classList.add('hidden');
     $('dmBlockedEmailAddInput').value = '';
     $('dmBlockedEmailsModal')?.classList.remove('hidden');
-    window.pushDashboardOverlay?.('dmBlockedEmails');
+    pushDmOverlay('dmBlockedEmails');
   }
 
   function closeBlockedEmailsModal({ syncHistory = true } = {}) {
     const wasOpen = !$('dmBlockedEmailsModal')?.classList.contains('hidden');
     $('dmBlockedEmailsModal')?.classList.add('hidden');
-    if (wasOpen && syncHistory) window.requestCloseDashboardOverlay?.();
+    if (wasOpen && syncHistory) requestCloseDmOverlay();
   }
 
   function renderBlockedEmailsList() {
@@ -886,14 +898,14 @@
       msg.textContent = `${email} is in your block list. Unblock it to start a chat.`;
     }
     $('dmBlockedEmailStartModal')?.classList.remove('hidden');
-    window.pushDashboardOverlay?.('dmBlockedEmailStart');
+    pushDmOverlay('dmBlockedEmailStart');
   }
 
   function closeBlockedEmailStartModal({ syncHistory = true } = {}) {
     const wasOpen = !$('dmBlockedEmailStartModal')?.classList.contains('hidden');
     blockedEmailStartTarget = null;
     $('dmBlockedEmailStartModal')?.classList.add('hidden');
-    if (wasOpen && syncHistory) window.requestCloseDashboardOverlay?.();
+    if (wasOpen && syncHistory) requestCloseDmOverlay();
   }
 
   async function unblockEmailFromStartModal() {
@@ -965,7 +977,7 @@
     activeConversation = conv;
     view = 'thread';
     syncView();
-    pushDmHistory('thread');
+    pushDmOverlay('thread');
     dmLastReadAt = dmReadByConv.get(conv.id) || 0;
     dmMessages = [];
     resetDmMessageSearch();
@@ -1224,6 +1236,32 @@
     const fromOther = String(msg.user_id) !== String(currentUser?.id);
     const nameLabel = escHtml(user.username) + (fromOther && isUserIgnoredLocal(msg.user_id) ? DM_IGNORED_INDICATOR : '');
 
+    if (msg._pendingSend) {
+      const hasAttachment = !!msg._hasAttachment || !!(msg.attachments && msg.attachments.length);
+      return `<div class="flex items-start gap-3 chat-msg-pending" data-dm-msg-id="${msg.id}">
+        ${dmAvatarWithPresenceHtml(user, 'w-8 h-8')}
+        <div class="flex-1 min-w-0">
+          <div class="skeleton h-2.5 w-24 rounded mb-2"></div>
+          ${messageBusyBodySkeletonHtml({ hasAttachment })}
+        </div>
+      </div>`;
+    }
+
+    const pendingOp = getPendingMessageOp('dm', msg.id);
+    if (pendingOp === 'delete') {
+      return `<div class="group flex items-start gap-3" data-dm-msg-id="${msg.id}">
+        ${dmAvatarWithPresenceHtml(user, 'w-8 h-8')}
+        <div class="flex-1 min-w-0">${messageDeleteBusySkeletonHtml()}</div>
+      </div>`;
+    }
+    if (pendingOp === 'edit') {
+      const hasAttachment = !!(msg.attachments && msg.attachments.length);
+      return `<div class="group flex items-start gap-3" data-dm-msg-id="${msg.id}">
+        ${dmAvatarWithPresenceHtml(user, 'w-8 h-8')}
+        <div class="flex-1 min-w-0">${messageBusyBodySkeletonHtml({ hasAttachment })}</div>
+      </div>`;
+    }
+
     if (msg.deleted_at) {
       return `<div class="chat-msg-tombstone rounded-xl p-3" data-dm-msg-id="${msg.id}">
           <p class="text-xs text-gray-500 italic">Message deleted</p>
@@ -1325,6 +1363,7 @@
     } else if (!atBottom && dmBatch.isAtLatest()) {
       list.scrollTop = scrollTop;
     }
+    syncMessageAttachmentsIn(list);
   }
 
   async function loadDmMessages() {
@@ -1374,6 +1413,20 @@
       if (input) input.disabled = true;
       if (btn) btn.disabled = true;
 
+      const pendingId = `pending-${Date.now()}`;
+      dmBatch.showLatestBatch();
+      dmMessages.push({
+        id: pendingId,
+        _pendingSend: true,
+        _hasAttachment: true,
+        user_id: currentUser?.id,
+        user: currentUser,
+        created_at: new Date().toISOString(),
+        content: textContent || '',
+      });
+      renderDmMessages();
+      scrollDmToBottom();
+
       const form = new FormData();
       if (textContent) form.append('content', textContent);
       form.append('file', file);
@@ -1382,6 +1435,8 @@
         const r = await apiFetch(`/api/dm/conversations/${conversationId}/messages`, { method: 'POST', body: form });
         const msg = await parseJsonResponse(r);
         if (!r.ok) {
+          dmMessages = dmMessages.filter((m) => m.id !== pendingId);
+          renderDmMessages();
           const limited = messageSendRateLimitResult(r.status, msg);
           if (limited) {
             applyMessageSendCooldown(key, {
@@ -1396,14 +1451,18 @@
           showAlert(msg.error || 'Failed to send message');
           return;
         }
-        dmBatch.showLatestBatch();
-        dmMessages.push(msg);
+        const idx = dmMessages.findIndex((m) => m.id === pendingId);
+        if (idx !== -1) dmMessages[idx] = msg;
+        else dmMessages.push(msg);
         if (input) input.value = '';
         clearDmPendingFile();
         renderDmMessages();
         scrollDmToBottom();
         markDmRead();
         loadConversations();
+      } catch {
+        dmMessages = dmMessages.filter((m) => m.id !== pendingId);
+        renderDmMessages();
       } finally {
         messageSendInFlight.delete(key);
         if (input && !sendCooldownTimers.has(key)) input.disabled = false;
@@ -1417,7 +1476,22 @@
       sendBtnEl: btn,
       cooldownNoticeEl: $('dmSendCooldown'),
       getContent: () => prepareOutgoingDmMessage(input?.value),
-      send: async (content) => {
+      onBeforeSend: (content) => {
+        const pendingId = `pending-${Date.now()}`;
+        dmBatch.showLatestBatch();
+        dmMessages.push({
+          id: pendingId,
+          _pendingSend: true,
+          user_id: currentUser?.id,
+          user: currentUser,
+          created_at: new Date().toISOString(),
+          content,
+        });
+        renderDmMessages();
+        scrollDmToBottom();
+        return pendingId;
+      },
+      send: async (content, pendingId) => {
         const r = await apiFetch(`/api/dm/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1425,13 +1499,16 @@
         });
         const msg = await parseJsonResponse(r);
         if (!r.ok) {
+          if (pendingId) dmMessages = dmMessages.filter((m) => m.id !== pendingId);
+          renderDmMessages();
           const limited = messageSendRateLimitResult(r.status, msg);
           if (limited) return limited;
           showAlert(msg.error || 'Failed to send message');
           return false;
         }
-        dmBatch.showLatestBatch();
-        dmMessages.push(msg);
+        const idx = dmMessages.findIndex((m) => m.id === pendingId);
+        if (idx !== -1) dmMessages[idx] = msg;
+        else dmMessages.push(msg);
         renderDmMessages();
         scrollDmToBottom();
         markDmRead();
@@ -1459,22 +1536,28 @@
     const textarea = document.getElementById(`dmEditInput-${messageId}`);
     const content = prepareOutgoingDmMessage(textarea?.value);
     if (!content || !activeConversationId) return;
-    const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages/${messageId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
-    const updated = await parseJsonResponse(r);
-    if (!r.ok) {
-      showAlert(updated.error || 'Failed to edit message');
-      return;
-    }
-    const idx = dmMessages.findIndex((m) => m.id === messageId);
-    if (idx !== -1) dmMessages[idx] = updated;
     editingDmId = null;
     dmEditDraft = '';
-    if (dmViewingOriginalId === messageId) dmViewingOriginalId = null;
+    setPendingMessageOp('dm', messageId, 'edit');
     renderDmMessages();
+    try {
+      const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages/${messageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      const updated = await parseJsonResponse(r);
+      if (!r.ok) {
+        showAlert(updated.error || 'Failed to edit message');
+        return;
+      }
+      const idx = dmMessages.findIndex((m) => m.id === messageId);
+      if (idx !== -1) dmMessages[idx] = updated;
+      if (dmViewingOriginalId === messageId) dmViewingOriginalId = null;
+    } finally {
+      clearPendingMessageOp('dm', messageId);
+      renderDmMessages();
+    }
   }
 
   function deleteDmMessage(messageId) {
@@ -1488,20 +1571,26 @@
   }
 
   async function executeDeleteDmMessage(messageId) {
-    const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages/${messageId}`, { method: 'DELETE' });
-    const updated = await parseJsonResponse(r);
-    if (!r.ok) {
-      showAlert(updated.error || 'Failed to delete message');
-      return;
-    }
-    const idx = dmMessages.findIndex((m) => m.id === messageId);
-    if (idx !== -1) dmMessages[idx] = updated;
     if (editingDmId === messageId) {
       editingDmId = null;
       dmEditDraft = '';
     }
-    if (dmViewingOriginalId === messageId) dmViewingOriginalId = null;
+    setPendingMessageOp('dm', messageId, 'delete');
     renderDmMessages();
+    try {
+      const r = await apiFetch(`/api/dm/conversations/${activeConversationId}/messages/${messageId}`, { method: 'DELETE' });
+      const updated = await parseJsonResponse(r);
+      if (!r.ok) {
+        showAlert(updated.error || 'Failed to delete message');
+        return;
+      }
+      const idx = dmMessages.findIndex((m) => m.id === messageId);
+      if (idx !== -1) dmMessages[idx] = updated;
+      if (dmViewingOriginalId === messageId) dmViewingOriginalId = null;
+    } finally {
+      clearPendingMessageOp('dm', messageId);
+      renderDmMessages();
+    }
   }
 
   function closeReactionFloats() {
@@ -1773,6 +1862,13 @@
 
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#dmChatHeaderAvatarWrap')) closeHeaderAvatarMenu();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('dmAttachmentPreviewModal')?.classList.contains('hidden')) {
+        e.preventDefault();
+        closeDmAttachmentPreview();
+      }
     });
   }
 

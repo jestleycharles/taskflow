@@ -163,6 +163,32 @@ function renderChatMessageBody(msg) {
   const user = msg.user || { username: '?', avatar_color: '#4f6ef7' };
   const sentAt = formatChatDateTime(msg.created_at);
 
+  if (msg._pendingSend) {
+    const hasAttachment = !!msg._hasAttachment || !!(msg.attachments && msg.attachments.length);
+    return `<div class="flex items-start gap-3 chat-msg-pending" data-chat-msg-id="${msg.id}">
+      ${chatMessageAvatarHtml(user, msg.user_id)}
+      <div class="flex-1 min-w-0">
+        <div class="skeleton h-2.5 w-24 rounded mb-2"></div>
+        ${messageBusyBodySkeletonHtml({ hasAttachment })}
+      </div>
+    </div>`;
+  }
+
+  const pendingOp = getPendingMessageOp('chat', msg.id);
+  if (pendingOp === 'delete') {
+    return `<div class="group flex items-start gap-3" data-chat-msg-id="${msg.id}">
+      ${chatMessageAvatarHtml(user, msg.user_id)}
+      <div class="flex-1 min-w-0">${messageDeleteBusySkeletonHtml()}</div>
+    </div>`;
+  }
+  if (pendingOp === 'edit') {
+    const hasAttachment = !!(msg.attachments && msg.attachments.length);
+    return `<div class="group flex items-start gap-3" data-chat-msg-id="${msg.id}">
+      ${chatMessageAvatarHtml(user, msg.user_id)}
+      <div class="flex-1 min-w-0">${messageBusyBodySkeletonHtml({ hasAttachment })}</div>
+    </div>`;
+  }
+
   if (msg.deleted_at) {
     return `<div class="chat-msg-tombstone rounded-xl p-3" data-chat-msg-id="${msg.id}">
         <p class="text-xs text-gray-500 italic">Message deleted</p>
@@ -483,6 +509,7 @@ function renderChatMessages(batchScrollHint) {
   } else if (!atBottom && chatBatch.isAtLatest()) {
     list.scrollTop = scrollTop;
   }
+  syncMessageAttachmentsIn(list);
 }
 
 async function loadChat() {
@@ -535,6 +562,20 @@ async function submitChatMessage() {
     if (input) { input.disabled = true; }
     if (btn) btn.disabled = true;
 
+    const pendingId = `pending-${Date.now()}`;
+    chatBatch.showLatestBatch();
+    chatMessages.push({
+      id: pendingId,
+      _pendingSend: true,
+      _hasAttachment: true,
+      user_id: currentUser?.id,
+      user: currentUser,
+      created_at: new Date().toISOString(),
+      content: textContent || '',
+    });
+    renderChatMessages();
+    scrollChatToBottom();
+
     const form = new FormData();
     if (textContent) form.append('content', textContent);
     form.append('file', file);
@@ -543,6 +584,8 @@ async function submitChatMessage() {
       const r = await apiFetch(`/api/teams/${teamId}/chat`, { method: 'POST', body: form });
       const msg = await parseJsonResponse(r);
       if (!r.ok) {
+        chatMessages = chatMessages.filter((m) => m.id !== pendingId);
+        renderChatMessages();
         const limited = messageSendRateLimitResult(r.status, msg);
         if (limited) {
           applyMessageSendCooldown(key, {
@@ -557,13 +600,17 @@ async function submitChatMessage() {
         showAlert(msg.error || 'Failed to send message');
         return;
       }
-      chatBatch.showLatestBatch();
-      chatMessages.push(msg);
+      const idx = chatMessages.findIndex((m) => m.id === pendingId);
+      if (idx !== -1) chatMessages[idx] = msg;
+      else chatMessages.push(msg);
       if (input) input.value = '';
       clearChatPendingFile();
       renderChatMessages();
       scrollChatToBottom();
       markChatRead();
+    } catch {
+      chatMessages = chatMessages.filter((m) => m.id !== pendingId);
+      renderChatMessages();
     } finally {
       messageSendInFlight.delete(key);
       if (input && !sendCooldownTimers.has(key)) input.disabled = false;
@@ -577,7 +624,22 @@ async function submitChatMessage() {
     sendBtnEl: btn,
     cooldownNoticeEl: document.getElementById('chatSendCooldown'),
     getContent: () => prepareOutgoingMessage(input?.value),
-    send: async (content) => {
+    onBeforeSend: (content) => {
+      const pendingId = `pending-${Date.now()}`;
+      chatBatch.showLatestBatch();
+      chatMessages.push({
+        id: pendingId,
+        _pendingSend: true,
+        user_id: currentUser?.id,
+        user: currentUser,
+        created_at: new Date().toISOString(),
+        content,
+      });
+      renderChatMessages();
+      scrollChatToBottom();
+      return pendingId;
+    },
+    send: async (content, pendingId) => {
       const r = await apiFetch(`/api/teams/${teamId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -585,13 +647,16 @@ async function submitChatMessage() {
       });
       const msg = await parseJsonResponse(r);
       if (!r.ok) {
+        if (pendingId) chatMessages = chatMessages.filter((m) => m.id !== pendingId);
+        renderChatMessages();
         const limited = messageSendRateLimitResult(r.status, msg);
         if (limited) return limited;
         showAlert(msg.error || 'Failed to send message');
         return false;
       }
-      chatBatch.showLatestBatch();
-      chatMessages.push(msg);
+      const idx = chatMessages.findIndex((m) => m.id === pendingId);
+      if (idx !== -1) chatMessages[idx] = msg;
+      else chatMessages.push(msg);
       renderChatMessages();
       scrollChatToBottom();
       markChatRead();
@@ -619,22 +684,28 @@ async function saveEditChatMessage(messageId) {
   const textarea = document.getElementById(`chatEditInput-${messageId}`);
   const content = prepareOutgoingMessage(textarea?.value);
   if (!content) return;
-  const r = await apiFetch(`/api/teams/${teamId}/chat/${messageId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
-  });
-  const updated = await parseJsonResponse(r);
-  if (!r.ok) {
-    showAlert(updated.error || 'Failed to edit message');
-    return;
-  }
-  const idx = chatMessages.findIndex(m => m.id === messageId);
-  if (idx !== -1) chatMessages[idx] = updated;
   editingChatId = null;
   chatEditDraft = '';
-  if (chatViewingOriginalId === messageId) chatViewingOriginalId = null;
+  setPendingMessageOp('chat', messageId, 'edit');
   renderChatMessages();
+  try {
+    const r = await apiFetch(`/api/teams/${teamId}/chat/${messageId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const updated = await parseJsonResponse(r);
+    if (!r.ok) {
+      showAlert(updated.error || 'Failed to edit message');
+      return;
+    }
+    const idx = chatMessages.findIndex(m => m.id === messageId);
+    if (idx !== -1) chatMessages[idx] = updated;
+    if (chatViewingOriginalId === messageId) chatViewingOriginalId = null;
+  } finally {
+    clearPendingMessageOp('chat', messageId);
+    renderChatMessages();
+  }
 }
 
 function deleteChatMessage(messageId) {
@@ -649,20 +720,26 @@ function deleteChatMessage(messageId) {
 }
 
 async function executeDeleteChatMessage(messageId) {
-  const r = await apiFetch(`/api/teams/${teamId}/chat/${messageId}`, { method: 'DELETE' });
-  const updated = await parseJsonResponse(r);
-  if (!r.ok) {
-    showAlert(updated.error || 'Failed to delete message');
-    return;
-  }
-  const idx = chatMessages.findIndex(m => m.id === messageId);
-  if (idx !== -1) chatMessages[idx] = updated;
   if (editingChatId === messageId) {
     editingChatId = null;
     chatEditDraft = '';
   }
-  if (chatViewingOriginalId === messageId) chatViewingOriginalId = null;
+  setPendingMessageOp('chat', messageId, 'delete');
   renderChatMessages();
+  try {
+    const r = await apiFetch(`/api/teams/${teamId}/chat/${messageId}`, { method: 'DELETE' });
+    const updated = await parseJsonResponse(r);
+    if (!r.ok) {
+      showAlert(updated.error || 'Failed to delete message');
+      return;
+    }
+    const idx = chatMessages.findIndex(m => m.id === messageId);
+    if (idx !== -1) chatMessages[idx] = updated;
+    if (chatViewingOriginalId === messageId) chatViewingOriginalId = null;
+  } finally {
+    clearPendingMessageOp('chat', messageId);
+    renderChatMessages();
+  }
 }
 
 function showActivityLoading() {

@@ -155,28 +155,6 @@ function setChatPendingFile(file) {
   renderChatAttachPreview();
 }
 
-function renderMessageAttachmentsHtml(attachments) {
-  if (!attachments?.length) return '';
-  return attachments.map((a) => {
-    const previewUrl = `/api/message-attachments/${a.id}`;
-    const mime = a.mime_type || '';
-    const name = escHtml(a.file_name || 'Attachment');
-    if (mime.startsWith('image/')) {
-      return `<div class="chat-msg-attachment">
-        <img src="${escHtml(previewUrl)}" alt="${name}" class="chat-msg-attachment-thumb"
-          data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" ${storageImageOnErrorAttr()} />
-      </div>`;
-    }
-    return `<div class="chat-msg-attachment">
-      <button type="button" class="chat-msg-attachment-file"
-        data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}">
-        ${attachmentFileIconHtml(mime)}
-        <span class="truncate">${name}</span>
-      </button>
-    </div>`;
-  }).join('');
-}
-
 function applyGuestTeamAvatarUploadUi() {
   const guest = isGuest();
   const label = document.getElementById('editTeamAvatarUploadLabel');

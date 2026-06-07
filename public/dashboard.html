@@ -236,6 +236,44 @@
       .chat-msg-attachment {
         margin-top: 0.5rem;
       }
+      .chat-msg-attachment-loading {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+      }
+      .chat-msg-attachment-skeleton {
+        width: 12rem;
+        max-width: 100%;
+        height: 8rem;
+      }
+      .chat-msg-attachment-file-skeleton {
+        width: 11rem;
+        max-width: 100%;
+        height: 2.25rem;
+      }
+      .chat-msg-attachment-loading .chat-msg-attachment-thumb {
+        opacity: 0;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        max-width: 12rem;
+        max-height: 10rem;
+      }
+      .chat-msg-attachment:not(.chat-msg-attachment-loading) .chat-msg-attachment-skeleton,
+      .chat-msg-attachment:not(.chat-msg-attachment-loading) .chat-msg-attachment-file-skeleton {
+        display: none;
+      }
+      .chat-msg-attachment-loading .chat-msg-attachment-file {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .chat-msg-attachment:not(.chat-msg-attachment-loading) .chat-msg-attachment-file {
+        position: static;
+        opacity: 1;
+        pointer-events: auto;
+      }
       .chat-msg-attachment-thumb {
         max-width: 12rem;
         max-height: 10rem;

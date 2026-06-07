@@ -141,6 +141,7 @@ function renderComments(batchScrollHint) {
   } else if (!atBottom && commentBatch.isAtLatest()) {
     list.scrollTop = scrollTop;
   }
+  syncMessageAttachmentsIn(list);
 }
 
 function renderTaskTitleArea(task) {
@@ -607,6 +608,32 @@ function renderCommentItem(c) {
 
   const user = c.user || { username: '?', avatar_color: '#4f6ef7' };
 
+  if (c._pendingSend) {
+    const hasAttachment = !!c._hasAttachment || !!(c.attachments && c.attachments.length);
+    return `<div class="flex gap-3 chat-msg-pending" data-comment-id="${c.id}">
+      ${userAvatarHtml(user, 'w-7 h-7')}
+      <div class="flex-1 min-w-0">
+        <div class="skeleton h-2.5 w-24 rounded mb-2"></div>
+        ${messageBusyBodySkeletonHtml({ hasAttachment })}
+      </div>
+    </div>`;
+  }
+
+  const pendingOp = getPendingMessageOp('comment', c.id);
+  if (pendingOp === 'delete') {
+    return `<div class="flex gap-3" data-comment-id="${c.id}">
+      ${userAvatarHtml(user, 'w-7 h-7')}
+      <div class="flex-1 min-w-0">${messageDeleteBusySkeletonHtml()}</div>
+    </div>`;
+  }
+  if (pendingOp === 'edit') {
+    const hasAttachment = !!(c.attachments && c.attachments.length);
+    return `<div class="flex gap-3" data-comment-id="${c.id}">
+      ${userAvatarHtml(user, 'w-7 h-7')}
+      <div class="flex-1 min-w-0">${messageBusyBodySkeletonHtml({ hasAttachment })}</div>
+    </div>`;
+  }
+
   if (c.deleted_at) {
     return `<div class="flex gap-3" data-comment-id="${c.id}">
       ${userAvatarHtml(user, 'w-7 h-7')}
@@ -723,22 +750,28 @@ async function saveEditComment(commentId) {
   const textarea = document.getElementById(`commentEditInput-${commentId}`);
   const content = prepareOutgoingMessage(textarea?.value);
   if (!content) return;
-  const r = await apiFetch(`/api/tasks/${taskId}/comments/${commentId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
-  });
-  const updated = await parseJsonResponse(r);
-  if (!r.ok) {
-    showAlert(updated.error || 'Failed to edit comment');
-    return;
-  }
-  const idx = taskComments.findIndex((c) => c.id === commentId);
-  if (idx !== -1) taskComments[idx] = updated;
   editingCommentId = null;
   commentEditDraft = '';
-  if (commentViewingOriginalId === commentId) commentViewingOriginalId = null;
+  setPendingMessageOp('comment', commentId, 'edit');
   renderComments();
+  try {
+    const r = await apiFetch(`/api/tasks/${taskId}/comments/${commentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const updated = await parseJsonResponse(r);
+    if (!r.ok) {
+      showAlert(updated.error || 'Failed to edit comment');
+      return;
+    }
+    const idx = taskComments.findIndex((c) => c.id === commentId);
+    if (idx !== -1) taskComments[idx] = updated;
+    if (commentViewingOriginalId === commentId) commentViewingOriginalId = null;
+  } finally {
+    clearPendingMessageOp('comment', commentId);
+    renderComments();
+  }
 }
 
 function deleteComment(commentId) {
@@ -755,20 +788,26 @@ function deleteComment(commentId) {
 async function executeDeleteComment(commentId) {
   const taskId = activeTaskId;
   if (!taskId) return;
-  const r = await apiFetch(`/api/tasks/${taskId}/comments/${commentId}`, { method: 'DELETE' });
-  const updated = await parseJsonResponse(r);
-  if (!r.ok) {
-    showAlert(updated.error || 'Failed to delete comment');
-    return;
-  }
-  const idx = taskComments.findIndex((c) => c.id === commentId);
-  if (idx !== -1) taskComments[idx] = updated;
   if (editingCommentId === commentId) {
     editingCommentId = null;
     commentEditDraft = '';
   }
-  if (commentViewingOriginalId === commentId) commentViewingOriginalId = null;
+  setPendingMessageOp('comment', commentId, 'delete');
   renderComments();
+  try {
+    const r = await apiFetch(`/api/tasks/${taskId}/comments/${commentId}`, { method: 'DELETE' });
+    const updated = await parseJsonResponse(r);
+    if (!r.ok) {
+      showAlert(updated.error || 'Failed to delete comment');
+      return;
+    }
+    const idx = taskComments.findIndex((c) => c.id === commentId);
+    if (idx !== -1) taskComments[idx] = updated;
+    if (commentViewingOriginalId === commentId) commentViewingOriginalId = null;
+  } finally {
+    clearPendingMessageOp('comment', commentId);
+    renderComments();
+  }
 }
 
 function countUnreadTaskComments(comments, taskId) {
@@ -952,6 +991,20 @@ async function submitComment() {
     if (input) input.disabled = true;
     if (btn) btn.disabled = true;
 
+    const pendingId = `pending-${Date.now()}`;
+    commentBatch?.showLatestBatch();
+    taskComments.push({
+      id: pendingId,
+      _pendingSend: true,
+      _hasAttachment: true,
+      user_id: currentUser?.id,
+      user: currentUser,
+      created_at: new Date().toISOString(),
+      content: textContent || '',
+    });
+    renderComments();
+    scrollCommentsToBottom?.();
+
     const form = new FormData();
     if (textContent) form.append('content', textContent);
     form.append('file', file);
@@ -960,6 +1013,8 @@ async function submitComment() {
       const r = await apiFetch(`/api/tasks/${taskId}/comments`, { method: 'POST', body: form });
       const data = await parseJsonResponse(r);
       if (!r.ok) {
+        taskComments = taskComments.filter((c) => c.id !== pendingId);
+        renderComments();
         const limited = messageSendRateLimitResult(r.status, data);
         if (limited) {
           applyMessageSendCooldown(key, {
@@ -974,10 +1029,13 @@ async function submitComment() {
         showAlert(data.error || 'Failed to send comment');
         return;
       }
-      commentBatch?.showLatestBatch();
+      taskComments = taskComments.filter((c) => c.id !== pendingId);
       if (input) input.value = '';
       clearCommentPendingFile();
       await loadComments(taskId);
+    } catch {
+      taskComments = taskComments.filter((c) => c.id !== pendingId);
+      renderComments();
     } finally {
       messageSendInFlight.delete(key);
       if (input && !sendCooldownTimers.has(key)) input.disabled = false;
@@ -991,7 +1049,21 @@ async function submitComment() {
     sendBtnEl: btn,
     cooldownNoticeEl: document.getElementById('commentSendCooldown'),
     getContent: () => prepareOutgoingMessage(input?.value),
-    send: async (content) => {
+    onBeforeSend: (content) => {
+      const pendingId = `pending-${Date.now()}`;
+      commentBatch?.showLatestBatch();
+      taskComments.push({
+        id: pendingId,
+        _pendingSend: true,
+        user_id: currentUser?.id,
+        user: currentUser,
+        created_at: new Date().toISOString(),
+        content,
+      });
+      renderComments();
+      return pendingId;
+    },
+    send: async (content, pendingId) => {
       const r = await apiFetch(`/api/tasks/${taskId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -999,11 +1071,14 @@ async function submitComment() {
       });
       const data = await parseJsonResponse(r);
       if (!r.ok) {
+        if (pendingId) taskComments = taskComments.filter((c) => c.id !== pendingId);
+        renderComments();
         const limited = messageSendRateLimitResult(r.status, data);
         if (limited) return limited;
         showAlert(data.error || 'Failed to send comment');
         return false;
       }
+      if (pendingId) taskComments = taskComments.filter((c) => c.id !== pendingId);
       commentBatch?.showLatestBatch();
       await loadComments(taskId);
       return true;

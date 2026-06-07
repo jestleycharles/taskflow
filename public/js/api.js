@@ -496,7 +496,7 @@ function resetMessageComposer(inputEl, sendBtnEl) {
  * Restores the input if `send` returns false or throws (unless the composer was dismissed).
  * @returns {Promise<boolean>} whether a send was attempted and completed successfully
  */
-async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl, cooldownNoticeEl }) {
+async function submitMessageOnce(key, { getContent, send, onBeforeSend, inputEl, sendBtnEl, cooldownNoticeEl }) {
   if (messageSendInFlight.has(key)) return false;
   if (sendCooldownTimers.has(key)) return false;
   const content = getContent();
@@ -516,8 +516,10 @@ async function submitMessageOnce(key, { getContent, send, inputEl, sendBtnEl, co
 
   let ok = false;
   let rateLimited = false;
+  let pendingId = null;
+  if (onBeforeSend) pendingId = onBeforeSend(content);
   try {
-    const result = await send(content);
+    const result = await send(content, pendingId);
     if (result && typeof result === 'object' && result.rateLimit) {
       rateLimited = true;
       applyMessageSendCooldown(key, {
@@ -571,17 +573,119 @@ function dismissMessageComposer(inputEl, sendBtnEl) {
   resetMessageComposer(inputEl, sendBtnEl);
 }
 
+const pendingMessageOps = new Map();
+
+function messageOpKey(surface, id) {
+  return `${surface}:${id}`;
+}
+
+function setPendingMessageOp(surface, id, op) {
+  pendingMessageOps.set(messageOpKey(surface, id), op);
+}
+
+function clearPendingMessageOp(surface, id) {
+  pendingMessageOps.delete(messageOpKey(surface, id));
+}
+
+function getPendingMessageOp(surface, id) {
+  return pendingMessageOps.get(messageOpKey(surface, id));
+}
+
+function messageAttachmentIconHtml(mimeType) {
+  if ((mimeType || '').startsWith('image/')) {
+    return '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
+  }
+  return '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>';
+}
+
+/** In-message attachment thumbnails and file pills (with load skeletons). */
+function renderMessageAttachmentsHtml(attachments) {
+  if (!attachments?.length) return '';
+  return attachments.map((a) => {
+    const previewUrl = `/api/message-attachments/${a.id}`;
+    const mime = a.mime_type || '';
+    const name = escHtml(a.file_name || 'Attachment');
+    if (mime.startsWith('image/')) {
+      return `<div class="chat-msg-attachment chat-msg-attachment-loading">
+        <div class="skeleton chat-msg-attachment-skeleton rounded-lg" aria-hidden="true"></div>
+        <img src="${escHtml(previewUrl)}" alt="${name}" class="chat-msg-attachment-thumb"
+          data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}" loading="lazy" ${storageImageOnErrorAttr()} />
+      </div>`;
+    }
+    return `<div class="chat-msg-attachment chat-msg-attachment-loading" data-attach-kind="file">
+      <div class="skeleton chat-msg-attachment-file-skeleton rounded-lg" aria-hidden="true"></div>
+      <button type="button" class="chat-msg-attachment-file"
+        data-preview-attachment data-url="${escHtml(previewUrl)}" data-mime="${escHtml(mime)}" data-name="${name}">
+        ${messageAttachmentIconHtml(mime)}
+        <span class="truncate">${name}</span>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+let messageAttachmentLoadBound = false;
+
+function bindMessageAttachmentLoaders() {
+  if (messageAttachmentLoadBound) return;
+  messageAttachmentLoadBound = true;
+  document.addEventListener('load', (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.classList.contains('chat-msg-attachment-thumb')) return;
+    img.closest('.chat-msg-attachment')?.classList.remove('chat-msg-attachment-loading');
+  }, true);
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.classList.contains('chat-msg-attachment-thumb')) return;
+    img.closest('.chat-msg-attachment')?.classList.remove('chat-msg-attachment-loading');
+  }, true);
+}
+
+function syncMessageAttachmentsIn(root) {
+  if (!root) return;
+  root.querySelectorAll('.chat-msg-attachment[data-attach-kind="file"]').forEach((el) => {
+    el.classList.remove('chat-msg-attachment-loading');
+  });
+  root.querySelectorAll('.chat-msg-attachment-thumb').forEach((img) => {
+    if (img.complete) img.closest('.chat-msg-attachment')?.classList.remove('chat-msg-attachment-loading');
+  });
+}
+
+function messageAttachmentSkeletonHtml() {
+  return '<div class="skeleton chat-msg-attachment-skeleton rounded-lg mt-2" aria-hidden="true"></div>';
+}
+
+/** Shimmer body used while a message is being sent, edited, or deleted. */
+function messageBusyBodySkeletonHtml({ hasAttachment = false } = {}) {
+  const attach = hasAttachment ? messageAttachmentSkeletonHtml() : '';
+  return `<div class="chat-msg-busy space-y-2" aria-busy="true">
+    <div class="skeleton h-2.5 w-20 rounded"></div>
+    <div class="skeleton h-3 w-full rounded"></div>
+    <div class="skeleton h-3 w-4/5 rounded"></div>
+    ${attach}
+  </div>`;
+}
+
+function messageDeleteBusySkeletonHtml() {
+  return `<div class="chat-msg-busy chat-msg-tombstone rounded-xl p-3 space-y-2" aria-busy="true">
+    <div class="skeleton h-3 w-32 rounded"></div>
+    <div class="skeleton h-2.5 w-40 rounded"></div>
+  </div>`;
+}
+
 /** Shimmer rows for chat threads and comment lists. */
 function messageListSkeletonHtml(count = 4) {
+  const attachSkel = messageAttachmentSkeletonHtml();
   const variants = [
-    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-24 rounded"></div><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-4/5 rounded"></div></div></div>`,
+    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-24 rounded"></div><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-4/5 rounded"></div>${attachSkel}</div></div>`,
     `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-16 rounded"></div><div class="skeleton h-3 w-3/4 rounded"></div></div></div>`,
-    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-20 rounded"></div><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-1/2 rounded"></div></div></div>`,
-    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-28 rounded"></div><div class="skeleton h-3 w-5/6 rounded"></div></div></div>`,
+    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-20 rounded"></div><div class="skeleton h-3 w-full rounded"></div><div class="skeleton h-3 w-1/2 rounded"></div>${attachSkel}</div></div>`,
+    `<div class="flex items-start gap-3"><div class="skeleton w-8 h-8 rounded-full shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-2.5 w-28 rounded"></div><div class="skeleton h-3 w-5/6 rounded"></div><div class="skeleton h-2.5 w-36 rounded mt-2"></div></div></div>`,
   ];
   const n = Math.min(count, variants.length);
   return `<div class="space-y-4">${variants.slice(0, n).join('')}</div>`;
 }
+
+bindMessageAttachmentLoaders();
 
 /** Shimmer rows for settings column/role management lists. */
 function settingsMgmtListSkeletonHtml(count = 3) {
