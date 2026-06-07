@@ -309,6 +309,9 @@ router.post('/api/teams', requireAuth, async (req, res) => {
   if (!trimmedName) return res.status(400).json({ error: 'Team name is required' });
 
   const isExpense = workspace_type === 'expense';
+  if (isExpense && isGuestUser(req.session.user)) {
+    return res.status(403).json({ error: 'TaskSplit is available for registered accounts only' });
+  }
   const mode = isExpense ? normalizeExpenseMode(expense_mode) : null;
   if (isExpense && !mode) {
     return res.status(400).json({ error: 'Expense mode must be solo, duo, or group' });

@@ -19,6 +19,13 @@ const { isGuestUser } = require('../lib/user');
 
 const router = express.Router();
 
+router.use(requireAuth, (req, res, next) => {
+  if (isGuestUser(req.session.user)) {
+    return res.status(403).json({ error: 'TaskSplit is available for registered accounts only' });
+  }
+  next();
+});
+
 function parseAmount(value) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;

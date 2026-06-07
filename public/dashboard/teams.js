@@ -111,10 +111,17 @@ window.showTeamsLoading = function showTeamsLoading() {
  */
 window.beginOpeningTeam = function beginOpeningTeam(teamId, cardEl) {
   const team = window.teamsList.find((t) => String(t.id) === String(teamId));
-  const dest =
-    team?.workspace_type === "expense"
-      ? `/tasksplit/${teamId}`
-      : `/board/${teamId}`;
+  const isTaskSplit = team?.workspace_type === "expense";
+
+  if (isTaskSplit && window.currentUser?.is_guest) {
+    showAlert(
+      "TaskSplit is available for registered accounts only.",
+      "Registered account required",
+    );
+    return;
+  }
+
+  const dest = isTaskSplit ? `/tasksplit/${teamId}` : `/board/${teamId}`;
 
   const grid = document.getElementById("teamsGrid");
   if (cardEl) {
@@ -133,6 +140,47 @@ window.beginOpeningTeam = function beginOpeningTeam(teamId, cardEl) {
   window.location = dest;
 };
 
+function isTaskSplitTeam(team) {
+  return team?.workspace_type === "expense";
+}
+
+function teamTypeBadgeHtml(team) {
+  if (isTaskSplitTeam(team)) {
+    return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">TaskSplit</span>`;
+  }
+  return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30 shrink-0">TaskFlow</span>`;
+}
+
+function taskSplitModeIconHtml(mode) {
+  const labels = { solo: "Solo", duo: "Duo", group: "Group" };
+  const title = labels[mode] || "TaskSplit";
+  const paths = {
+    solo:
+      "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+    duo: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+    group:
+      "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
+  };
+  const path = paths[mode] || paths.solo;
+  return `<span class="inline-flex shrink-0" title="${escHtml(title)}">
+    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="${path}" />
+    </svg>
+  </span>`;
+}
+
+function teamCardTitleHtml(team) {
+  const modeIcon =
+    isTaskSplitTeam(team) && team.expense_mode
+      ? taskSplitModeIconHtml(team.expense_mode)
+      : "";
+  return `<div class="flex items-center gap-1.5 mb-1 min-w-0">
+    ${modeIcon}
+    <h3 class="text-white font-semibold truncate">${escHtml(team.name)}</h3>
+    ${teamTypeBadgeHtml(team)}
+  </div>`;
+}
+
 function renderTeamsGrid() {
   const grid = document.getElementById("teamsGrid");
   grid.innerHTML = "";
@@ -146,8 +194,8 @@ function renderTeamsGrid() {
         </svg>
       </div>
       <p class="text-gray-300 font-medium mb-1">No teams yet</p>
-      <p class="text-gray-500 text-sm mb-5">Create your first team to start managing tasks.</p>
-      <button onclick="openCreateModal()" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">Create a Team</button>
+      <p class="text-gray-500 text-sm mb-5">Create your first team to get started.</p>
+      <button onclick="openCreateModal('task')" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">Create a team</button>
     </div>`;
     return;
   }
@@ -159,24 +207,12 @@ function renderTeamsGrid() {
     card.style.animationDelay = `${i * 0.07}s`;
     card.dataset.teamId = team.id;
     card.onclick = () => beginOpeningTeam(team.id, card);
-    const isTaskSplit = team.workspace_type === "expense";
-    const modeBadge = isTaskSplit
-      ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mr-1">TaskSplit</span>`
-      : "";
-    const modeLabel = isTaskSplit && team.expense_mode
-      ? `<span class="text-[10px] text-gray-500 capitalize">${escHtml(team.expense_mode)}</span>`
-      : "";
-
     card.innerHTML = `
       <div class="flex items-start justify-between mb-4">
         ${teamAvatarWithPresenceHtml(team)}
         <span class="text-xs px-2.5 py-1 rounded-full border ${team.role === "owner" ? "border-brand-500/40 text-brand-500 bg-brand-500/10" : "border-white/10 text-gray-400 bg-white/5"}">${team.role}</span>
       </div>
-      <div class="flex items-center gap-1.5 mb-1 flex-wrap">
-        <h3 class="text-white font-semibold">${escHtml(team.name)}</h3>
-        ${modeBadge}
-      </div>
-      ${modeLabel ? `<p class="mb-1">${modeLabel}</p>` : ""}
+      ${teamCardTitleHtml(team)}
       <p class="text-gray-500 text-sm mb-4 line-clamp-2">${escHtml(team.description || "No description")}</p>
       <div class="flex items-center justify-between">
         <div class="flex flex-col gap-0.5">
@@ -201,7 +237,10 @@ window.loadTeams = async function loadTeams() {
   const teams = await parseJsonResponse(r);
   if (!Array.isArray(teams)) return;
 
-  window.teamsList = teams;
+  window.teamsList = teams.filter(
+    (team) =>
+      !window.currentUser?.is_guest || team.workspace_type !== "expense",
+  );
   await fetchTeamOnlineStatus();
   renderTeamsGrid();
   startTeamOnlinePoll();
@@ -224,11 +263,58 @@ window.addEventListener("pagehide", stopTeamOnlinePoll);
 function resetCreateTeamDraft() {
   const defaultPreset = window.avatarPresets[0];
   window.createTeamDraft = {
+    workspaceType: "task",
     presetId: defaultPreset?.id || null,
     avatar_url: defaultPreset?.url || null,
     pendingFile: null,
   };
 }
+
+function syncCreateTeamTypeUi() {
+  const type =
+    document.getElementById("teamWorkspaceType")?.value ||
+    window.createTeamDraft?.workspaceType ||
+    "task";
+  const isExpense = type === "expense";
+
+  document.getElementById("createTeamKanbanSection")?.classList.toggle(
+    "hidden",
+    isExpense,
+  );
+  document
+    .getElementById("createTeamExpenseModeSection")
+    ?.classList.toggle("hidden", !isExpense);
+
+  const titleEl = document.getElementById("createModalTitle");
+  const subtitleEl = document.getElementById("createModalSubtitle");
+  const btn = document.getElementById("createTeamBtn");
+  const nameInput = document.getElementById("teamName");
+
+  if (titleEl) {
+    titleEl.textContent = isExpense ? "New TaskSplit team" : "New TaskFlow team";
+  }
+  if (subtitleEl) {
+    subtitleEl.textContent = isExpense
+      ? "Track shared expenses with equal splits, running balances, and settle up."
+      : "Set your team name, board type, and optional avatar.";
+  }
+  if (btn) {
+    btn.textContent = "Create team";
+    btn.className = isExpense
+      ? "flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition text-sm"
+      : "flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm";
+  }
+  if (nameInput) {
+    nameInput.placeholder = isExpense ? "e.g. Trip to Japan" : "e.g. Engineering";
+  }
+
+  updateCreateTeamPreview();
+}
+
+window.applyGuestTaskSplitUi = function applyGuestTaskSplitUi() {
+  const guest = !!window.currentUser?.is_guest;
+  document.getElementById("newTaskSplitBtn")?.classList.toggle("hidden", guest);
+};
 
 function renderCreateTeamAvatarPresetGrid() {
   const grid = document.getElementById("createTeamAvatarPresetGrid");
@@ -265,7 +351,8 @@ function updateCreateTeamPreview() {
 
   applyTeamAvatarToElement(el, {
     name,
-    avatar_color: "#4f6ef7",
+    avatar_color:
+      window.createTeamDraft.workspaceType === "expense" ? "#10b981" : "#4f6ef7",
     avatar_url: window.createTeamDraft.avatar_url,
   });
 }
@@ -355,18 +442,33 @@ window.applyGuestTeamAvatarUploadUi = function applyGuestTeamAvatarUploadUi() {
       : "Choose a preset or upload your own";
 };
 
-window.openCreateModal = async function openCreateModal() {
+window.openCreateModal = async function openCreateModal(workspaceType = "task") {
+  if (workspaceType === "expense" && window.currentUser?.is_guest) {
+    showAlert(
+      "TaskSplit is available for registered accounts only.",
+      "Registered account required",
+    );
+    return;
+  }
+
   document.getElementById("modalError").classList.add("hidden");
   document.getElementById("teamName").value = "";
   document.getElementById("teamDesc").value = "";
   document.getElementById("createTeamAvatarFile").value = "";
+  document.getElementById("teamExpenseMode").value = "solo";
 
   if (!window.avatarPresets.length) await window.loadAvatarPresets();
-  await loadKanbanPresets();
-  renderKanbanPresetSelect();
   resetCreateTeamDraft();
+  window.createTeamDraft.workspaceType = workspaceType;
+  document.getElementById("teamWorkspaceType").value = workspaceType;
+
+  if (workspaceType === "task") {
+    await loadKanbanPresets();
+    renderKanbanPresetSelect();
+  }
+
   renderCreateTeamAvatarPresetGrid();
-  updateCreateTeamPreview();
+  syncCreateTeamTypeUi();
   applyGuestTeamAvatarUploadUi();
   resetCreateTeamOptionalDrawer();
 
@@ -416,7 +518,7 @@ function setCreateTeamBtnLoading(loading, label) {
       "justify-center",
       "gap-2",
     );
-    btn.textContent = btn.dataset.origText || "Create Team";
+    btn.textContent = btn.dataset.origText || "Create team";
     delete btn.dataset.origText;
   }
 }
@@ -433,9 +535,19 @@ window.createTeam = async function createTeam() {
   }
 
   const desc = document.getElementById("teamDesc").value.trim();
-  const kanbanPreset =
-    document.getElementById("teamKanbanPreset")?.value || "classic";
-  const body = { name, description: desc, kanban_preset: kanbanPreset };
+  const workspaceType =
+    document.getElementById("teamWorkspaceType")?.value || "task";
+  const isExpense = workspaceType === "expense";
+  const body = { name, description: desc };
+
+  if (isExpense) {
+    body.workspace_type = "expense";
+    body.expense_mode =
+      document.getElementById("teamExpenseMode")?.value || "solo";
+  } else {
+    body.kanban_preset =
+      document.getElementById("teamKanbanPreset")?.value || "classic";
+  }
 
   if (
     !window.createTeamDraft.pendingFile &&
@@ -492,7 +604,7 @@ window.createTeam = async function createTeam() {
   setCreateTeamBtnLoading(false);
   closeCreateModal();
   setNavigatingAway(true);
-  window.location = `/board/${d.id}`;
+  window.location = isExpense ? `/tasksplit/${d.id}` : `/board/${d.id}`;
 };
 
 // ---------------------------------------------------------------------------

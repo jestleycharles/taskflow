@@ -79,6 +79,10 @@ async function init() {
       return;
     }
     currentUser = meData;
+    if (currentUser.is_guest) {
+      window.location = '/dashboard';
+      return;
+    }
 
     const ok = await loadWorkspace();
     if (!ok) return;

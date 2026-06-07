@@ -579,14 +579,14 @@
         <div>
           <h1 class="text-3xl font-bold text-white mb-1">Your Teams</h1>
           <p class="text-gray-400 text-sm">
-            Open a task board or a TaskSplit expense workspace.
+            Open a TaskFlow board or TaskSplit expense team.
           </p>
         </div>
-        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+        <div class="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
           <button
             id="joinByInviteLinkBtn"
             onclick="openInviteLinkModal()"
-            class="hidden flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-sm font-medium px-5 py-2.5 rounded-xl transition"
+            class="hidden flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-sm font-medium px-5 py-2.5 rounded-xl transition w-full sm:w-auto"
           >
             <svg
               class="w-4 h-4"
@@ -605,33 +605,25 @@
             Join via invite link
           </button>
           <button
-            onclick="openCreateTaskSplitModal()"
-            class="flex items-center justify-center gap-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-sm font-medium px-5 py-2.5 rounded-xl transition"
+            id="newTaskSplitBtn"
+            type="button"
+            onclick="openCreateModal('expense')"
+            class="hidden flex items-center justify-center gap-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-sm font-medium px-5 py-2.5 rounded-xl transition w-full sm:w-auto"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             New TaskSplit
           </button>
           <button
-            onclick="openCreateModal()"
-            class="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition"
+            type="button"
+            onclick="openCreateModal('task')"
+            class="flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition w-full sm:w-auto"
           >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
             </svg>
-            New Team
+            New TaskFlow
           </button>
         </div>
       </div>
@@ -1252,108 +1244,7 @@
       </div>
     </div>
 
-    <!-- Create TaskSplit Modal -->
-    <div
-      id="createTaskSplitModal"
-      class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto"
-    >
-      <div
-        class="modal-overlay absolute inset-0 bg-black/60"
-        onclick="closeCreateTaskSplitModal()"
-      ></div>
-      <div
-        class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto"
-      >
-        <h2 class="text-lg font-semibold text-white mb-1">New TaskSplit</h2>
-        <p class="text-gray-500 text-sm mb-5">
-          Track shared expenses with equal splits, running balances, and settle up.
-        </p>
-        <div
-          id="taskSplitModalError"
-          class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
-        ></div>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Workspace name</label>
-            <input
-              id="taskSplitName"
-              type="text"
-              placeholder="e.g. Trip to Japan"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm"
-            />
-          </div>
-          <div>
-            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Mode</label>
-            <select
-              id="taskSplitMode"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition text-sm"
-            >
-              <option value="solo">Solo — personal spending</option>
-              <option value="duo">Duo — couples, roommates, partners</option>
-              <option value="group">Group — trips, shared households</option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1.5">Duo and group modes split expenses equally. Invite members after creating.</p>
-          </div>
-          <div>
-            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-3">Avatar</label>
-            <div class="flex items-center gap-4 mb-4">
-              <div
-                id="createTaskSplitAvatarPreview"
-                class="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white/10"
-              ></div>
-              <p class="text-sm text-gray-300">Choose a preset or upload your own</p>
-            </div>
-            <div id="createTaskSplitAvatarGrid" class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3"></div>
-            <label
-              id="createTaskSplitAvatarUploadLabel"
-              class="inline-flex items-center gap-2 text-sm text-emerald-500 hover:text-emerald-400 cursor-pointer transition"
-            >
-              Upload custom image
-              <input
-                id="createTaskSplitAvatarFile"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                class="hidden"
-              />
-            </label>
-            <p
-              id="createTaskSplitAvatarGuestNote"
-              class="hidden text-xs text-amber-400/90 mt-2"
-            >
-              Custom images require a registered account.
-            </p>
-          </div>
-          <div>
-            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
-            <input
-              id="taskSplitDesc"
-              type="text"
-              placeholder="What is this workspace for?"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition text-sm"
-            />
-          </div>
-          <div class="flex gap-3 pt-2">
-            <button
-              type="button"
-              onclick="closeCreateTaskSplitModal()"
-              class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              id="createTaskSplitBtn"
-              onclick="createTaskSplit()"
-              class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition text-sm"
-            >
-              Create TaskSplit
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Create Team Modal -->
+    <!-- Create Team Modal (TaskFlow + TaskSplit) -->
     <div
       id="createModal"
       class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto"
@@ -1365,14 +1256,16 @@
       <div
         class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto"
       >
-        <h2 class="text-lg font-semibold text-white mb-1">Create New Team</h2>
-        <p class="text-gray-500 text-sm mb-5">
-          Set your team name, description, and avatar.
+        <h2 id="createModalTitle" class="text-lg font-semibold text-white mb-1">New TaskFlow team</h2>
+        <p id="createModalSubtitle" class="text-gray-500 text-sm mb-5">
+          Set your team name, board type, and optional avatar.
         </p>
         <div
           id="modalError"
           class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"
         ></div>
+
+        <input type="hidden" id="teamWorkspaceType" value="task" />
 
         <div class="space-y-4">
           <div>
@@ -1386,6 +1279,36 @@
               placeholder="e.g. Engineering"
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
             />
+          </div>
+
+          <div id="createTeamKanbanSection">
+            <label
+              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
+              >Kanban board type</label
+            >
+            <select
+              id="teamKanbanPreset"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
+            >
+              <option value="classic">Classic — To Do, Doing, Done</option>
+            </select>
+            <p
+              id="teamKanbanPresetDesc"
+              class="text-xs text-gray-500 mt-1.5 leading-relaxed"
+            ></p>
+          </div>
+
+          <div id="createTeamExpenseModeSection" class="hidden">
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Split mode</label>
+            <select
+              id="teamExpenseMode"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm"
+            >
+              <option value="solo">Solo — personal spending</option>
+              <option value="duo">Duo — couples, roommates, partners</option>
+              <option value="group">Group — trips, shared households</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1.5">Duo and group modes split expenses equally. Invite members after creating.</p>
           </div>
 
           <!-- Optional details drawer -->
@@ -1495,22 +1418,7 @@
               </div>
             </div>
           </div>
-          <div>
-            <label
-              class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5"
-              >Kanban board type</label
-            >
-            <select
-              id="teamKanbanPreset"
-              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm"
-            >
-              <option value="classic">Classic — To Do, Doing, Done</option>
-            </select>
-            <p
-              id="teamKanbanPresetDesc"
-              class="text-xs text-gray-500 mt-1.5 leading-relaxed"
-            ></p>
-          </div>
+
           <div class="flex gap-3 pt-2">
             <button
               type="button"
@@ -1525,7 +1433,7 @@
               onclick="createTeam()"
               class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
             >
-              Create Team
+              Create team
             </button>
           </div>
         </div>
@@ -2312,7 +2220,6 @@
     <script src="/dashboard/feedback-admin.js"></script>
     <script src="/dashboard/feature-posts.js"></script>
     <script src="/dashboard/teams.js"></script>
-    <script src="/dashboard/tasksplit.js"></script>
     <script src="/dashboard/team-invites.js"></script>
     <script src="/dashboard/init.js"></script>
   </body>

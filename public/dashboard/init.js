@@ -21,6 +21,7 @@ window.avatarPresets = [];
 window.selectedPresetId = null;
 window.profileSaving = false;
 window.createTeamDraft = {
+  workspaceType: "task",
   presetId: null,
   avatar_url: null,
   pendingFile: null,
@@ -148,6 +149,7 @@ async function init() {
 
   updateFeedbackFabPosition();
   applyGuestTeamAvatarUploadUi();
+  applyGuestTaskSplitUi?.();
 
   // Kick off parallel data loads
   loadTeams();
