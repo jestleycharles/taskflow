@@ -51,9 +51,12 @@ async function loadWorkspace() {
   syncTeamDataFromWorkspace();
   applyTeamHeader();
   renderBalances();
+  renderMemberAvatars(teamData?.members || []);
   applyTasksplitInviteUi();
   applyCurrentUserTeamRoleUi();
   applyMembershipActionsUi();
+  if (typeof captureTeamRoleStateSig === 'function') captureTeamRoleStateSig();
+  if (typeof initMentionComposers === 'function') initMentionComposers();
   return true;
 }
 
@@ -71,6 +74,7 @@ function startPolling() {
   pollInterval = setInterval(async () => {
     await loadExpenses();
     await loadBalances();
+    if (typeof pollTeamRoleStateForTasksplit === 'function') await pollTeamRoleStateForTasksplit();
     if (!document.getElementById('activityPanel').classList.contains('hidden')) {
       await loadActivity();
     }
@@ -131,8 +135,110 @@ document.getElementById('chatMessageSearch')?.addEventListener('input', (e) => {
 });
 
 document.getElementById('chatInput')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.defaultPrevented) submitChatMessage();
+  if (e.key === 'Enter' && !e.shiftKey && !e.defaultPrevented) {
+    e.preventDefault();
+    submitChatMessage();
+  }
 });
+document.getElementById('chatMessagesList')?.addEventListener('scroll', () => {
+  if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
+}, { passive: true });
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#reactionFloatLayer') || e.target.closest('[data-reaction-add]') || e.target.closest('[data-reaction-pill]')) return;
+  if (openReactionPicker || openReactorsPopover) closeReactionFloats();
+});
+
+document.addEventListener('pointerdown', onReactionPillPointerDown);
+document.addEventListener('pointermove', onReactionPillPointerMove);
+document.addEventListener('pointerup', onReactionPillPointerUp);
+document.addEventListener('pointercancel', clearReactionPress);
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('[data-reaction-pill]')) e.preventDefault();
+});
+
+expenseCommentBatch = MessageBatch.create({
+  getMessages: () => expenseComments,
+  getSearchText: (c) => [c.content || '', c.content_before_edit || '', c.user?.username || ''].join(' '),
+  onBatchChange: (hint) => renderExpenseComments(hint),
+});
+expenseCommentBatch.bindListEvents(document.getElementById('expenseCommentsList'));
+
+document.getElementById('expenseCommentSearch')?.addEventListener('input', (e) => {
+  expenseCommentBatch?.setSearchQuery(e.target.value);
+  renderExpenseComments();
+});
+
+document.getElementById('expenseCommentInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.defaultPrevented) {
+    e.preventDefault();
+    submitExpenseComment();
+  }
+});
+
+document.getElementById('expenseCommentAttachBtn')?.addEventListener('click', () => {
+  document.getElementById('expenseCommentAttachInput')?.click();
+});
+document.getElementById('expenseCommentAttachInput')?.addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (file) setExpenseCommentPendingFile(file);
+});
+document.getElementById('expenseCommentAttachClearBtn')?.addEventListener('click', clearExpenseCommentPendingFile);
+
+document.getElementById('expenseCommentsList')?.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-preview-attachment]');
+  if (!el) return;
+  e.preventDefault();
+  openAttachmentPreview(el.dataset.url, el.dataset.name, el.dataset.mime);
+});
+document.getElementById('expenseCommentsList')?.addEventListener('scroll', () => {
+  if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
+}, { passive: true });
+
+document.getElementById('chatMessagesList')?.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-preview-attachment]');
+  if (!el) return;
+  e.preventDefault();
+  openAttachmentPreview(el.dataset.url, el.dataset.name, el.dataset.mime);
+});
+
+document.getElementById('memberList')?.addEventListener('click', (e) => {
+  const cancelBtn = e.target.closest('.cancel-invite-btn');
+  if (cancelBtn) {
+    cancelInvite(cancelBtn.dataset.userId, cancelBtn.dataset.username);
+    return;
+  }
+  const btn = e.target.closest('.remove-member-btn');
+  if (!btn) return;
+  removeMember(btn.dataset.userId, btn.dataset.username);
+});
+
+document.getElementById('memberList')?.addEventListener('change', (e) => {
+  const sel = e.target.closest('.assign-role-select');
+  if (!sel) return;
+  assignMemberCustomRole(sel.dataset.userId, sel.value || null);
+});
+
+document.getElementById('teamRoleColorSwatches')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-hex]');
+  if (!btn) return;
+  setTeamRoleFormColor(btn.dataset.hex);
+});
+document.getElementById('teamRoleColorPicker')?.addEventListener('input', (e) => {
+  setTeamRoleFormColor(e.target.value);
+});
+document.getElementById('teamRoleHexInput')?.addEventListener('input', (e) => {
+  const hex = normalizeRoleHex(e.target.value);
+  if (hex) setTeamRoleFormColor(hex);
+});
+if (typeof ROLE_PRESET_COLORS !== 'undefined') renderTeamRoleColorSwatches(ROLE_PRESET_COLORS[0]);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !document.getElementById('attachmentPreviewModal')?.classList.contains('hidden')) {
+    closeAttachmentPreview();
+  }
+});
+
 document.getElementById('chatAttachBtn')?.addEventListener('click', () => {
   if (isGuest()) return;
   document.getElementById('chatAttachInput')?.click();
@@ -144,11 +250,6 @@ document.getElementById('chatAttachInput')?.addEventListener('change', (e) => {
 document.getElementById('chatAttachClearBtn')?.addEventListener('click', () => {
   if (typeof clearChatPendingFile === 'function') clearChatPendingFile();
 });
-
-const chatInput = document.getElementById('chatInput');
-if (chatInput && typeof MentionAutocomplete !== 'undefined') {
-  MentionAutocomplete.attach(chatInput, { getTeamData: () => teamData });
-}
 
 document.getElementById('activityMessageSearch')?.addEventListener('input', (e) => {
   activitySearchQuery = e.target.value;

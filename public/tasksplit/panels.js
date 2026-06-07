@@ -18,28 +18,38 @@ function restoreBalanceSidebarIfNeeded() {
 }
 
 function openActivityPanel() {
+  closeTaskflowOverlayBeforeOpen('activity');
+  if (chatPanelOpen) closeChatPanelUi();
   closeAllPanels();
   hideBalanceSidebarForPanel();
   document.getElementById('activityPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
   loadActivity();
+  pushTaskflowOverlay('activity');
 }
 
-function closeActivityPanel() {
+function closeActivityPanelUi() {
   document.getElementById('activityPanel').classList.add('hidden');
   setSidePanelMobileOpen(false);
   restoreBalanceSidebarIfNeeded();
 }
 
+function closeActivityPanel() {
+  requestCloseTaskflowOverlay();
+}
+
 function openTeamPanel() {
+  closeTaskflowOverlayBeforeOpen('team');
+  if (chatPanelOpen) closeChatPanelUi();
   closeAllPanels();
   hideBalanceSidebarForPanel();
   document.getElementById('teamPanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
-  renderMemberList();
+  renderMemberList(teamData?.members || workspaceData?.members || []);
   applyTasksplitInviteUi();
   applyMembershipActionsUi?.();
   updateMemberStatsDisplay();
+  pushTaskflowOverlay('team');
 }
 
 function applyTasksplitInviteUi() {
@@ -100,39 +110,14 @@ async function tasksplitCopyInviteLink() {
   }
 }
 
-function closeTeamPanel() {
+function closeTeamPanelUi() {
   document.getElementById('teamPanel').classList.add('hidden');
   setSidePanelMobileOpen(false);
   restoreBalanceSidebarIfNeeded();
 }
 
-function renderMemberList() {
-  const list = document.getElementById('teamMemberList');
-  const members = workspaceData?.members || [];
-  if (!members.length) {
-    list.innerHTML = '<p class="text-gray-600 text-sm text-center py-8">No members yet</p>';
-    return;
-  }
-
-  list.innerHTML = members
-    .map(
-      (m) => {
-        const online = typeof isUserOnline === 'function' ? isUserOnline(m.id) : false;
-        const avatar = typeof memberAvatarHtml === 'function'
-          ? memberAvatarHtml(m, 'w-9 h-9 shrink-0')
-          : userAvatarHtml(m, 'w-9 h-9 shrink-0');
-        return `
-    <div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
-      ${avatar}
-      <div class="min-w-0 flex-1">
-        <p class="text-white text-sm font-medium truncate">${escHtml(m.username)}</p>
-        <p class="text-gray-500 text-xs truncate">${escHtml(m.email)}</p>
-      </div>
-      <span class="ml-auto text-xs px-2 py-0.5 rounded-full border shrink-0 ${m.role === 'owner' ? 'border-brand-500/40 text-brand-500 bg-brand-500/10' : 'border-white/10 text-gray-400'}">${m.role}</span>
-    </div>`;
-      },
-    )
-    .join('');
+function closeTeamPanel() {
+  requestCloseTaskflowOverlay();
 }
 
 function getFilteredActivityLogs() {

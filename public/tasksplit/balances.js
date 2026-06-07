@@ -120,15 +120,23 @@ function renderBalances() {
 }
 
 function openBalancePanel() {
+  closeTaskflowOverlayBeforeOpen('balance');
+  if (chatPanelOpen) closeChatPanelUi();
   closeAllPanels();
   document.getElementById('balancePanel').classList.remove('hidden');
   setSidePanelMobileOpen(true);
   renderBalances();
+  pushTaskflowOverlay('balance');
+}
+
+function closeBalancePanelUi() {
+  document.getElementById('balancePanel').classList.add('hidden');
+  setSidePanelMobileOpen(false);
+  restoreBalanceSidebarIfNeeded();
 }
 
 function closeBalancePanel() {
-  document.getElementById('balancePanel').classList.add('hidden');
-  setSidePanelMobileOpen(false);
+  requestCloseTaskflowOverlay();
 }
 
 function settleUp(toUserId, amount) {

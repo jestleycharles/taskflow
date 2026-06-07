@@ -13,9 +13,55 @@ const {
 const {
   loadExpenseTeam,
   loadTeamMembers,
+  loadTeamRoles,
+  loadTeamPendingInvites,
   logTaskSplitActivity,
 } = require('../lib/tasksplit-team');
 const { isGuestUser } = require('../lib/user');
+const multer = require('multer');
+const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
+const { assertCanSendUserMessage } = require('../lib/message-send-guard');
+const { canBypassSpamGuard } = require('../lib/spam-guard-override');
+const { assertCanUploadFile } = require('../lib/upload-guard');
+const {
+  MAX_ATTACHMENT_BYTES: MSG_ATTACHMENT_MAX,
+  fetchAttachmentsForMessages,
+  attachAttachmentsToItems,
+  uploadMessageAttachment,
+} = require('../lib/message-attachments');
+
+const commentFileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MSG_ATTACHMENT_MAX },
+});
+
+const EXPENSE_COMMENT_SELECT =
+  'id, expense_id, user_id, content, content_before_edit, edited_at, deleted_at, created_at, user:user_id(id, username, avatar_color, avatar_url)';
+
+function optionalExpenseCommentFileUpload(req, res, next) {
+  if (!req.is('multipart/form-data')) return next();
+  commentFileUpload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File must be 8 MB or smaller' });
+      }
+      return sendError(res, 400, err, 'save');
+    }
+    next();
+  });
+}
+
+async function enrichExpenseComments(comments) {
+  const list = comments || [];
+  const reactionsMap = await fetchReactionsForMessages('expense_comment', list.map((c) => c.id));
+  const attachmentsMap = await fetchAttachmentsForMessages('expense_comment', list.map((c) => c.id));
+  return attachAttachmentsToItems(attachReactionsToItems(list, reactionsMap), attachmentsMap);
+}
+
+async function enrichSingleExpenseComment(data) {
+  const [enriched] = await enrichExpenseComments([data]);
+  return enriched;
+}
 
 const router = express.Router();
 
@@ -116,6 +162,13 @@ router.get('/api/teams/:id/tasksplit', requireAuth, async (req, res) => {
     if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
 
     const members = await loadTeamMembers(id);
+    const roles = await loadTeamRoles(id);
+    let pending_invites = [];
+    try {
+      pending_invites = await loadTeamPendingInvites(id);
+    } catch (invErr) {
+      return sendError(res, 500, invErr, 'load');
+    }
     const expenses = await loadExpensesWithParticipants(id);
     const settlements = await loadSettlements(id);
     const memberIds = members.map((m) => m.id);
@@ -138,6 +191,9 @@ router.get('/api/teams/:id/tasksplit', requireAuth, async (req, res) => {
       role: loaded.role,
       owner_is_guest: ownerIsGuest,
       members,
+      roles,
+      pending_invites,
+      separate_role_members: !!loaded.team.separate_role_members,
       expense_count: expenses.length,
       total_spent: totalSpent,
       balances: {
@@ -433,6 +489,217 @@ router.post('/api/teams/:id/tasksplit/settle', requireAuth, async (req, res) => 
       from_user_profile: members.find((m) => m.id === userId) || null,
       to_user_profile: toUser || null,
     });
+  } catch (err) {
+    return sendError(res, 500, err, 'save');
+  }
+});
+
+// GET /api/teams/:id/tasksplit/expenses/:expenseId/comments
+router.get('/api/teams/:id/tasksplit/expenses/:expenseId/comments', requireAuth, async (req, res) => {
+  const { id, expenseId } = req.params;
+  const userId = req.session.user.id;
+
+  try {
+    const loaded = await loadExpenseTeam(id, userId);
+    if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+
+    const { data: expense } = await supabaseAdmin
+      .from('expenses')
+      .select('id')
+      .eq('id', expenseId)
+      .eq('team_id', id)
+      .single();
+    if (!expense) return res.status(404).json({ error: 'Expense not found' });
+
+    const { data, error } = await supabaseAdmin
+      .from('expense_comments')
+      .select(EXPENSE_COMMENT_SELECT)
+      .eq('expense_id', expenseId)
+      .order('created_at', { ascending: true });
+
+    if (error) return sendError(res, 500, error, 'load');
+    res.json(await enrichExpenseComments(data || []));
+  } catch (err) {
+    return sendError(res, 500, err, 'load');
+  }
+});
+
+// POST /api/teams/:id/tasksplit/expenses/:expenseId/comments
+router.post(
+  '/api/teams/:id/tasksplit/expenses/:expenseId/comments',
+  requireAuth,
+  optionalExpenseCommentFileUpload,
+  async (req, res) => {
+    const { id, expenseId } = req.params;
+    const userId = req.session.user.id;
+    const raw = (req.body?.content || '').trim();
+    const hasFile = !!req.file;
+    if (!raw && !hasFile) return res.status(400).json({ error: 'Comment cannot be empty' });
+    if (raw.length > 4000) return res.status(400).json({ error: 'Comment is too long' });
+
+    try {
+      const loaded = await loadExpenseTeam(id, userId);
+      if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+
+      const { data: expense } = await supabaseAdmin
+        .from('expenses')
+        .select('id, title')
+        .eq('id', expenseId)
+        .eq('team_id', id)
+        .single();
+      if (!expense) return res.status(404).json({ error: 'Expense not found' });
+
+      if (hasFile) {
+        const uploadGuard = await assertCanUploadFile(supabaseAdmin, userId);
+        if (!uploadGuard.ok) {
+          return res.status(uploadGuard.status).json({
+            error: uploadGuard.error,
+            retry_after_ms: uploadGuard.retry_after_ms,
+          });
+        }
+      }
+
+      let content = raw;
+      if (raw) {
+        const guard = await assertCanSendUserMessage(supabaseAdmin, {
+          table: 'expense_comments',
+          scopeColumn: 'expense_id',
+          scopeId: expenseId,
+          userId,
+          content: raw,
+          skipSpamGuard: canBypassSpamGuard(req.session.user),
+        });
+        if (!guard.ok) {
+          return res.status(guard.status).json({
+            error: guard.error,
+            retry_after_ms: guard.retry_after_ms,
+          });
+        }
+        content = guard.content;
+      } else {
+        content = '';
+      }
+
+      const { data: comment, error } = await supabaseAdmin
+        .from('expense_comments')
+        .insert({ expense_id: expenseId, user_id: userId, content })
+        .select(EXPENSE_COMMENT_SELECT)
+        .single();
+
+      if (error) return sendError(res, 400, error, 'save');
+
+      if (hasFile) {
+        const uploaded = await uploadMessageAttachment({
+          messageType: 'expense_comment',
+          messageId: comment.id,
+          file: req.file,
+          userId,
+        });
+        if (!uploaded.ok) {
+          await supabaseAdmin.from('expense_comments').delete().eq('id', comment.id);
+          return res.status(uploaded.status).json({ error: uploaded.error });
+        }
+      }
+
+      await logTaskSplitActivity(id, userId, 'expense_comment', `Commented on expense "${expense.title}"`);
+      res.json(await enrichSingleExpenseComment(comment));
+    } catch (err) {
+      return sendError(res, 500, err, 'save');
+    }
+  },
+);
+
+// PATCH /api/teams/:id/tasksplit/expenses/:expenseId/comments/:commentId
+router.patch('/api/teams/:id/tasksplit/expenses/:expenseId/comments/:commentId', requireAuth, async (req, res) => {
+  const { id, expenseId, commentId } = req.params;
+  const userId = req.session.user.id;
+  const raw = (req.body?.content || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Comment cannot be empty' });
+  if (raw.length > 4000) return res.status(400).json({ error: 'Comment is too long' });
+
+  try {
+    const loaded = await loadExpenseTeam(id, userId);
+    if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('expense_comments')
+      .select('id, user_id, expense_id, deleted_at, content, content_before_edit, edited_at')
+      .eq('id', commentId)
+      .eq('expense_id', expenseId)
+      .single();
+
+    if (fetchErr || !existing) return res.status(404).json({ error: 'Comment not found' });
+    if (existing.deleted_at) return res.status(400).json({ error: 'Cannot edit a deleted comment' });
+    if (String(existing.user_id) !== String(userId)) {
+      return res.status(403).json({ error: 'You can only edit your own comments' });
+    }
+
+    const guard = await assertCanSendUserMessage(supabaseAdmin, {
+      table: 'expense_comments',
+      scopeColumn: 'expense_id',
+      scopeId: expenseId,
+      userId,
+      content: raw,
+      skipSpamGuard: canBypassSpamGuard(req.session.user),
+    });
+    if (!guard.ok) {
+      return res.status(guard.status).json({
+        error: guard.error,
+        retry_after_ms: guard.retry_after_ms,
+      });
+    }
+
+    const patch = {
+      content: guard.content,
+      edited_at: new Date().toISOString(),
+    };
+    if (!existing.edited_at) patch.content_before_edit = existing.content;
+
+    const { data: updated, error } = await supabaseAdmin
+      .from('expense_comments')
+      .update(patch)
+      .eq('id', commentId)
+      .select(EXPENSE_COMMENT_SELECT)
+      .single();
+
+    if (error) return sendError(res, 400, error, 'save');
+    res.json(await enrichSingleExpenseComment(updated));
+  } catch (err) {
+    return sendError(res, 500, err, 'save');
+  }
+});
+
+// DELETE /api/teams/:id/tasksplit/expenses/:expenseId/comments/:commentId
+router.delete('/api/teams/:id/tasksplit/expenses/:expenseId/comments/:commentId', requireAuth, async (req, res) => {
+  const { id, expenseId, commentId } = req.params;
+  const userId = req.session.user.id;
+
+  try {
+    const loaded = await loadExpenseTeam(id, userId);
+    if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('expense_comments')
+      .select('id, user_id, deleted_at')
+      .eq('id', commentId)
+      .eq('expense_id', expenseId)
+      .single();
+
+    if (fetchErr || !existing) return res.status(404).json({ error: 'Comment not found' });
+    if (existing.deleted_at) return res.status(400).json({ error: 'Comment already deleted' });
+    if (String(existing.user_id) !== String(userId)) {
+      return res.status(403).json({ error: 'You can only delete your own comments' });
+    }
+
+    const { data: updated, error } = await supabaseAdmin
+      .from('expense_comments')
+      .update({ deleted_at: new Date().toISOString(), content: '' })
+      .eq('id', commentId)
+      .select(EXPENSE_COMMENT_SELECT)
+      .single();
+
+    if (error) return sendError(res, 400, error, 'save');
+    res.json(await enrichSingleExpenseComment(updated));
   } catch (err) {
     return sendError(res, 500, err, 'save');
   }

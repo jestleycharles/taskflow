@@ -18,9 +18,9 @@ function formatDate(dateStr) {
 }
 
 function closeAllPanels() {
-  document.getElementById('activityPanel')?.classList.add('hidden');
-  document.getElementById('teamPanel')?.classList.add('hidden');
-  document.getElementById('balancePanel')?.classList.add('hidden');
+  closeActivityPanelUi?.();
+  closeTeamPanelUi?.();
+  closeBalancePanelUi?.();
   closeSettingsPanelUi?.();
   closeChatPanelUi?.();
   setSidePanelMobileOpen(false);

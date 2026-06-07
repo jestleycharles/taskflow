@@ -55,7 +55,7 @@
         <span id="teamModeIcon" class="shrink-0"></span>
         <h1 id="teamName" class="font-semibold text-white text-sm truncate">Loading…</h1>
         <span id="teamMemberStats" class="text-[10px] text-gray-500 shrink-0 hidden sm:inline" title="Members online"></span>
-        <div class="poll-dot w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Live updates active"></div>
+        <div class="poll-dot w-2 h-2 rounded-full bg-emerald-500 shrink-0 hidden" title="Live updates active"></div>
       </div>
       <div class="flex items-center gap-2">
         <div id="memberAvatars" class="flex items-center -space-x-2 mr-1 cursor-pointer" role="button" tabindex="0" title="View team members" onclick="openTeamPanel()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTeamPanel();}"></div>
@@ -155,7 +155,7 @@
     <div id="expensesContainer" class="flex-1 min-h-0 overflow-x-auto p-4 sm:p-6">
       <div id="taskflowZoomScaler">
         <div id="taskflowZoomInner">
-          <div id="expensesZoomRoot" class="min-h-[calc(100vh-7rem-2rem)]">
+          <div id="expensesZoomRoot" class="taskflow-pan-surface min-h-[calc(100vh-7rem-2rem)]">
       <div id="expensesEmpty" class="hidden flex flex-col items-center justify-center py-20 text-center">
         <div class="w-16 h-16 bg-ink-800 border border-white/10 rounded-2xl flex items-center justify-center mb-4">
           <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -239,7 +239,7 @@
         <a href="/register" class="text-brand-500 hover:text-brand-400 font-medium">Create an account</a>
         to unlock this feature.
       </p>
-      <div id="teamMemberList" class="flex-1 overflow-y-auto p-4 space-y-2 min-h-0"></div>
+      <div id="memberList" class="flex-1 overflow-y-auto p-4 space-y-2 min-h-0"></div>
       <div id="teamPanelLeaveSection" class="hidden shrink-0 p-4 border-t border-white/10 bg-ink-800">
         <p class="text-xs text-gray-400 mb-3">Membership</p>
         <button type="button" id="leaveTeamBtn" onclick="confirmLeaveTeam()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">Leave team</button>
@@ -258,6 +258,10 @@
         <button type="button" onclick="openEditTeamModal()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
           Edit team details
+        </button>
+        <button type="button" onclick="openTeamRolesModal()" class="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm py-2.5 rounded-xl transition font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          Manage team roles
         </button>
       </div>
       <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 p-4">
@@ -312,7 +316,7 @@
 
   <!-- Add expense modal -->
   <div id="addExpenseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeAddExpenseModal()"></div>
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeAddExpensePanel()"></div>
     <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
       <h2 class="text-lg font-semibold text-white mb-1">Add expense</h2>
       <p class="text-gray-500 text-sm mb-5">Split equally among selected participants.</p>
@@ -349,7 +353,7 @@
             class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm" />
         </div>
         <div class="flex gap-3 pt-2">
-          <button type="button" onclick="closeAddExpenseModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
+          <button type="button" onclick="closeAddExpensePanel()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel</button>
           <button type="button" id="addExpenseBtn" onclick="submitExpense()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add expense</button>
         </div>
       </div>
@@ -358,20 +362,24 @@
 
   <!-- Expense detail modal -->
   <div id="expenseDetailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto">
-    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeExpenseDetailModal()"></div>
-    <div class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto flex flex-col">
-      <div class="p-6 border-b border-white/10">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeExpenseDetailPanel()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-hidden flex flex-col">
+      <div class="p-6 border-b border-white/10 shrink-0">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0 flex-1">
             <h2 id="expenseDetailTitle" class="text-lg font-semibold text-white truncate"></h2>
             <p id="expenseDetailAmount" class="text-2xl font-mono font-bold text-emerald-400 mt-1"></p>
           </div>
-          <button type="button" onclick="closeExpenseDetailModal()" class="text-gray-500 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10 shrink-0" aria-label="Close expense details">
+          <button type="button" onclick="closeExpenseDetailPanel()" class="text-gray-500 hover:text-white transition p-1.5 rounded-lg hover:bg-white/10 shrink-0" aria-label="Close expense details">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
+        <div class="flex gap-1 mt-4 border-b border-white/10 -mb-px">
+          <button type="button" id="expenseDetailTabBtnDetails" onclick="setExpenseDetailTab('details')" class="tab-btn tab-active px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition border-b-2 border-transparent">Details</button>
+          <button type="button" id="expenseDetailTabBtnComments" onclick="setExpenseDetailTab('comments')" class="tab-btn px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition border-b-2 border-transparent">Comments</button>
+        </div>
       </div>
-      <div class="p-6 space-y-4">
+      <div id="expenseDetailTabDetails" class="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div>
             <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Date</label>
@@ -388,8 +396,37 @@
         </div>
         <div id="expenseDetailSplits" class="border-t border-white/10 pt-4 space-y-1"></div>
       </div>
+      <div id="expenseDetailTabComments" class="hidden flex-1 flex flex-col min-h-0">
+        <div class="px-4 pt-3 pb-2 border-b border-white/10 shrink-0">
+          <input type="search" id="expenseCommentSearch" placeholder="Search comments…" aria-label="Search expense comments"
+            class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-1.5 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-brand-500 transition" />
+        </div>
+        <div id="expenseCommentsList" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"></div>
+        <div class="px-4 pt-3 pb-4 border-t border-white/10 shrink-0 bg-ink-800">
+          <div id="expenseCommentAttachPreview" class="chat-attach-preview hidden mb-2" role="status">
+            <div id="expenseCommentAttachPreviewThumb" class="shrink-0"></div>
+            <div class="min-w-0 flex-1">
+              <p id="expenseCommentAttachPreviewName" class="text-xs text-gray-200 truncate"></p>
+              <p id="expenseCommentAttachPreviewSize" class="text-[10px] text-gray-500"></p>
+            </div>
+            <button type="button" id="expenseCommentAttachClearBtn" class="attachment-icon-btn danger shrink-0" title="Remove attachment" aria-label="Remove attachment">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input type="file" id="expenseCommentAttachInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+            <button type="button" id="expenseCommentAttachBtn" class="attachment-icon-btn shrink-0 self-center" title="Attach image or PDF" aria-label="Attach file">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+            </button>
+            <input id="expenseCommentInput" type="text" placeholder="Add a comment…" data-mention-prefer-above="1"
+              class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
+            <button id="expenseCommentSendBtn" type="button" onclick="submitExpenseComment()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
+          </div>
+          <p id="expenseCommentSendCooldown" class="send-cooldown-notice hidden" role="status" aria-live="polite"></p>
+        </div>
+      </div>
       <div class="p-6 border-t border-white/10 flex gap-3 shrink-0">
-        <button type="button" onclick="closeExpenseDetailModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Close</button>
+        <button type="button" onclick="closeExpenseDetailPanel()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Close</button>
         <button type="button" id="expenseDetailDeleteBtn" class="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-medium py-2.5 rounded-xl transition text-sm">Delete</button>
       </div>
     </div>
@@ -514,6 +551,74 @@
     </div>
   </div>
 
+  <!-- Team Roles Modal -->
+  <div id="teamRolesModal" class="hidden fixed inset-0 z-[55] flex items-center justify-center px-4 py-6 overflow-y-auto">
+    <div class="modal-overlay absolute inset-0 bg-black/60" onclick="requestCloseTaskflowOverlay()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl p-6 w-full max-w-lg shadow-2xl fade-up my-auto max-h-[calc(100vh-3rem)] overflow-y-auto">
+      <h2 class="text-lg font-semibold text-white mb-1">Team roles</h2>
+      <p class="text-gray-500 text-sm mb-5">Create display roles, set colors, and control how members are grouped in the team panel.</p>
+      <div id="teamRolesError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
+      <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-ink-700/50 border border-white/10 mb-5 cursor-pointer">
+        <span class="text-sm text-gray-200">Display role members separately</span>
+        <span id="separateRoleMembersTrack" class="relative w-11 h-6 rounded-full bg-white/10 transition shrink-0">
+          <input id="separateRoleMembersToggle" type="checkbox" class="sr-only" onchange="onSeparateRoleMembersToggle(this.checked)" />
+          <span id="separateRoleMembersKnob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"></span>
+        </span>
+      </label>
+      <div class="mb-4">
+        <p class="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Role hierarchy</p>
+        <p class="text-xs text-gray-500 mb-3">Drag to reorder. The team owner always appears first.</p>
+        <div id="teamRolesList" class="space-y-2 min-h-[2rem] max-h-[min(16rem,40vh)] overflow-y-auto"></div>
+        <p id="teamRolesEmpty" class="hidden text-xs text-gray-600 text-center py-4">No custom roles yet. Create one below.</p>
+      </div>
+      <div class="border-t border-white/10 pt-5">
+        <button type="button" id="teamRoleAddToggleBtn" onclick="toggleTeamRoleAddDrawer()" aria-expanded="false" aria-controls="teamRoleAddContent"
+          class="optional-drawer-btn w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-sm py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2">
+          <span id="teamRoleAddLabel">Add role</span>
+          <svg id="teamRoleAddChevron" class="w-4 h-4 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        <div id="teamRoleAddContent" class="hidden mt-3 space-y-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <p id="teamRoleFormTitle" class="text-xs text-gray-400 font-medium uppercase tracking-wider">Add role</p>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Role name</label>
+            <input id="teamRoleNameInput" type="text" placeholder="e.g. Developer"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition text-sm" />
+          </div>
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Color</label>
+            <div id="teamRoleColorSwatches" class="flex flex-wrap gap-2 mb-3"></div>
+            <div class="flex items-center gap-3">
+              <input id="teamRoleColorPicker" type="color" value="#4f6ef7"
+                class="w-10 h-10 rounded-lg border border-white/10 bg-ink-700 cursor-pointer shrink-0 p-0.5" />
+              <input id="teamRoleHexInput" type="text" placeholder="#4f6ef7" maxlength="7"
+                class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm font-mono uppercase" />
+            </div>
+          </div>
+          <div class="flex gap-3 pt-1">
+            <button type="button" id="teamRoleFormCancelBtn" onclick="resetTeamRoleForm()" class="hidden flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Cancel edit</button>
+            <button type="button" id="teamRoleSaveBtn" onclick="saveTeamRole()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Add role</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" onclick="requestCloseTaskflowOverlay()" class="w-full mt-5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-2.5 rounded-xl transition text-sm">Done</button>
+    </div>
+  </div>
+
+  <!-- Attachment preview -->
+  <div id="attachmentPreviewModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="attachmentPreviewTitle">
+    <div class="modal-overlay absolute inset-0 bg-black/75" onclick="closeAttachmentPreview()"></div>
+    <div class="relative bg-ink-800 border border-white/15 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between gap-3 p-4 border-b border-white/10 shrink-0">
+        <h3 id="attachmentPreviewTitle" class="text-sm font-medium text-white truncate"></h3>
+        <button type="button" onclick="closeAttachmentPreview()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 shrink-0" aria-label="Close preview">✕</button>
+      </div>
+      <div id="attachmentPreviewBody" class="flex-1 min-h-0 overflow-auto p-4 flex items-center justify-center"></div>
+      <div class="p-3 border-t border-white/10 shrink-0 flex justify-end">
+        <a id="attachmentPreviewOpenLink" href="#" target="_blank" rel="noopener" class="text-xs text-brand-500 hover:text-brand-400 font-medium">Open in new tab</a>
+      </div>
+    </div>
+  </div>
+
     <!-- Confirm Modal -->
   <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
     <div class="modal-overlay absolute inset-0 bg-black/60" onclick="closeConfirmModal()"></div>
@@ -549,11 +654,14 @@
   <script src="/js/message-batch.js"></script>
   <script src="/tasksplit/state.js"></script>
   <script src="/taskflow/helpers.js"></script>
+  <script src="/taskflow/members.js"></script>
   <script src="/tasksplit/helpers.js"></script>
   <script src="/tasksplit/expenses.js"></script>
   <script src="/tasksplit/balances.js"></script>
   <script src="/tasksplit/panels.js"></script>
   <script src="/tasksplit/settings.js"></script>
+  <script src="/tasksplit/attachments.js"></script>
+  <script src="/tasksplit/expense-comments.js"></script>
   <script src="/taskflow/chat.js"></script>
   <script src="/tasksplit/workspace.js"></script>
   <script src="/tasksplit/presence.js"></script>

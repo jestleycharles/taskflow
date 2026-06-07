@@ -283,6 +283,7 @@ function closeEditTeamModal() {
   document.getElementById('editTeamModal').classList.add('hidden');
   hideEditTeamError();
   resetEditTeamDetailsDrawer();
+  dismissTaskflowOverlayHistory('editTeam');
 }
 
 function selectEditTeamPreset(presetId) {
@@ -356,7 +357,6 @@ async function saveEditTeam() {
   btn.textContent = 'Save changes';
   applyTeamHeader();
   closeEditTeamModal();
-  dismissTaskflowOverlayHistory('editTeam');
 }
 
 document.getElementById('editTeamAvatarFile')?.addEventListener('change', (e) => {

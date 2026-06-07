@@ -166,8 +166,10 @@ function clearMentionRolePress() {
 function initMentionComposers() {
   if (isGuest()) return;
   const ctx = () => teamData;
-  MentionAutocomplete.attach(document.getElementById('chatInput'), ctx);
-  MentionAutocomplete.attach(document.getElementById('commentInput'), ctx);
+  ['chatInput', 'commentInput', 'expenseCommentInput'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) MentionAutocomplete.attach(el, ctx);
+  });
 }
 
 function attachMentionAutocompleteToEditTextarea(textarea) {
@@ -319,25 +321,29 @@ function applyCurrentUserTeamRoleUi() {
 
 function refreshTeamRoleVisuals() {
   if (!teamData) return;
-  renderMemberAvatars(teamData.members);
-  renderMemberList(teamData.members);
-  populateAssigneeDropdowns(teamData.members);
+  if (typeof renderMemberAvatars === 'function') renderMemberAvatars(teamData.members);
+  if (typeof renderMemberList === 'function') renderMemberList(teamData.members);
+  if (typeof populateAssigneeDropdowns === 'function') populateAssigneeDropdowns(teamData.members);
   applyCurrentUserTeamRoleUi();
-  if (!document.getElementById('teamRolesModal').classList.contains('hidden')) {
+  const rolesModal = document.getElementById('teamRolesModal');
+  if (rolesModal && !rolesModal.classList.contains('hidden')) {
     syncSeparateRoleToggleUi();
     renderTeamRolesList();
   }
-  if (tasks.length) renderTaskflow();
+  if (typeof tasks !== 'undefined' && tasks?.length && typeof renderTaskflow === 'function') renderTaskflow();
   if (chatMessages.length && chatPanelOpen) renderChatMessages();
-  if (activeTaskId && !document.getElementById('taskModal').classList.contains('hidden')) {
-    const task = tasks.find((t) => t.id === activeTaskId);
+  if (typeof activeExpenseId !== 'undefined' && activeExpenseId && expenseComments?.length && typeof renderExpenseComments === 'function') {
+    renderExpenseComments();
+  }
+  if (typeof activeTaskId !== 'undefined' && activeTaskId && !document.getElementById('taskModal')?.classList.contains('hidden')) {
+    const task = tasks?.find((t) => t.id === activeTaskId);
     if (task?.creator) {
       document.getElementById('detailCreator').innerHTML = memberNameHtml(
         task.creator, task.creator.id, 'text-sm text-gray-300'
       );
     }
     const commentsEl = document.getElementById('commentsList');
-    if (commentsEl && taskComments.length) {
+    if (commentsEl && taskComments?.length && typeof renderComments === 'function') {
       renderComments();
     }
   }
@@ -354,7 +360,9 @@ async function pollTeamRoleState() {
   data.roles = data.roles || [];
   data.columns = data.columns || [];
   data.separate_role_members = !!data.separate_role_members;
-  const columnsChanged = columnsStructureSig(data.columns) !== columnsStructureSig(teamColumns);
+  const prevColumns = typeof teamColumns !== 'undefined' ? teamColumns : [];
+  const columnsChanged = typeof columnsStructureSig === 'function'
+    && columnsStructureSig(data.columns) !== columnsStructureSig(prevColumns);
   const userRoleChanged = data.userRole != null && data.userRole !== teamData.userRole;
   const sig = teamRoleStateSignature(data);
   if (sig === teamRoleStateSig && !columnsChanged && !userRoleChanged) return;
@@ -366,13 +374,14 @@ async function pollTeamRoleState() {
   teamData.pending_invites = data.pending_invites || [];
   if (data.member_count != null) teamData.member_count = data.member_count;
   if (data.owner_is_guest != null) teamData.owner_is_guest = data.owner_is_guest;
-  if (columnsChanged) {
+  if (columnsChanged && typeof teamColumns !== 'undefined') {
     teamColumns = data.columns;
     teamData.columns = data.columns;
-    renderKanbanBoard();
-    populateStatusDropdowns();
-    renderTaskflow();
-    if (!document.getElementById('columnMgmtModal').classList.contains('hidden')) {
+    if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
+    if (typeof populateStatusDropdowns === 'function') populateStatusDropdowns();
+    if (typeof renderTaskflow === 'function') renderTaskflow();
+    const colModal = document.getElementById('columnMgmtModal');
+    if (colModal && !colModal.classList.contains('hidden') && typeof renderColumnMgmtList === 'function') {
       renderColumnMgmtList();
     }
   }
@@ -905,5 +914,6 @@ async function assignMemberCustomRole(userId, roleId) {
     showAlert(d.error || 'Failed to assign role');
     return;
   }
-  await loadTeam();
+  if (typeof loadTeam === 'function') await loadTeam();
+  else if (typeof reloadWorkspace === 'function') await reloadWorkspace();
 }

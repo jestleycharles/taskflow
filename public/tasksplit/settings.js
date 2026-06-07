@@ -89,8 +89,10 @@ async function reloadWorkspace() {
   await refreshAll();
   syncTeamDataFromWorkspace();
   applyTeamHeader();
+  renderMemberList(teamData?.members || []);
   applyCurrentUserTeamRoleUi();
   applyMembershipActionsUi();
+  if (typeof captureTeamRoleStateSig === 'function') captureTeamRoleStateSig();
 }
 
 function openSettingsPanel() {
@@ -170,6 +172,7 @@ function closeEditTeamModal() {
   document.getElementById('editTeamModal').classList.add('hidden');
   hideEditTeamError();
   if (typeof resetEditTeamDetailsDrawer === 'function') resetEditTeamDetailsDrawer();
+  dismissTaskflowOverlayHistory('editTeam');
 }
 
 async function saveEditTeam() {
@@ -238,7 +241,6 @@ async function saveEditTeam() {
   btn.textContent = 'Save changes';
   await reloadWorkspace();
   closeEditTeamModal();
-  dismissTaskflowOverlayHistory('editTeam');
 }
 
 function isRegisteredMemberEmail(email) {
@@ -298,7 +300,7 @@ function stopTaskflowBackgroundWork() {
 
 async function executeLeaveTeam() {
   closeSettingsPanelUi();
-  closeTeamPanel();
+  closeTeamPanelUi();
   stopTaskflowBackgroundWork();
   leavePresence();
   showNavigationLoading('Leaving team…');
@@ -335,7 +337,7 @@ function confirmTransferOwnership() {
 
 async function executeTransferOwnership(targetUserId) {
   closeSettingsPanelUi();
-  closeTeamPanel();
+  closeTeamPanelUi();
   showNavigationLoading('Transferring ownership…');
   const r = await apiFetch(`/api/teams/${teamId}/transfer-ownership`, {
     method: 'POST',
@@ -370,7 +372,7 @@ function deleteTeam() {
 
 async function executeDeleteTeam() {
   closeSettingsPanelUi();
-  closeTeamPanel();
+  closeTeamPanelUi();
   stopTaskflowBackgroundWork();
   leavePresence();
   showNavigationLoading('Deleting team…');

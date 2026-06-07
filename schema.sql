@@ -230,6 +230,20 @@ CREATE TABLE IF NOT EXISTS expense_settlements (
 CREATE INDEX IF NOT EXISTS expense_settlements_team_paid_idx
   ON expense_settlements (team_id, paid_at DESC);
 
+CREATE TABLE IF NOT EXISTS expense_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  expense_id UUID NOT NULL REFERENCES expenses (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  content_before_edit TEXT,
+  edited_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS expense_comments_expense_created_idx
+  ON expense_comments (expense_id, created_at);
+
 -- =============================================================================
 -- Team chat
 -- =============================================================================
@@ -261,7 +275,7 @@ CREATE TABLE IF NOT EXISTS team_chat_read_state (
 
 CREATE TABLE IF NOT EXISTS message_reactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'comment', 'dm', 'feature_post')),
+  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'comment', 'dm', 'feature_post', 'expense_comment')),
   message_id UUID NOT NULL,
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   emoji TEXT NOT NULL,
@@ -305,7 +319,7 @@ CREATE INDEX IF NOT EXISTS dm_messages_conversation_created_idx
 
 CREATE TABLE IF NOT EXISTS message_attachments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'dm', 'comment')),
+  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'dm', 'comment', 'expense_comment')),
   message_id UUID NOT NULL,
   file_url TEXT NOT NULL,
   file_name TEXT NOT NULL,
@@ -470,3 +484,7 @@ VALUES (
   '#64748b'
 )
 ON CONFLICT (email) DO NOTHING;
+
+-- =============================================================================
+-- Migrations for existing databases (run manually if already deployed)
+-- =============================================================================

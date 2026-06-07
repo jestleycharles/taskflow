@@ -60,6 +60,7 @@ function updateSummaryBar() {
 }
 
 function openAddExpenseModal() {
+  closeTaskflowOverlayBeforeOpen('addExpense');
   document.getElementById('addExpenseError').classList.add('hidden');
   document.getElementById('expenseTitle').value = '';
   document.getElementById('expenseAmount').value = '';
@@ -96,11 +97,16 @@ function openAddExpenseModal() {
   }
 
   document.getElementById('addExpenseModal').classList.remove('hidden');
+  pushTaskflowOverlay('addExpense');
   setTimeout(() => document.getElementById('expenseTitle').focus(), 50);
 }
 
 function closeAddExpenseModal() {
   document.getElementById('addExpenseModal').classList.add('hidden');
+}
+
+function closeAddExpensePanel() {
+  requestCloseTaskflowOverlay();
 }
 
 async function submitExpense() {
@@ -157,12 +163,18 @@ async function submitExpense() {
   }
 
   closeAddExpenseModal();
+  dismissTaskflowOverlayHistory('addExpense');
   await refreshAll();
 }
 
 function openExpenseDetail(expenseId) {
   const expense = expenses.find((e) => e.id === expenseId);
   if (!expense) return;
+
+  closeTaskflowOverlayBeforeOpen('expenseDetail');
+  activeExpenseId = expenseId;
+  expenseDetailTab = 'details';
+  resetExpenseDetailComments();
 
   document.getElementById('expenseDetailTitle').textContent = expense.title;
   document.getElementById('expenseDetailAmount').textContent = formatMoney(expense.amount);
@@ -195,6 +207,7 @@ function openExpenseDetail(expenseId) {
 
   document.getElementById('expenseDetailDeleteBtn').onclick = () => {
     closeExpenseDetailModal();
+    dismissTaskflowOverlayHistory('expenseDetail');
     showConfirm({
       title: 'Delete expense?',
       message: `"${expense.title}" will be removed and balances will update.`,
@@ -205,10 +218,17 @@ function openExpenseDetail(expenseId) {
   };
 
   document.getElementById('expenseDetailModal').classList.remove('hidden');
+  setExpenseDetailTab('details');
+  pushTaskflowOverlay('expenseDetail');
 }
 
 function closeExpenseDetailModal() {
   document.getElementById('expenseDetailModal').classList.add('hidden');
+  resetExpenseDetailComments();
+}
+
+function closeExpenseDetailPanel() {
+  requestCloseTaskflowOverlay();
 }
 
 async function deleteExpense(expenseId) {

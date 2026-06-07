@@ -269,8 +269,12 @@ function findReactionUsers(messageType, messageId, emoji) {
   let reactions = [];
   if (messageType === 'chat') {
     reactions = chatMessages.find((m) => m.id === messageId)?.reactions || [];
+  } else if (messageType === 'expense_comment') {
+    reactions = (typeof expenseComments !== 'undefined' ? expenseComments : [])
+      .find((c) => c.id === messageId)?.reactions || [];
   } else {
-    reactions = taskComments.find((c) => c.id === messageId)?.reactions || [];
+    reactions = (typeof taskComments !== 'undefined' ? taskComments : [])
+      .find((c) => c.id === messageId)?.reactions || [];
   }
   return reactions.find((r) => r.emoji === emoji)?.users || [];
 }
@@ -466,10 +470,14 @@ async function toggleReaction(messageType, messageId, emoji) {
     const idx = chatMessages.findIndex((m) => m.id === messageId);
     if (idx !== -1) chatMessages[idx] = { ...chatMessages[idx], reactions: data.reactions || [] };
     renderChatMessages();
+  } else if (messageType === 'expense_comment') {
+    const idx = expenseComments.findIndex((c) => c.id === messageId);
+    if (idx !== -1) expenseComments[idx] = { ...expenseComments[idx], reactions: data.reactions || [] };
+    if (typeof renderExpenseComments === 'function') renderExpenseComments();
   } else {
     const idx = taskComments.findIndex((c) => c.id === messageId);
     if (idx !== -1) taskComments[idx] = { ...taskComments[idx], reactions: data.reactions || [] };
-    renderComments();
+    if (typeof renderComments === 'function') renderComments();
   }
 }
 

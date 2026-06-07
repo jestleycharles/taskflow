@@ -52,6 +52,15 @@ async function resolveTeamMessage(messageType, messageId) {
     if (error || !data || data.deleted_at) return null;
     return data?.task?.team_id || null;
   }
+  if (messageType === 'expense_comment') {
+    const { data, error } = await supabaseAdmin
+      .from('expense_comments')
+      .select('expense_id, deleted_at, expense:expenses(team_id)')
+      .eq('id', messageId)
+      .maybeSingle();
+    if (error || !data || data.deleted_at) return null;
+    return data?.expense?.team_id || null;
+  }
   return null;
 }
 
@@ -76,7 +85,7 @@ router.post('/api/reactions/toggle', requireAuth, async (req, res) => {
   const messageId = req.body?.messageId;
   const emoji = req.body?.emoji;
 
-  if (!['chat', 'comment', 'dm', 'feature_post'].includes(messageType)) {
+  if (!['chat', 'comment', 'dm', 'feature_post', 'expense_comment'].includes(messageType)) {
     return res.status(400).json({ error: 'Invalid message type' });
   }
   if (!messageId) return res.status(400).json({ error: 'messageId required' });

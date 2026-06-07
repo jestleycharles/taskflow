@@ -27,21 +27,29 @@ function setTaskModalBusy(show, text) {
   if (label && text) label.textContent = text;
 }
 
+function isTaskflowOverlayOpen(id) {
+  const el = document.getElementById(id);
+  return el != null && !el.classList.contains('hidden');
+}
+
 function getTopTaskflowOverlay() {
-  if (!document.getElementById('zoomLevelModal')?.classList.contains('hidden')) return 'zoomLevel';
-  if (!document.getElementById('confirmModal')?.classList.contains('hidden')) return 'confirm';
-  if (!document.getElementById('alertModal')?.classList.contains('hidden')) return 'alert';
-  if (!document.getElementById('teamDeleteLockModal')?.classList.contains('hidden')) return 'teamDeleteLock';
-  if (!document.getElementById('editTeamModal')?.classList.contains('hidden')) return 'editTeam';
-  if (!document.getElementById('teamRolesModal')?.classList.contains('hidden')) return 'teamRoles';
-  if (!document.getElementById('columnMgmtModal')?.classList.contains('hidden')) return 'columnMgmt';
-  if (!document.getElementById('attachmentPreviewModal')?.classList.contains('hidden')) return 'attachmentPreview';
-  if (!document.getElementById('taskModal')?.classList.contains('hidden')) return 'task';
-  if (!document.getElementById('addTaskModal')?.classList.contains('hidden')) return 'addTask';
+  if (isTaskflowOverlayOpen('zoomLevelModal')) return 'zoomLevel';
+  if (isTaskflowOverlayOpen('confirmModal')) return 'confirm';
+  if (isTaskflowOverlayOpen('alertModal')) return 'alert';
+  if (isTaskflowOverlayOpen('teamDeleteLockModal')) return 'teamDeleteLock';
+  if (isTaskflowOverlayOpen('editTeamModal')) return 'editTeam';
+  if (isTaskflowOverlayOpen('teamRolesModal')) return 'teamRoles';
+  if (isTaskflowOverlayOpen('columnMgmtModal')) return 'columnMgmt';
+  if (isTaskflowOverlayOpen('attachmentPreviewModal')) return 'attachmentPreview';
+  if (isTaskflowOverlayOpen('taskModal')) return 'task';
+  if (isTaskflowOverlayOpen('addTaskModal')) return 'addTask';
+  if (isTaskflowOverlayOpen('addExpenseModal')) return 'addExpense';
+  if (isTaskflowOverlayOpen('expenseDetailModal')) return 'expenseDetail';
   if (chatPanelOpen) return 'chat';
-  if (!document.getElementById('activityPanel')?.classList.contains('hidden')) return 'activity';
-  if (!document.getElementById('teamPanel')?.classList.contains('hidden')) return 'team';
-  if (!document.getElementById('settingsPanel')?.classList.contains('hidden')) return 'settings';
+  if (isTaskflowOverlayOpen('activityPanel')) return 'activity';
+  if (isTaskflowOverlayOpen('teamPanel')) return 'team';
+  if (isTaskflowOverlayOpen('settingsPanel')) return 'settings';
+  if (isTaskflowOverlayOpen('balancePanel')) return 'balance';
   return null;
 }
 
@@ -83,15 +91,18 @@ async function closeTaskflowOverlayUi(overlay) {
     case 'alert': closeAlertModal(); break;
     case 'teamDeleteLock': closeTeamDeleteLockModal(); break;
     case 'editTeam': closeEditTeamModal(); break;
-    case 'teamRoles': closeTeamRolesModal(); break;
-    case 'columnMgmt': closeColumnMgmtModal(); break;
-    case 'attachmentPreview': closeAttachmentPreviewUi(); break;
-    case 'task': await closeTaskModalUi(); break;
-    case 'addTask': closeAddTaskUi(); break;
+    case 'teamRoles': closeTeamRolesModal?.(); break;
+    case 'columnMgmt': closeColumnMgmtModal?.(); break;
+    case 'attachmentPreview': closeAttachmentPreviewUi?.(); break;
+    case 'task': if (typeof closeTaskModalUi === 'function') await closeTaskModalUi(); break;
+    case 'addTask': closeAddTaskUi?.(); break;
+    case 'addExpense': closeAddExpenseModal?.(); break;
+    case 'expenseDetail': closeExpenseDetailModal?.(); break;
     case 'chat': closeChatPanelUi(); break;
-    case 'activity': closeActivityPanelUi(); break;
-    case 'team': closeTeamPanelUi(); break;
+    case 'activity': closeActivityPanelUi?.(); break;
+    case 'team': closeTeamPanelUi?.(); break;
     case 'settings': closeSettingsPanelUi(); break;
+    case 'balance': closeBalancePanelUi?.(); break;
   }
 }
 
