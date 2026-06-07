@@ -48,15 +48,17 @@ const TEAM_INVITE_CARD_SKELETON_HTML = `
   <div class="bg-ink-800 border border-amber-500/20 rounded-2xl p-5">
     <div class="flex items-start gap-3 mb-4">
       <div class="skeleton w-11 h-11 rounded-xl shrink-0"></div>
-      <div class="flex-1 min-w-0 space-y-2">
-        <div class="skeleton h-4 w-2/5 rounded"></div>
-        <div class="skeleton h-3 w-full rounded"></div>
-        <div class="skeleton h-3 w-4/5 rounded"></div>
+      <div class="flex-1 min-w-0">
+        <div class="skeleton h-4 w-2/5 rounded mb-1"></div>
+        <div class="skeleton h-3 w-full rounded mb-1"></div>
+        <div class="skeleton h-3 w-4/5 rounded mb-1"></div>
+        <div class="skeleton h-3 w-3/5 rounded"></div>
+        <div class="skeleton h-3 w-32 rounded mt-2"></div>
       </div>
     </div>
     <div class="flex gap-2">
-      <div class="skeleton flex-1 h-9 rounded-xl"></div>
-      <div class="skeleton flex-1 h-9 rounded-xl"></div>
+      <div class="skeleton flex-1 h-[36px] rounded-xl"></div>
+      <div class="skeleton flex-1 h-[36px] rounded-xl"></div>
     </div>
   </div>`;
 

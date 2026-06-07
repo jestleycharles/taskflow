@@ -191,8 +191,8 @@ router.delete('/api/teams/:teamId/columns/:columnId', requireAuth, async (req, r
   }
 
   const cols = await loadTeamColumns(teamId);
-  if (cols.length <= 1) {
-    return res.status(400).json({ error: 'A team must have at least one column' });
+  if (cols.length <= 2) {
+    return res.status(400).json({ error: 'A team must have at least two columns' });
   }
 
   const column = cols.find((c) => c.id === columnId);

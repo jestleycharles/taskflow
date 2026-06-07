@@ -155,14 +155,14 @@
     }
 
     if (!$('dmBlockedEmailStartModal')?.classList.contains('hidden')) {
-      closeBlockedEmailStartModal();
+      closeBlockedEmailStartModal({ syncHistory: false });
       if (panelOpen && !history.state?.tfDm) {
         pushDmHistory(view === 'thread' ? 'thread' : 'panel');
       }
       return true;
     }
     if (!$('dmBlockedEmailsModal')?.classList.contains('hidden')) {
-      closeBlockedEmailsModal();
+      closeBlockedEmailsModal({ syncHistory: false });
       if (panelOpen && !history.state?.tfDm) {
         pushDmHistory(view === 'thread' ? 'thread' : 'panel');
       }
@@ -782,8 +782,10 @@
     window.pushDashboardOverlay?.('dmBlockedEmails');
   }
 
-  function closeBlockedEmailsModal() {
+  function closeBlockedEmailsModal({ syncHistory = true } = {}) {
+    const wasOpen = !$('dmBlockedEmailsModal')?.classList.contains('hidden');
     $('dmBlockedEmailsModal')?.classList.add('hidden');
+    if (wasOpen && syncHistory) window.requestCloseDashboardOverlay?.();
   }
 
   function renderBlockedEmailsList() {
@@ -887,9 +889,11 @@
     window.pushDashboardOverlay?.('dmBlockedEmailStart');
   }
 
-  function closeBlockedEmailStartModal() {
+  function closeBlockedEmailStartModal({ syncHistory = true } = {}) {
+    const wasOpen = !$('dmBlockedEmailStartModal')?.classList.contains('hidden');
     blockedEmailStartTarget = null;
     $('dmBlockedEmailStartModal')?.classList.add('hidden');
+    if (wasOpen && syncHistory) window.requestCloseDashboardOverlay?.();
   }
 
   async function unblockEmailFromStartModal() {

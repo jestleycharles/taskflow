@@ -14,7 +14,14 @@ const {
   validateTeamStatus,
   getTeamColumnSlugs,
 } = require('../lib/team-columns');
-const { deleteStoredTaskFiles } = require('../lib/storage-cleanup');
+const { deleteStoredTaskFiles, deleteMessageAttachments } = require('../lib/storage-cleanup');
+const { assertCanUploadFile } = require('../lib/upload-guard');
+const {
+  MAX_ATTACHMENT_BYTES: MSG_ATTACHMENT_MAX,
+  fetchAttachmentsForMessages,
+  attachAttachmentsToItems,
+  uploadMessageAttachment,
+} = require('../lib/message-attachments');
 const router = express.Router();
 
 const TASK_FILES_BUCKET = 'task-files';
@@ -35,6 +42,54 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_ATTACHMENT_BYTES },
 });
+
+const commentFileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MSG_ATTACHMENT_MAX },
+});
+
+const COMMENT_SELECT =
+  'id, task_id, user_id, content, content_before_edit, edited_at, deleted_at, is_system, created_at, user:user_id(id, username, avatar_color, avatar_url)';
+
+function optionalCommentFileUpload(req, res, next) {
+  if (!req.is('multipart/form-data')) return next();
+  commentFileUpload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File must be 8 MB or smaller' });
+      }
+      return sendError(res, 400, err, 'save');
+    }
+    next();
+  });
+}
+
+function rejectGuestCommentWrite(req, res) {
+  if (isGuestUser(req.session.user)) {
+    res.status(403).json({ error: 'Guests can view comments but cannot edit or delete them' });
+    return true;
+  }
+  return false;
+}
+
+async function enrichComments(comments) {
+  const list = comments || [];
+  const userComments = list.filter((c) => !c.is_system);
+  const reactionsMap = await fetchReactionsForMessages(
+    'comment',
+    userComments.map((c) => c.id),
+  );
+  const attachmentsMap = await fetchAttachmentsForMessages(
+    'comment',
+    userComments.map((c) => c.id),
+  );
+  return attachAttachmentsToItems(attachReactionsToItems(list, reactionsMap), attachmentsMap);
+}
+
+async function enrichSingleComment(data) {
+  const [enriched] = await enrichComments([data]);
+  return enriched;
+}
 
 const PRIORITY_LABELS = { urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
 
@@ -671,57 +726,164 @@ router.get('/api/tasks/:id/comments', requireAuth, async (req, res) => {
 
   const { data } = await supabaseAdmin
     .from('comments')
-    .select('*, user:user_id(id, username, avatar_color, avatar_url)')
+    .select(COMMENT_SELECT)
     .eq('task_id', id)
     .order('created_at', { ascending: true });
 
-  const comments = data || [];
-  const userComments = comments.filter((c) => !c.is_system);
-  const reactionsMap = await fetchReactionsForMessages(
-    'comment',
-    userComments.map((c) => c.id)
-  );
-  const withReactions = attachReactionsToItems(comments, reactionsMap);
-  res.json(withReactions);
+  res.json(await enrichComments(data || []));
 });
 
-// POST /api/tasks/:id/comments
-router.post('/api/tasks/:id/comments', requireAuth, async (req, res) => {
+// POST /api/tasks/:id/comments — JSON or multipart (optional file)
+router.post('/api/tasks/:id/comments', requireAuth, optionalCommentFileUpload, async (req, res) => {
   const { id } = req.params;
   const userId = req.session.user.id;
   const raw = (req.body?.content || '').trim();
-  if (!raw) return res.status(400).json({ error: 'Comment cannot be empty' });
+  const hasFile = !!req.file;
+  if (!raw && !hasFile) return res.status(400).json({ error: 'Comment cannot be empty' });
   if (raw.length > 4000) return res.status(400).json({ error: 'Comment is too long' });
 
   const { data: task } = await supabaseAdmin.from('tasks').select('team_id, title').eq('id', id).single();
   if (!task || !await isMember(task.team_id, userId)) return res.status(403).json({ error: 'Forbidden' });
 
-  const guard = await assertCanSendUserMessage(supabaseAdmin, {
-    table: 'comments',
-    scopeColumn: 'task_id',
-    scopeId: id,
-    userId,
-    content: raw,
-    excludeSystem: true,
-    skipSpamGuard: canBypassSpamGuard(req.session.user),
-  });
-  if (!guard.ok) {
-    return res.status(guard.status).json({
-      error: guard.error,
-      retry_after_ms: guard.retry_after_ms,
+  if (hasFile) {
+    if (isGuestUser(req.session.user)) {
+      return res.status(403).json({ error: 'Guest accounts cannot attach files to comments' });
+    }
+    const uploadGuard = await assertCanUploadFile(supabaseAdmin, userId);
+    if (!uploadGuard.ok) {
+      return res.status(uploadGuard.status).json({
+        error: uploadGuard.error,
+        retry_after_ms: uploadGuard.retry_after_ms,
+      });
+    }
+  }
+
+  let content = raw;
+  if (raw) {
+    const guard = await assertCanSendUserMessage(supabaseAdmin, {
+      table: 'comments',
+      scopeColumn: 'task_id',
+      scopeId: id,
+      userId,
+      content: raw,
+      excludeSystem: true,
+      skipSpamGuard: canBypassSpamGuard(req.session.user),
     });
+    if (!guard.ok) {
+      return res.status(guard.status).json({
+        error: guard.error,
+        retry_after_ms: guard.retry_after_ms,
+      });
+    }
+    content = guard.content;
+  } else {
+    content = '';
   }
 
   const { data: comment, error } = await supabaseAdmin
     .from('comments')
-    .insert({ task_id: id, user_id: userId, content: guard.content })
-    .select('*, user:user_id(id, username, avatar_color, avatar_url)')
+    .insert({ task_id: id, user_id: userId, content })
+    .select(COMMENT_SELECT)
     .single();
 
   if (error) return sendError(res, 400, error, 'save');
 
+  if (hasFile) {
+    const uploaded = await uploadMessageAttachment({
+      messageType: 'comment',
+      messageId: comment.id,
+      file: req.file,
+      userId,
+    });
+    if (!uploaded.ok) {
+      await supabaseAdmin.from('comments').delete().eq('id', comment.id);
+      return res.status(uploaded.status).json({ error: uploaded.error });
+    }
+  }
+
   await logActivity(task.team_id, userId, 'comment_added', `Commented on "${task.title}"`, id);
-  res.json({ ...comment, reactions: [] });
+  res.json(await enrichSingleComment(comment));
+});
+
+// PATCH /api/tasks/:id/comments/:commentId — edit own comment
+router.patch('/api/tasks/:id/comments/:commentId', requireAuth, async (req, res) => {
+  if (rejectGuestCommentWrite(req, res)) return;
+
+  const { id, commentId } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: task } = await supabaseAdmin.from('tasks').select('team_id').eq('id', id).single();
+  if (!task || !await isMember(task.team_id, userId)) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data: existing, error: fetchErr } = await supabaseAdmin
+    .from('comments')
+    .select('id, user_id, task_id, deleted_at, is_system, content, content_before_edit, edited_at')
+    .eq('id', commentId)
+    .eq('task_id', id)
+    .single();
+
+  if (fetchErr || !existing) return res.status(404).json({ error: 'Comment not found' });
+  if (existing.is_system) return res.status(400).json({ error: 'System comments cannot be edited' });
+  if (existing.deleted_at) return res.status(400).json({ error: 'Cannot edit a deleted comment' });
+  if (String(existing.user_id) !== String(userId)) {
+    return res.status(403).json({ error: 'You can only edit your own comments' });
+  }
+
+  const content = (req.body?.content || '').trim();
+  if (!content) return res.status(400).json({ error: 'Comment cannot be empty' });
+  if (content.length > 4000) return res.status(400).json({ error: 'Comment is too long' });
+
+  const updates = { content, edited_at: new Date().toISOString() };
+  if (!existing.edited_at && existing.content !== content) {
+    updates.content_before_edit = existing.content;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('comments')
+    .update(updates)
+    .eq('id', commentId)
+    .select(COMMENT_SELECT)
+    .single();
+
+  if (error) return sendError(res, 500, error, 'load');
+  res.json(await enrichSingleComment(data));
+});
+
+// DELETE /api/tasks/:id/comments/:commentId — soft delete own comment
+router.delete('/api/tasks/:id/comments/:commentId', requireAuth, async (req, res) => {
+  if (rejectGuestCommentWrite(req, res)) return;
+
+  const { id, commentId } = req.params;
+  const userId = req.session.user.id;
+
+  const { data: task } = await supabaseAdmin.from('tasks').select('team_id').eq('id', id).single();
+  if (!task || !await isMember(task.team_id, userId)) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data: existing, error: fetchErr } = await supabaseAdmin
+    .from('comments')
+    .select('id, user_id, task_id, deleted_at, is_system')
+    .eq('id', commentId)
+    .eq('task_id', id)
+    .single();
+
+  if (fetchErr || !existing) return res.status(404).json({ error: 'Comment not found' });
+  if (existing.is_system) return res.status(400).json({ error: 'System comments cannot be deleted' });
+  if (existing.deleted_at) return res.status(400).json({ error: 'Comment already deleted' });
+  if (String(existing.user_id) !== String(userId)) {
+    return res.status(403).json({ error: 'You can only delete your own comments' });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('comments')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', commentId)
+    .select(COMMENT_SELECT)
+    .single();
+
+  if (error) return sendError(res, 500, error, 'load');
+
+  await deleteMessageAttachments('comment', [commentId]);
+  res.json(await enrichSingleComment(data));
 });
 
 // GET /api/teams/:teamId/activity

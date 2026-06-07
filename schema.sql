@@ -151,6 +151,9 @@ CREATE TABLE IF NOT EXISTS comments (
   task_id UUID NOT NULL REFERENCES tasks (id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   content TEXT NOT NULL,
+  content_before_edit TEXT,
+  edited_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
   is_system BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -251,7 +254,7 @@ CREATE INDEX IF NOT EXISTS dm_messages_conversation_created_idx
 
 CREATE TABLE IF NOT EXISTS message_attachments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'dm')),
+  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'dm', 'comment')),
   message_id UUID NOT NULL,
   file_url TEXT NOT NULL,
   file_name TEXT NOT NULL,

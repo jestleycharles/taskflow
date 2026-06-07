@@ -107,17 +107,7 @@ window.requestCloseDashboardOverlay = function requestCloseDashboardOverlay() {
   if (getTopDashboardOverlay()) history.back();
 };
 
-window.addEventListener("popstate", () => {
-  if (window.DirectChat?.handlePopState?.()) return;
-  if (!window.dashboardHistoryPopping) resetTransientNavigationUi?.();
-  if (!TF_VIEWPORT?.isMobile?.()) return;
-  if (window.dashboardHistoryPopping) {
-    window.dashboardHistoryPopping = false;
-    return;
-  }
-  const overlay = getTopDashboardOverlay();
-  if (overlay) closeDashboardOverlayUi(overlay);
-});
+// popstate handler lives in dashboard/modals.js (single listener)
 
 // ---------------------------------------------------------------------------
 // init()

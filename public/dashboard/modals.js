@@ -85,10 +85,10 @@ window.closeDashboardOverlayUi = async function closeDashboardOverlayUi(
       closeCreateModal();
       break;
     case "dmBlockedEmails":
-      window.closeBlockedEmailsModal?.();
+      window.closeBlockedEmailsModal?.({ syncHistory: false });
       break;
     case "dmBlockedEmailStart":
-      window.closeBlockedEmailStartModal?.();
+      window.closeBlockedEmailStartModal?.({ syncHistory: false });
       break;
   }
 };

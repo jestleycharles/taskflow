@@ -16,54 +16,23 @@ const TEAM_CARD_BODY_SKELETON_HTML = `
     <div class="skeleton w-11 h-11 rounded-xl"></div>
     <div class="skeleton w-14 h-5 rounded-full"></div>
   </div>
-  <div class="skeleton w-2/3 h-4 mb-2"></div>
-  <div class="skeleton w-full h-3 mb-1.5"></div>
-  <div class="skeleton w-4/5 h-3 mb-5"></div>
+  <div class="skeleton w-2/3 h-4 mb-1"></div>
+  <div class="skeleton w-full h-3 mb-1"></div>
+  <div class="skeleton w-4/5 h-3 mb-4"></div>
   <div class="flex items-center justify-between">
-    <div class="skeleton w-16 h-3"></div>
+    <div class="flex flex-col gap-0.5">
+      <div class="skeleton w-20 h-3"></div>
+      <div class="skeleton w-24 h-3"></div>
+    </div>
     <div class="skeleton w-4 h-4 rounded"></div>
   </div>`;
 
-const TEAMS_GRID_SKELETON_HTML = `
-  <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-    <div class="flex items-start justify-between mb-4">
-      <div class="skeleton w-11 h-11 rounded-xl"></div>
-      <div class="skeleton w-14 h-5 rounded-full"></div>
-    </div>
-    <div class="skeleton w-2/3 h-4 mb-2"></div>
-    <div class="skeleton w-full h-3 mb-1.5"></div>
-    <div class="skeleton w-4/5 h-3 mb-5"></div>
-    <div class="flex items-center justify-between">
-      <div class="skeleton w-16 h-3"></div>
-      <div class="skeleton w-4 h-4 rounded"></div>
-    </div>
-  </div>
-  <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-    <div class="flex items-start justify-between mb-4">
-      <div class="skeleton w-11 h-11 rounded-xl"></div>
-      <div class="skeleton w-16 h-5 rounded-full"></div>
-    </div>
-    <div class="skeleton w-1/2 h-4 mb-2"></div>
-    <div class="skeleton w-full h-3 mb-1.5"></div>
-    <div class="skeleton w-3/5 h-3 mb-5"></div>
-    <div class="flex items-center justify-between">
-      <div class="skeleton w-20 h-3"></div>
-      <div class="skeleton w-4 h-4 rounded"></div>
-    </div>
-  </div>
-  <div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">
-    <div class="flex items-start justify-between mb-4">
-      <div class="skeleton w-11 h-11 rounded-xl"></div>
-      <div class="skeleton w-12 h-5 rounded-full"></div>
-    </div>
-    <div class="skeleton w-3/4 h-4 mb-2"></div>
-    <div class="skeleton w-full h-3 mb-1.5"></div>
-    <div class="skeleton w-2/3 h-3 mb-5"></div>
-    <div class="flex items-center justify-between">
-      <div class="skeleton w-14 h-3"></div>
-      <div class="skeleton w-4 h-4 rounded"></div>
-    </div>
-  </div>`;
+const TEAMS_GRID_SKELETON_HTML = [0, 1, 2]
+  .map(
+    () =>
+      `<div class="skeleton-card bg-ink-800 border border-white/10 rounded-2xl p-5">${TEAM_CARD_BODY_SKELETON_HTML}</div>`,
+  )
+  .join("");
 
 // ---------------------------------------------------------------------------
 // Online presence

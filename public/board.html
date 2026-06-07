@@ -1435,10 +1435,24 @@
           </div>
           <div id="commentsList" class="flex-1 p-6 space-y-4 overflow-y-auto min-h-0"></div>
           <div class="p-4 border-t border-white/10">
-            <div class="flex gap-2">
+            <div id="commentAttachPreview" class="chat-attach-preview hidden mb-2" role="status">
+              <div id="commentAttachPreviewThumb" class="shrink-0"></div>
+              <div class="min-w-0 flex-1">
+                <p id="commentAttachPreviewName" class="text-xs text-gray-200 truncate"></p>
+                <p id="commentAttachPreviewSize" class="text-[10px] text-gray-500"></p>
+              </div>
+              <button type="button" id="commentAttachClearBtn" class="attachment-icon-btn danger shrink-0" title="Remove attachment" aria-label="Remove attachment">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            </div>
+            <div id="commentComposerActive" class="flex gap-2">
+              <input type="file" id="commentAttachInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+              <button type="button" id="commentAttachBtn" class="attachment-icon-btn shrink-0 self-center hidden" title="Attach image or PDF" aria-label="Attach file">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+              </button>
               <input id="commentInput" type="text" placeholder="Add a comment..." data-mention-prefer-above="1"
                 class="flex-1 bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-brand-500 transition" />
-              <button id="commentSendBtn" type="button" onclick="submitComment()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium">Send</button>
+              <button id="commentSendBtn" type="button" onclick="submitComment()" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:pointer-events-none text-white text-sm px-4 py-2.5 rounded-xl transition font-medium shrink-0">Send</button>
             </div>
             <p id="commentSendCooldown" class="send-cooldown-notice hidden" role="status" aria-live="polite"></p>
           </div>
@@ -1521,6 +1535,11 @@
     let commentUnreadBadgeLoading = false;
     let taskCommentsLastReadAt = {};
     let taskCommentReadPersistTimer = null;
+    let editingCommentId = null;
+    let commentEditDraft = '';
+    let commentViewingOriginalId = null;
+    let commentPendingFile = null;
+    let commentAttachPreviewUrl = null;
     let openReactionPicker = null;
     let openReactorsPopover = null;
     let reactionPress = null;
@@ -2360,7 +2379,7 @@
           <button type="button" class="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10" onclick="editColumn('${c.id}')" title="Edit">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           </button>
-          <button type="button" class="text-gray-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10" onclick="deleteColumn('${c.id}')" title="Delete" ${cols.length <= 1 ? 'disabled' : ''}>
+          <button type="button" class="text-gray-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10" onclick="deleteColumn('${c.id}')" title="Delete">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           </button>
         </div>`).join('');
@@ -2483,7 +2502,11 @@
 
     function deleteColumn(columnId) {
       const col = getTeamColumns().find((c) => c.id === columnId);
-      if (!col || getTeamColumns().length <= 1) return;
+      if (!col) return;
+      if (getTeamColumns().length <= 2) {
+        showAlert('Every team must keep at least two columns to organize work. These columns cannot be deleted.', 'Columns protected');
+        return;
+      }
       const others = getTeamColumns().filter((c) => c.id !== columnId);
       const moveTo = others[0];
       showConfirm({
@@ -2650,6 +2673,7 @@
         if (!teamOk) return;
         await loadTasks();
         applyChatComposerState();
+        applyCommentComposerState();
         applyGuestTeamAvatarUploadUi();
         syncAddTaskModalUi();
         await loadChatReadState();
@@ -2672,6 +2696,63 @@
       document.getElementById('chatGuestNotice').classList.toggle('hidden', !guest);
       document.getElementById('chatAttachPreview')?.classList.toggle('hidden', guest || !chatPendingFile);
       if (guest) clearChatPendingFile();
+    }
+
+    function applyCommentComposerState() {
+      const guest = isGuest();
+      document.getElementById('commentAttachBtn')?.classList.toggle('hidden', guest);
+      document.getElementById('commentAttachPreview')?.classList.toggle('hidden', guest || !commentPendingFile);
+      if (guest) clearCommentPendingFile();
+    }
+
+    function clearCommentPendingFile() {
+      commentPendingFile = null;
+      if (commentAttachPreviewUrl) {
+        URL.revokeObjectURL(commentAttachPreviewUrl);
+        commentAttachPreviewUrl = null;
+      }
+      const input = document.getElementById('commentAttachInput');
+      if (input) input.value = '';
+      document.getElementById('commentAttachPreview')?.classList.add('hidden');
+    }
+
+    function renderCommentAttachPreview() {
+      const wrap = document.getElementById('commentAttachPreview');
+      const thumb = document.getElementById('commentAttachPreviewThumb');
+      const nameEl = document.getElementById('commentAttachPreviewName');
+      const sizeEl = document.getElementById('commentAttachPreviewSize');
+      if (!wrap || !commentPendingFile) {
+        wrap?.classList.add('hidden');
+        return;
+      }
+      wrap.classList.remove('hidden');
+      if (nameEl) nameEl.textContent = commentPendingFile.name;
+      if (sizeEl) sizeEl.textContent = formatFileSize(commentPendingFile.size);
+      if (thumb) {
+        if (commentAttachPreviewUrl) URL.revokeObjectURL(commentAttachPreviewUrl);
+        if (commentPendingFile.type.startsWith('image/')) {
+          commentAttachPreviewUrl = URL.createObjectURL(commentPendingFile);
+          thumb.innerHTML = `<img src="${commentAttachPreviewUrl}" alt="" class="attachment-file-thumb" />`;
+        } else {
+          commentAttachPreviewUrl = null;
+          thumb.innerHTML = `<div class="attachment-file-icon">${attachmentFileIconHtml(commentPendingFile.type)}</div>`;
+        }
+      }
+    }
+
+    function setCommentPendingFile(file) {
+      if (!file || isGuest()) return;
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+      if (!allowed.includes(file.type)) {
+        showAlert('File type not allowed. Use JPEG, PNG, WebP, GIF, or PDF.');
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        showAlert('File must be 8 MB or smaller.');
+        return;
+      }
+      commentPendingFile = file;
+      renderCommentAttachPreview();
     }
 
     function clearChatPendingFile() {
@@ -3534,6 +3615,11 @@
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
+      editingCommentId = null;
+      commentEditDraft = '';
+      commentViewingOriginalId = null;
+      clearCommentPendingFile();
+      applyCommentComposerState();
       resetTaskDetailsDrawer();
       document.getElementById('commentsList').innerHTML = messageListSkeletonHtml();
       document.getElementById('taskModal').classList.remove('hidden');
@@ -3604,6 +3690,10 @@
       editingTaskField = null;
       taskEditDraft = '';
       taskViewingOriginalField = null;
+      editingCommentId = null;
+      commentEditDraft = '';
+      commentViewingOriginalId = null;
+      clearCommentPendingFile();
     }
     function closeTaskModal() {
       requestCloseBoardOverlay();
@@ -3628,8 +3718,18 @@
         renderCommentItem,
         emptyHtml,
       );
+      syncCommentVersionFocusUi();
       if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
-      if (batchScrollHint === 'older' || scrollToTop) {
+      if (editingCommentId) {
+        const ta = document.getElementById(`commentEditInput-${editingCommentId}`);
+        if (ta) {
+          ta.value = commentEditDraft;
+          attachMentionAutocompleteToEditTextarea(ta);
+          ta.focus();
+          const len = ta.value.length;
+          ta.setSelectionRange(len, len);
+        }
+      } else if (batchScrollHint === 'older' || scrollToTop) {
         list.scrollTop = 0;
       } else if (!atBottom && commentBatch.isAtLatest()) {
         list.scrollTop = scrollTop;
@@ -4075,6 +4175,19 @@
       renderBoard();
     }
 
+    function renderCommentActions(c) {
+      if (isGuest() || c.is_system || String(c.user_id) !== String(currentUser?.id) || c.deleted_at) return '';
+      if (editingCommentId === c.id) return '';
+      return `<div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button type="button" onclick="startEditComment('${c.id}')" class="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/10" title="Edit">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+          </button>
+          <button type="button" onclick="deleteComment('${c.id}')" class="text-gray-500 hover:text-red-400 p-1 rounded-lg hover:bg-red-500/10" title="Delete">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
+        </div>`;
+    }
+
     function renderCommentItem(c) {
       if (c.is_system) {
         return `<div class="comment-system text-xs text-gray-400 leading-relaxed">
@@ -4084,20 +4197,171 @@
           <span class="text-gray-600 ml-1.5">${timeAgo(c.created_at)}</span>
         </div>`;
       }
-      const mentionedYou = !isGuestAuthor(c.user_id) && messageMentionsCurrentUser(c.content);
-      const mentionRowClass = mentionedYou ? ' msg-mentioned-you' : '';
-      const guestNoMentions = isGuestAuthor(c.user_id) ? ' data-guest-no-mentions="1"' : '';
-      return `<div class="flex gap-3${mentionRowClass}" data-comment-id="${c.id}"${guestNoMentions}>
-          ${userAvatarHtml(c.user, 'w-7 h-7')}
+
+      const user = c.user || { username: '?', avatar_color: '#4f6ef7' };
+
+      if (c.deleted_at) {
+        return `<div class="flex gap-3" data-comment-id="${c.id}">
+          ${userAvatarHtml(user, 'w-7 h-7')}
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-xs font-medium">${memberNameHtml(c.user, c.user_id, 'text-xs')}</span>
-              <span class="text-xs text-gray-600">${timeAgo(c.created_at)}</span>
+            <div class="chat-msg-tombstone rounded-xl p-3">
+              <p class="text-xs text-gray-500 italic">Comment deleted</p>
+              <p class="text-xs text-gray-600 mt-1.5">${memberNameHtml(user, c.user_id, 'text-xs inline')} · ${escHtml(formatChatDateTime(c.created_at))}</p>
             </div>
-            <p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatCommentBodyHtml(c)}</p>
+          </div>
+        </div>`;
+      }
+
+      if (editingCommentId === c.id) {
+        return `<div class="flex gap-3" data-comment-id="${c.id}">
+          ${userAvatarHtml(user, 'w-7 h-7')}
+          <div class="flex-1 min-w-0 bg-ink-700/80 border border-brand-500/30 rounded-xl p-3 space-y-2">
+            <textarea id="commentEditInput-${c.id}" rows="3" oninput="commentEditDraft=this.value"
+              class="w-full bg-ink-700 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-500 transition resize-none"></textarea>
+            <div class="flex gap-2 justify-end">
+              <button type="button" onclick="cancelEditComment()" class="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Cancel</button>
+              <button type="button" onclick="saveEditComment('${c.id}')" class="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded-lg transition font-medium">Save</button>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      const editedNote = c.edited_at
+        ? `<span class="text-gray-600"> · edited ${escHtml(formatChatDateTime(c.edited_at))}</span>`
+        : '';
+      const hasOriginal = !!c.edited_at;
+      const showingOriginal = hasOriginal && commentViewingOriginalId === c.id;
+      const displayContent = showingOriginal ? c.content_before_edit : c.content;
+      const versionToggle = hasOriginal
+        ? `<button type="button" onclick="toggleCommentVersion('${c.id}')"
+            class="text-xs text-brand-500 hover:text-brand-400 transition mt-1.5">
+            ${showingOriginal ? 'Show new comment' : 'Show original comment'}
+          </button>`
+        : '';
+      const editedLabel = c.edited_at
+        ? `<p class="text-xs text-gray-500 italic mb-1">${showingOriginal ? 'Original comment' : 'Edited comment'}</p>`
+        : '';
+      const bodyHtml = c.edited_at
+        ? `<div class="chat-msg-edited-card rounded-lg bg-ink-700/40 border border-white/5 px-3 py-2">
+            ${editedLabel}
+            ${displayContent ? `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatCommentBodyHtml({ ...c, content: displayContent })}</p>` : ''}
+            ${versionToggle}
+          </div>`
+        : (displayContent
+          ? `<p class="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">${formatCommentBodyHtml(c)}</p>`
+          : '');
+
+      const attachmentsHtml = renderMessageAttachmentsHtml(c.attachments);
+      const mentionedYou = !isGuestAuthor(c.user_id) && messageMentionsCurrentUser(displayContent);
+      const mentionRowClass = mentionedYou ? ' msg-mentioned-you' : '';
+      const versionActiveClass = showingOriginal ? ' chat-msg-version-active' : '';
+      const guestNoMentions = isGuestAuthor(c.user_id) ? ' data-guest-no-mentions="1"' : '';
+
+      return `<div class="group flex gap-3${versionActiveClass}${mentionRowClass}" data-comment-id="${c.id}"${guestNoMentions}>
+          ${userAvatarHtml(user, 'w-7 h-7')}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <div class="min-w-0">
+                <span class="text-xs font-medium">${memberNameHtml(user, c.user_id, 'text-xs')}</span>
+                <p class="text-xs text-gray-600 mt-0.5">${escHtml(formatChatDateTime(c.created_at))}${editedNote}</p>
+              </div>
+              ${renderCommentActions(c)}
+            </div>
+            ${bodyHtml}
+            ${attachmentsHtml}
             ${renderReactionsBar('comment', c.id, c.reactions || [])}
           </div>
         </div>`;
+    }
+
+    function toggleCommentVersion(commentId) {
+      commentViewingOriginalId = commentViewingOriginalId === commentId ? null : commentId;
+      renderComments();
+    }
+
+    function syncCommentVersionFocusUi() {
+      const list = document.getElementById('commentsList');
+      const viewing = !!commentViewingOriginalId;
+      list?.classList.toggle('chat-viewing-original', viewing);
+      if (!list || !viewing) return;
+      list.querySelectorAll('[data-comment-id]').forEach((el) => {
+        el.classList.toggle('chat-msg-version-active', el.dataset.commentId === commentViewingOriginalId);
+      });
+    }
+
+    function captureCommentEditDraft() {
+      if (!editingCommentId) return;
+      const ta = document.getElementById(`commentEditInput-${editingCommentId}`);
+      if (ta) commentEditDraft = ta.value;
+    }
+
+    function startEditComment(commentId) {
+      if (isGuest()) return;
+      const c = taskComments.find((x) => x.id === commentId);
+      if (!c || c.deleted_at || c.is_system) return;
+      editingCommentId = commentId;
+      commentEditDraft = c.content;
+      renderComments();
+    }
+
+    function cancelEditComment() {
+      editingCommentId = null;
+      commentEditDraft = '';
+      renderComments();
+    }
+
+    async function saveEditComment(commentId) {
+      const taskId = activeTaskId;
+      if (!taskId) return;
+      const textarea = document.getElementById(`commentEditInput-${commentId}`);
+      const content = prepareOutgoingMessage(textarea?.value);
+      if (!content) return;
+      const r = await apiFetch(`/api/tasks/${taskId}/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      const updated = await parseJsonResponse(r);
+      if (!r.ok) {
+        showAlert(updated.error || 'Failed to edit comment');
+        return;
+      }
+      const idx = taskComments.findIndex((c) => c.id === commentId);
+      if (idx !== -1) taskComments[idx] = updated;
+      editingCommentId = null;
+      commentEditDraft = '';
+      if (commentViewingOriginalId === commentId) commentViewingOriginalId = null;
+      renderComments();
+    }
+
+    function deleteComment(commentId) {
+      if (isGuest()) return;
+      showConfirm({
+        title: 'Delete comment',
+        message: 'Delete this comment? This cannot be undone.',
+        confirmLabel: 'Delete',
+        danger: true,
+        onConfirm: () => executeDeleteComment(commentId),
+      });
+    }
+
+    async function executeDeleteComment(commentId) {
+      const taskId = activeTaskId;
+      if (!taskId) return;
+      const r = await apiFetch(`/api/tasks/${taskId}/comments/${commentId}`, { method: 'DELETE' });
+      const updated = await parseJsonResponse(r);
+      if (!r.ok) {
+        showAlert(updated.error || 'Failed to delete comment');
+        return;
+      }
+      const idx = taskComments.findIndex((c) => c.id === commentId);
+      if (idx !== -1) taskComments[idx] = updated;
+      if (editingCommentId === commentId) {
+        editingCommentId = null;
+        commentEditDraft = '';
+      }
+      if (commentViewingOriginalId === commentId) commentViewingOriginalId = null;
+      renderComments();
     }
 
     function countUnreadTaskComments(comments, taskId) {
@@ -4133,7 +4397,7 @@
     }
 
     function commentsSignature(comments) {
-      return (comments || []).map((c) => `${c.id}:${c.created_at}`).join('|');
+      return (comments || []).map((c) => `${c.id}:${c.created_at}:${c.edited_at || ''}:${c.deleted_at || ''}`).join('|');
     }
 
     let lastLoadedCommentsSig = null;
@@ -4230,7 +4494,20 @@
       taskComments = comments;
       if (commentsChanged) {
         lastLoadedCommentsSig = sig;
-        renderComments();
+        if (editingCommentId) {
+          captureCommentEditDraft();
+          const editingComment = comments.find((c) => c.id === editingCommentId);
+          if (editingComment && !editingComment.deleted_at && !editingComment.is_system) {
+            const idx = taskComments.findIndex((c) => c.id === editingCommentId);
+            if (idx !== -1) {
+              taskComments[idx] = { ...editingComment, content: commentEditDraft || editingComment.content };
+            }
+          } else {
+            renderComments();
+          }
+        } else {
+          renderComments();
+        }
         if (commentUnreadBadgeLoading) {
           if (taskCommentsTabActive && commentBatch.isAtLatest()) {
             await ensureCommentsScrolledToBottom();
@@ -4256,6 +4533,52 @@
       if (!taskId) return;
       const input = document.getElementById('commentInput');
       const btn = document.getElementById('commentSendBtn');
+      const file = commentPendingFile;
+      const textContent = prepareOutgoingMessage(input?.value);
+
+      if (file && !isGuest()) {
+        const key = `task-comment:${taskId}`;
+        if (messageSendInFlight.has(key) || sendCooldownTimers.has(key)) return;
+        if (!textContent && !file) return;
+
+        messageSendInFlight.add(key);
+        if (input) input.disabled = true;
+        if (btn) btn.disabled = true;
+
+        const form = new FormData();
+        if (textContent) form.append('content', textContent);
+        form.append('file', file);
+
+        try {
+          const r = await apiFetch(`/api/tasks/${taskId}/comments`, { method: 'POST', body: form });
+          const data = await parseJsonResponse(r);
+          if (!r.ok) {
+            const limited = messageSendRateLimitResult(r.status, data);
+            if (limited) {
+              applyMessageSendCooldown(key, {
+                retryAfterMs: limited.rateLimit.retryAfterMs,
+                error: limited.rateLimit.error,
+                inputEl: input,
+                sendBtnEl: btn,
+                noticeEl: document.getElementById('commentSendCooldown'),
+              });
+              return;
+            }
+            showAlert(data.error || 'Failed to send comment');
+            return;
+          }
+          commentBatch?.showLatestBatch();
+          if (input) input.value = '';
+          clearCommentPendingFile();
+          await loadComments(taskId);
+        } finally {
+          messageSendInFlight.delete(key);
+          if (input && !sendCooldownTimers.has(key)) input.disabled = false;
+          if (btn && !sendCooldownTimers.has(key)) btn.disabled = false;
+        }
+        return;
+      }
+
       await submitMessageOnce(`task-comment:${taskId}`, {
         inputEl: input,
         sendBtnEl: btn,
@@ -5844,6 +6167,25 @@
     document.getElementById('commentInput').addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.defaultPrevented) submitComment();
     });
+    document.getElementById('commentAttachBtn')?.addEventListener('click', () => {
+      if (isGuest()) return;
+      document.getElementById('commentAttachInput')?.click();
+    });
+    document.getElementById('commentAttachInput')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) setCommentPendingFile(file);
+    });
+    document.getElementById('commentAttachClearBtn')?.addEventListener('click', clearCommentPendingFile);
+    document.getElementById('commentsList')?.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-preview-attachment]');
+      if (!el) return;
+      e.preventDefault();
+      openAttachmentPreview(el.dataset.url, el.dataset.name, el.dataset.mime);
+    });
+    document.getElementById('commentsList')?.addEventListener('scroll', () => {
+      if (openReactionPicker || openReactorsPopover) syncReactionFloatUi();
+      if (openMentionRolePopover) closeMentionRolePopover();
+    }, { passive: true });
 
     document.getElementById('taskAttachmentsList')?.addEventListener('click', (e) => {
       const el = e.target.closest('[data-preview-attachment]');

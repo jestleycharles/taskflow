@@ -46,10 +46,10 @@ async function resolveTeamMessage(messageType, messageId) {
   if (messageType === 'comment') {
     const { data, error } = await supabaseAdmin
       .from('comments')
-      .select('task_id, task:tasks(team_id)')
+      .select('task_id, deleted_at, task:tasks(team_id)')
       .eq('id', messageId)
       .maybeSingle();
-    if (error || !data) return null;
+    if (error || !data || data.deleted_at) return null;
     return data?.task?.team_id || null;
   }
   return null;
