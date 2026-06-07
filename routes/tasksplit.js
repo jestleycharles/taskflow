@@ -187,15 +187,16 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
     if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
 
     const members = await loadTeamMembers(id);
-    const memberIds = new Set(members.map((m) => m.id));
+    const memberIdSet = new Set(members.map((m) => m.id));
 
     const payerId = paid_by || userId;
-    if (!memberIds.has(payerId)) {
+    if (!memberIdSet.has(payerId)) {
       return res.status(400).json({ error: 'Payer must be a workspace member' });
     }
 
-    let participantIds = Array.isArray(participant_ids) ? participant_ids : memberIds;
-    participantIds = [...new Set(participantIds.map(String))].filter((pid) => memberIds.has(pid));
+    const defaultParticipantIds = members.map((m) => m.id);
+    let participantIds = Array.isArray(participant_ids) ? participant_ids : defaultParticipantIds;
+    participantIds = [...new Set(participantIds.map(String))].filter((pid) => memberIdSet.has(pid));
 
     if (!participantIds.length) {
       return res.status(400).json({ error: 'At least one participant is required' });
