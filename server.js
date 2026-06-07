@@ -100,6 +100,10 @@ app.get('/features.md', (req, res) => {
   res.sendFile(path.join(__dirname, 'FEATURES.md'));
 });
 
+app.get('/favicon.ico', (req, res) => {
+  res.redirect(301, '/favicon.svg');
+});
+
 // Pages
 app.get('/', (req, res) => {
   if (req.session?.user) return res.redirect('/dashboard');

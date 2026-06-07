@@ -19,12 +19,16 @@ const { isGuestUser } = require('../lib/user');
 
 const router = express.Router();
 
-router.use(requireAuth, (req, res, next) => {
+function rejectGuestFromTasksplit(req, res, next) {
   if (isGuestUser(req.session.user)) {
     return res.status(403).json({ error: 'TaskSplit is available for registered accounts only' });
   }
   next();
-});
+}
+
+// Scope guest rejection to TaskSplit API routes only — an unscoped router.use()
+// would block every later page route (e.g. /dashboard) for guest sessions.
+router.use('/api/teams/:id/tasksplit', requireAuth, rejectGuestFromTasksplit);
 
 function parseAmount(value) {
   const n = Number(value);
