@@ -48,6 +48,18 @@ html { touch-action: manipulation; }
 #expensesContainer.taskflow-zoom-pinching .expense-card {
   pointer-events: none;
 }
+#expensesZoomRoot.expenses-empty-state {
+  width: 100%;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#expensesZoomRoot.expenses-empty-state #expensesEmpty {
+  width: 100%;
+  max-width: 28rem;
+}
 @media (min-width: 768px) and (min-height: 768px) {
   #expensesContainer {
     overflow: auto;

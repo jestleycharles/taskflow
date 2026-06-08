@@ -27,6 +27,8 @@ function applyTeamHeader() {
   syncTeamDataFromWorkspace();
   updateMemberStatsDisplay();
   applySettingsNavUi();
+  if (typeof updateBalanceNavUi === 'function') updateBalanceNavUi();
+  if (typeof applyTasksplitCurrencyUi === 'function') applyTasksplitCurrencyUi();
 }
 
 async function loadWorkspace() {

@@ -21,9 +21,14 @@ function scrollExpenseCommentsToBottom() {
 
 function renderExpenseCommentActions(c) {
   if (String(c.user_id) !== String(currentUser?.id) || c.deleted_at) return '';
-  return `<div class="flex gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
-    <button type="button" onclick="startEditExpenseComment('${c.id}')" class="text-gray-500 hover:text-white p-1 rounded" title="Edit">✎</button>
-    <button type="button" onclick="deleteExpenseComment('${c.id}')" class="text-gray-500 hover:text-red-400 p-1 rounded" title="Delete">🗑</button>
+  if (editingExpenseCommentId === c.id) return '';
+  return `<div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+    <button type="button" onclick="startEditExpenseComment('${c.id}')" class="text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/10" title="Edit">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+    </button>
+    <button type="button" onclick="deleteExpenseComment('${c.id}')" class="text-gray-500 hover:text-red-400 p-1 rounded-lg hover:bg-red-500/10" title="Delete">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+    </button>
   </div>`;
 }
 

@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS teams (
   workspace_type TEXT NOT NULL DEFAULT 'task' CHECK (workspace_type IN ('task', 'expense')),
   -- solo | duo | group — only for expense workspaces
   expense_mode TEXT CHECK (expense_mode IS NULL OR expense_mode IN ('solo', 'duo', 'group')),
+  -- ISO-like code for TaskSplit money display (default Philippine Peso)
+  currency_code TEXT NOT NULL DEFAULT 'PHP' CHECK (
+    currency_code IN ('PHP', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'SGD', 'INR', 'MYR')
+  ),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK (
     (workspace_type = 'task' AND expense_mode IS NULL)
@@ -488,3 +492,5 @@ ON CONFLICT (email) DO NOTHING;
 -- =============================================================================
 -- Migrations for existing databases (run manually if already deployed)
 -- =============================================================================
+
+

@@ -21,15 +21,16 @@ const messageAttachmentRoutes = require('./routes/message-attachments');
 const tasksplitRoutes = require('./routes/tasksplit');
 const { ensureFeaturePostSeed } = require('./lib/feature-post-seed');
 const { supabaseAdmin } = require('./lib/supabase');
-const { toSessionUser } = require('./lib/user');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
 
 // ── Timing helper ────────────────────────────────────────────────────────────
 const t0 = Date.now();
-function elapsed() { return `+${Date.now() - t0}ms`; }
-function log(label) { console.log(`[startup] ${elapsed().padEnd(8)} ${label}`); }
+function elapsedMs() { return Date.now() - t0; }
+function log(label) {
+  console.log(`[startup] +${String(elapsedMs()).padStart(5)}ms  ${label}`);
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 log('imports resolved');
@@ -40,24 +41,29 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Fix 2: lazy session pool — created once on first request, not at boot ────
+// ── Lazy session pool — created in background, first request waits if needed ─
 let sessionPoolPromise = null;
 function getSessionPool() {
   if (!sessionPoolPromise) {
+    log('creating session pool (background)…');
     const sessionDbUrl = process.env.SESSION_DATABASE_URL || process.env.DATABASE_URL;
-    sessionPoolPromise = createSessionPool(sessionDbUrl);
+    sessionPoolPromise = createSessionPool(sessionDbUrl)
+      .then((pool) => {
+        log('session pool ready');
+        return pool;
+      })
+      .catch((err) => {
+        console.error(`[startup] +${elapsedMs()}ms  session pool error:`, err);
+        sessionPoolPromise = null;
+        throw err;
+      });
   }
   return sessionPoolPromise;
 }
 
-async function start() {
-  log('start() called');
-
-  // ── Fix 2: resolve pool lazily so it doesn't block server start ─────────
-  const sessionPool = await getSessionPool();
-  log('session pool ready');
-
-  app.use(session({
+let sessionMiddleware = null;
+const sessionMiddlewareReady = getSessionPool().then((sessionPool) => {
+  sessionMiddleware = session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -72,111 +78,114 @@ async function start() {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
-  }));
+  });
   log('session middleware mounted');
+  return sessionMiddleware;
+});
 
-  // Health check
-  app.get('/health', async (req, res) => {
-    const { error } = await supabaseAdmin
-      .from('_health_ping')
-      .select('id', { count: 'exact', head: true })
-      .limit(1);
+app.use((req, res, next) => {
+  if (sessionMiddleware) return sessionMiddleware(req, res, next);
+  sessionMiddlewareReady.then((mw) => mw(req, res, next)).catch(next);
+});
 
-    const dbOk = !error || error.code === 'PGRST205';
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path !== '/api/me') return next();
+  const started = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - started;
+    if (ms >= 250) console.log(`[timing] GET /api/me ${ms}ms`);
+  });
+  next();
+});
 
-    if (!dbOk) {
-      return res.status(503).json({
-        status: 'degraded',
-        db: 'error',
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-      });
-    }
+// Health check
+app.get('/health', async (req, res) => {
+  const { error } = await supabaseAdmin
+    .from('_health_ping')
+    .select('id', { count: 'exact', head: true })
+    .limit(1);
 
-    res.status(200).json({
-      status: 'ok',
-      db: 'ok',
+  const dbOk = !error || error.code === 'PGRST205';
+
+  if (!dbOk) {
+    return res.status(503).json({
+      status: 'degraded',
+      db: 'error',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
+  }
+
+  res.status(200).json({
+    status: 'ok',
+    db: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
   });
+});
 
-  // Routes
-  log('mounting routes…');
-  app.use(authRoutes);
-  app.use(teamRoutes);
-  app.use(taskRoutes);
-  app.use(columnRoutes);
-  app.use(profileRoutes);
-  app.use(chatRoutes);
-  app.use(dmChatRoutes);
-  app.use(dmSettingsRoutes);
-  app.use(reactionRoutes);
-  app.use(feedbackRoutes);
-  app.use(inviteLinkRoutes);
-  app.use(featurePostRoutes);
-  app.use(messageAttachmentRoutes);
-  app.use(tasksplitRoutes);
-  log('all routes mounted');
+// Routes
+log('mounting routes…');
+app.use(authRoutes);
+app.use(teamRoutes);
+app.use(taskRoutes);
+app.use(columnRoutes);
+app.use(profileRoutes);
+app.use(chatRoutes);
+app.use(dmChatRoutes);
+app.use(dmSettingsRoutes);
+app.use(reactionRoutes);
+app.use(feedbackRoutes);
+app.use(inviteLinkRoutes);
+app.use(featurePostRoutes);
+app.use(messageAttachmentRoutes);
+app.use(tasksplitRoutes);
+log('all routes mounted');
 
-  app.get('/features.md', (req, res) => {
-    res.sendFile(path.join(__dirname, 'FEATURES.md'));
-  });
+app.get('/features.md', (req, res) => {
+  res.sendFile(path.join(__dirname, 'FEATURES.md'));
+});
 
-  app.get('/favicon.ico', (req, res) => {
-    res.redirect(301, '/favicon.svg');
-  });
+app.get('/favicon.ico', (req, res) => {
+  res.redirect(301, '/favicon.svg');
+});
 
-  // Pages
-  app.get('/', (req, res) => {
-    if (req.session?.user) return res.redirect('/dashboard');
-    res.redirect('/login');
-  });
+// Pages
+app.get('/', (req, res) => {
+  if (req.session?.user) return res.redirect('/dashboard');
+  res.redirect('/login');
+});
 
-  app.get('/dashboard', requireAuth, (req, res) => {
-    res.sendFile('dashboard.html', { root: './public' });
-  });
+app.get('/dashboard', requireAuth, (req, res) => {
+  res.sendFile('dashboard.html', { root: './public' });
+});
 
-  app.get('/board/:teamId', requireAuth, (req, res) => {
-    res.redirect(301, `/taskflow/${req.params.teamId}`);
-  });
+app.get('/board/:teamId', requireAuth, (req, res) => {
+  res.redirect(301, `/taskflow/${req.params.teamId}`);
+});
 
-  app.get('/taskflow/:teamId', requireAuth, (req, res) => {
-    res.sendFile('taskflow.html', { root: './public' });
-  });
+app.get('/taskflow/:teamId', requireAuth, (req, res) => {
+  res.sendFile('taskflow.html', { root: './public' });
+});
 
-  app.get('/tasksplit/:teamId', requireAuth, (req, res) => {
-    res.sendFile('tasksplit.html', { root: './public' });
-  });
+app.get('/tasksplit/:teamId', requireAuth, (req, res) => {
+  res.sendFile('tasksplit.html', { root: './public' });
+});
 
-  // API: current user
-  app.get('/api/me', requireAuth, async (req, res) => {
-    const { data: user, error } = await supabaseAdmin
-      .from('users')
-      .select('id, username, email, avatar_color, avatar_url')
-      .eq('id', req.session.user.id)
-      .single();
-    if (error || !user) return res.status(401).json({ error: 'Unauthorized' });
-    req.session.user = toSessionUser(user);
-    res.json(req.session.user);
-  });
+// API: current user — session only (profile routes refresh session after edits)
+app.get('/api/me', requireAuth, (req, res) => {
+  res.json(req.session.user);
+});
 
-  const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-  // ── Fix 1: listen first, seed in background ──────────────────────────────
-  app.listen(PORT, () => {
-    log(`server listening on port ${PORT}`);
-    console.log(`[startup] ── total startup time: ${Date.now() - t0}ms ──`);
-    console.log(`TaskFlow running on port ${PORT}`);
+app.listen(PORT, () => {
+  log(`server listening on port ${PORT}`);
+  console.log(`[startup] ── ready in ${elapsedMs()}ms (session pool still connecting) ──`);
+  console.log(`TaskFlow running on port ${PORT}`);
 
-    log('running ensureFeaturePostSeed in background…');
-    ensureFeaturePostSeed()
-      .then(() => log('ensureFeaturePostSeed done (background)'))
-      .catch((err) => console.error('[startup] seed error:', err));
-  });
-}
-
-start().catch((err) => {
-  console.error(`[startup] FATAL ${elapsed()}`, err);
-  process.exit(1);
+  log('running ensureFeaturePostSeed in background…');
+  ensureFeaturePostSeed()
+    .then(() => log('ensureFeaturePostSeed done (background)'))
+    .catch((err) => console.error('[startup] seed error:', err));
 });

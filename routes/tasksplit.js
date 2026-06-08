@@ -17,6 +17,7 @@ const {
   loadTeamPendingInvites,
   logTaskSplitActivity,
 } = require('../lib/tasksplit-team');
+const { formatCurrencyAmount } = require('../lib/currencies');
 const { isGuestUser } = require('../lib/user');
 const multer = require('multer');
 const { fetchReactionsForMessages, attachReactionsToItems } = require('../lib/reactions');
@@ -82,8 +83,13 @@ function parseAmount(value) {
   return roundMoney(n);
 }
 
+function localDateYmd(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function parseDate(value) {
-  if (!value) return new Date().toISOString().slice(0, 10);
+  if (!value) return localDateYmd();
   const d = String(value).trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
   return d;
@@ -148,8 +154,8 @@ function attachUsers(records, members) {
   }));
 }
 
-function formatMoney(amount) {
-  return `$${Number(amount).toFixed(2)}`;
+function formatMoney(amount, currencyCode) {
+  return formatCurrencyAmount(amount, currencyCode || 'PHP');
 }
 
 // GET /api/teams/:id/tasksplit — workspace summary
@@ -314,7 +320,7 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
       id,
       userId,
       'expense_added',
-      `Added ${trimmedTitle} (${formatMoney(parsedAmount)}) — paid by ${payerName}`,
+      `Added ${trimmedTitle} (${formatMoney(parsedAmount, loaded.team.currency_code)}) — paid by ${payerName}`,
     );
 
     const full = {
@@ -515,7 +521,7 @@ router.post('/api/teams/:id/tasksplit/settle', requireAuth, async (req, res) => 
     let settleAmount = amount != null ? parseAmount(amount) : owedAmount;
     if (!settleAmount) return res.status(400).json({ error: 'Invalid settlement amount' });
     if (settleAmount > owedAmount) {
-      return res.status(400).json({ error: `You only owe ${formatMoney(owedAmount)}` });
+      return res.status(400).json({ error: `You only owe ${formatMoney(owedAmount, loaded.team.currency_code)}` });
     }
 
     const { data: settlement, error } = await supabaseAdmin
@@ -539,7 +545,7 @@ router.post('/api/teams/:id/tasksplit/settle', requireAuth, async (req, res) => 
       id,
       userId,
       'settlement',
-      `Paid ${toName} ${formatMoney(settleAmount)}`,
+      `Paid ${toName} ${formatMoney(settleAmount, loaded.team.currency_code)}`,
     );
 
     res.json({

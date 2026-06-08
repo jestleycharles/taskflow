@@ -1,25 +1,128 @@
 /**
- * TaskSplit Balance Center — running balances and settle up.
+ * TaskSplit Balance Center (duo/group) and Spending Insights (solo).
  */
 
-function renderBalances() {
-  if (!balances) return;
+function isSoloExpenseTeam() {
+  return workspaceData?.team?.expense_mode === 'solo';
+}
 
-  const isSolo = workspaceData?.team?.expense_mode === 'solo';
-  const balancePanel = document.getElementById('balancePanelContent');
-  const balanceBtn = document.getElementById('balanceNavBtn');
+function updateBalanceNavUi() {
+  const btn = document.getElementById('balanceNavBtn');
+  const label = document.getElementById('balanceNavBtnLabel');
+  const title = document.getElementById('balancePanelTitle');
+  const subtitle = document.getElementById('balancePanelSubtitle');
+  const solo = isSoloExpenseTeam();
 
-  if (isSolo) {
-    balanceBtn?.classList.add('hidden');
-    if (balancePanel) {
-      balancePanel.innerHTML = `
-        <p class="text-gray-500 text-sm">Solo mode tracks your spending only. No splits or balances.</p>`;
+  btn?.classList.remove('hidden');
+  if (label) label.textContent = solo ? 'Insights' : 'Balances';
+  if (title) title.textContent = solo ? 'Spending Insights' : 'Balance Center';
+  if (subtitle) subtitle.textContent = solo ? 'Your spending over time' : 'Who owes whom';
+  const icon = document.getElementById('balanceNavBtnIcon');
+  if (icon) {
+    icon.innerHTML = solo
+      ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />'
+      : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
+  }
+}
+
+function startOfWeekLocalYmd() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay();
+  const diff = (day + 6) % 7;
+  d.setDate(d.getDate() - diff);
+  return todayLocalDateString(d);
+}
+
+function startOfMonthLocalYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function startOfYearLocalYmd() {
+  return `${new Date().getFullYear()}-01-01`;
+}
+
+function daysInclusive(startYmd, endYmd) {
+  const start = new Date(`${startYmd}T12:00:00`);
+  const end = new Date(`${endYmd}T12:00:00`);
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
+
+function expensesSince(startYmd) {
+  return (expenses || []).filter((e) => e.expense_date >= startYmd);
+}
+
+function spendingStatsFor(list, periodDays) {
+  const total = list.reduce((sum, e) => sum + Number(e.amount), 0);
+  const count = list.length;
+  const average = count ? total / count : 0;
+  const dailyAverage = periodDays ? total / periodDays : 0;
+  return { total, count, average, dailyAverage };
+}
+
+function renderSpendingStatCard(label, stats, periodDays) {
+  const dailyLine = periodDays > 1
+    ? `<p class="text-xs text-gray-600 mt-1">${formatMoney(stats.dailyAverage)}/day avg</p>`
+    : '';
+  return `
+    <div class="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+      <p class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">${escHtml(label)}</p>
+      <p class="text-lg font-mono font-semibold text-white">${formatMoney(stats.total)}</p>
+      <p class="text-xs text-gray-400 mt-1">${stats.count} expense${stats.count === 1 ? '' : 's'}${stats.count ? ` · ${formatMoney(stats.average)} avg` : ''}</p>
+      ${dailyLine}
+    </div>`;
+}
+
+function renderSpendingInsights() {
+  const panel = document.getElementById('balancePanelContent');
+  if (!panel) return;
+
+  const today = todayLocalDateString();
+  const weekStart = startOfWeekLocalYmd();
+  const monthStart = startOfMonthLocalYmd();
+  const yearStart = startOfYearLocalYmd();
+
+  const todayStats = spendingStatsFor(expensesSince(today), 1);
+  const weekStats = spendingStatsFor(expensesSince(weekStart), daysInclusive(weekStart, today));
+  const monthStats = spendingStatsFor(expensesSince(monthStart), daysInclusive(monthStart, today));
+  const yearStats = spendingStatsFor(expensesSince(yearStart), daysInclusive(yearStart, today));
+  const allTimeStats = spendingStatsFor(expenses || [], 0);
+
+  panel.innerHTML = `
+    <div class="space-y-3">
+      ${renderSpendingStatCard('Today', todayStats, 1)}
+      ${renderSpendingStatCard('This week', weekStats, daysInclusive(weekStart, today))}
+      ${renderSpendingStatCard('This month', monthStats, daysInclusive(monthStart, today))}
+      ${renderSpendingStatCard('This year', yearStats, daysInclusive(yearStart, today))}
+      <div class="border-t border-white/10 pt-4">
+        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">All time</p>
+        <p class="text-sm text-gray-300">${formatMoney(allTimeStats.total)} across ${allTimeStats.count} expense${allTimeStats.count === 1 ? '' : 's'}</p>
+        ${allTimeStats.count ? `<p class="text-xs text-gray-500 mt-1">${formatMoney(allTimeStats.average)} average per expense</p>` : '<p class="text-xs text-gray-600 mt-1">No expenses recorded yet</p>'}
+      </div>
+    </div>`;
+
+  const inline = document.getElementById('balanceInlineSummary');
+  if (inline) {
+    if (!todayStats.count) {
+      inline.innerHTML = '<span class="text-gray-500 text-xs">No spending today</span>';
+    } else {
+      inline.innerHTML = `<span class="text-emerald-400 text-xs">Today: ${formatMoney(todayStats.total)}</span>`;
     }
+  }
+}
+
+function renderBalances() {
+  updateBalanceNavUi();
+
+  if (isSoloExpenseTeam()) {
+    renderSpendingInsights();
     return;
   }
 
-  balanceBtn?.classList.remove('hidden');
+  if (!balances) return;
 
+  const balancePanel = document.getElementById('balancePanelContent');
   const youOwe = balances.you_owe || [];
   const youAreOwed = balances.you_are_owed || [];
 
@@ -150,6 +253,10 @@ async function submitSettlement(toUserId, amount) {
 }
 
 async function loadBalances() {
+  if (isSoloExpenseTeam()) {
+    renderBalances();
+    return true;
+  }
   const r = await apiFetch(`/api/teams/${teamId}/tasksplit/balances`);
   const data = await parseJsonResponse(r);
   if (!r.ok) return false;

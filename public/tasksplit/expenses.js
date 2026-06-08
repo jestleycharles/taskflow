@@ -29,13 +29,16 @@ function renderExpensesList() {
   const list = document.getElementById('expensesList');
   const empty = document.getElementById('expensesEmpty');
 
+  const zoomRoot = document.getElementById('expensesZoomRoot');
   if (!expenses.length) {
     list.innerHTML = '';
     empty?.classList.remove('hidden');
+    zoomRoot?.classList.add('expenses-empty-state');
     return;
   }
 
   empty?.classList.add('hidden');
+  zoomRoot?.classList.remove('expenses-empty-state');
   list.innerHTML = expenses
     .map(
       (e) => `
@@ -65,7 +68,7 @@ function openAddExpenseModal() {
   document.getElementById('expenseTitle').value = '';
   document.getElementById('expenseAmount').value = '';
   document.getElementById('expenseDescription').value = '';
-  document.getElementById('expenseDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('expenseDate').value = todayLocalDateString();
 
   const members = workspaceData?.members || [];
   const isSolo = workspaceData?.team?.expense_mode === 'solo';
@@ -350,6 +353,7 @@ async function loadExpenses() {
   expenses = data;
   renderExpensesList();
   updateSummaryBar();
+  if (typeof renderBalances === 'function') renderBalances();
   if (typeof scheduleTaskflowZoomRemeasure === 'function') scheduleTaskflowZoomRemeasure();
   return true;
 }

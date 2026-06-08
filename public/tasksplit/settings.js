@@ -119,6 +119,58 @@ async function reloadWorkspace() {
   if (typeof captureTeamRoleStateSig === 'function') captureTeamRoleStateSig();
 }
 
+function applyTasksplitCurrencyUi() {
+  const section = document.getElementById('tasksplitCurrencySection');
+  const select = document.getElementById('tasksplitCurrencySelect');
+  const isOwner = teamData?.userRole === 'owner';
+  section?.classList.toggle('hidden', !isOwner);
+  if (select) {
+    select.value = getTeamCurrencyCode();
+    select.disabled = !isOwner;
+  }
+}
+
+function showTasksplitCurrencyMsg(text, ok) {
+  const msg = document.getElementById('tasksplitCurrencyMsg');
+  if (!msg) return;
+  if (!text) {
+    msg.classList.add('hidden');
+    return;
+  }
+  msg.textContent = text;
+  msg.className = `text-xs mt-1 ${ok ? 'text-emerald-400' : 'text-red-400'}`;
+  msg.classList.remove('hidden');
+}
+
+async function saveTasksplitCurrency() {
+  if (teamData?.userRole !== 'owner') return;
+  const select = document.getElementById('tasksplitCurrencySelect');
+  const code = select?.value;
+  if (!code || code === getTeamCurrencyCode()) return;
+
+  select.disabled = true;
+  showTasksplitCurrencyMsg('Saving…', true);
+  const r = await apiFetch(`/api/teams/${teamId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currency_code: code }),
+  });
+  const data = await parseJsonResponse(r);
+  select.disabled = false;
+  if (!r.ok) {
+    select.value = getTeamCurrencyCode();
+    showTasksplitCurrencyMsg(data.error || 'Failed to save currency', false);
+    return;
+  }
+  if (workspaceData?.team) workspaceData.team.currency_code = data.currency_code;
+  if (teamData) teamData.currency_code = data.currency_code;
+  showTasksplitCurrencyMsg('Currency updated', true);
+  updateSummaryBar?.();
+  renderExpensesList?.();
+  renderBalances?.();
+  setTimeout(() => showTasksplitCurrencyMsg('', true), 2000);
+}
+
 function openSettingsPanel() {
   if (teamData?.userRole !== 'owner') return;
   closeTaskflowOverlayBeforeOpen('settings');
@@ -128,6 +180,7 @@ function openSettingsPanel() {
   setSidePanelMobileOpen(true);
   pushTaskflowOverlay('settings');
   applyMembershipActionsUi();
+  applyTasksplitCurrencyUi();
 }
 
 function closeSettingsPanelUi() {

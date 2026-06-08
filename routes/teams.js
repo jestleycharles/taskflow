@@ -22,6 +22,7 @@ const {
 } = require('../lib/invite-links');
 const { deleteStoredTeamFiles } = require('../lib/storage-cleanup');
 const { normalizeExpenseMode } = require('../lib/tasksplit-team');
+const { normalizeCurrencyCode } = require('../lib/currencies');
 const router = express.Router();
 
 const AVATAR_BUCKET = 'avatars';
@@ -361,7 +362,7 @@ router.post('/api/teams', requireAuth, async (req, res) => {
 router.patch('/api/teams/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.session.user.id;
-  const { name, description } = req.body || {};
+  const { name, description, currency_code } = req.body || {};
 
   if (!await assertTeamOwner(id, userId)) {
     return res.status(403).json({ error: 'Only the team owner can edit team details' });
@@ -380,6 +381,13 @@ router.patch('/api/teams/:id', requireAuth, async (req, res) => {
 
   if (description !== undefined) {
     updates.description = String(description).trim() || null;
+  }
+
+  if (currency_code !== undefined) {
+    if (team.workspace_type !== 'expense') {
+      return res.status(400).json({ error: 'Currency can only be set on TaskSplit workspaces' });
+    }
+    updates.currency_code = normalizeCurrencyCode(currency_code);
   }
 
   if (!Object.keys(updates).length) {
