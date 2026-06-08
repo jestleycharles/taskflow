@@ -4,6 +4,8 @@ A real-time team task manager with Kanban boards, team chat, direct messages, an
 
 **Live demo:** [taskflow-byjest.onrender.com](https://taskflow-byjest.onrender.com)
 
+![Banner](docs/images/banner.png)
+
 ---
 
 ## Welcome, developers
@@ -18,22 +20,6 @@ TaskFlow is open source and built for collaboration. Whether you want to contrib
 | **Use the official hosted app** | The public demo may add **in-app subscriptions or paid features** later that are exclusive to that service and not guaranteed to exist in this repository. |
 
 Please keep the license file with any distribution and document your own changes. The **TaskFlow** name on the official demo is not a requirement for your fork unless you want to align branding.
-
----
-
-## Screenshots
-
-**Sign in** — register, sign in, or continue as guest.
-
-![TaskFlow login screen](docs/images/login.png)
-
-**Dashboard** — create teams and open a Kanban board.
-
-![TaskFlow dashboard — your teams](docs/images/dashboard.png)
-
-**Kanban board** — columns, tasks, team invites, and activity.
-
-![TaskFlow Kanban board](docs/images/board.png)
 
 ---
 
