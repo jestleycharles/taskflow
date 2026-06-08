@@ -330,7 +330,9 @@
   <!-- Board zoom (bottom-right; same layer as chat FAB, below toasts) -->
   <div id="taskflowZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Zoom">
     <button type="button" id="taskflowZoomIn" class="taskflow-zoom-btn" aria-label="Zoom in (closer view)">+</button>
-    <input type="range" id="taskflowZoomSlider" class="hidden md:block" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Board zoom (100% normal, 500% zoomed out)" />
+    <div id="taskflowZoomSliderWrap" class="taskflow-zoom-slider-wrap hidden md:flex">
+      <input type="range" id="taskflowZoomSlider" min="100" max="500" step="10" value="100" aria-label="Board zoom (100% normal, 500% zoomed out)" />
+    </div>
     <button type="button" id="taskflowZoomPct" class="taskflow-zoom-btn" aria-label="Set zoom level">100%</button>
     <button type="button" id="taskflowZoomOut" class="taskflow-zoom-btn" aria-label="Zoom out (wider view)">−</button>
   </div>
