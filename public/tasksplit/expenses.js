@@ -244,6 +244,7 @@ function populateExpenseForm({ expense = null } = {}) {
 function openAddExpenseModal() {
   closeTaskflowOverlayBeforeOpen('addExpense');
   editingExpenseId = null;
+  addExpenseReturnExpenseId = null;
   expenseSplitDraft = {};
   document.getElementById('addExpenseError').classList.add('hidden');
   populateExpenseForm();
@@ -255,12 +256,21 @@ function openAddExpenseModal() {
 function openEditExpenseModal() {
   const expense = expenses.find((e) => e.id === activeExpenseId);
   if (!expense || !canModifyExpenseUi(expense)) return;
-  closeTaskflowOverlayBeforeOpen('addExpense');
+
+  addExpenseReturnExpenseId = activeExpenseId;
+  document.getElementById('expenseDetailModal').classList.add('hidden');
+
   editingExpenseId = expense.id;
   document.getElementById('addExpenseError').classList.add('hidden');
   populateExpenseForm({ expense });
   document.getElementById('addExpenseModal').classList.remove('hidden');
-  pushTaskflowOverlay('addExpense');
+
+  if (history.state?.tfTaskflowOverlay === 'expenseDetail') {
+    history.replaceState({ tfTaskflowOverlay: 'addExpense', t: Date.now() }, '');
+  } else {
+    pushTaskflowOverlay('addExpense');
+  }
+
   setTimeout(() => document.getElementById('expenseAmount').focus(), 50);
 }
 
@@ -271,6 +281,16 @@ function closeAddExpenseModal() {
 }
 
 function closeAddExpensePanel() {
+  if (addExpenseReturnExpenseId) {
+    const expenseId = addExpenseReturnExpenseId;
+    addExpenseReturnExpenseId = null;
+    closeAddExpenseModal();
+    if (history.state?.tfTaskflowOverlay === 'addExpense') {
+      history.replaceState({ tfTaskflowOverlay: 'expenseDetail', t: Date.now() }, '');
+    }
+    openExpenseDetail(expenseId, { skipHistoryPush: true, fromEditCancel: true });
+    return;
+  }
   requestCloseTaskflowOverlay();
 }
 
@@ -342,11 +362,17 @@ async function submitExpense() {
   }
 
   const reopenId = editingExpenseId;
+  const wasFromDetail = !!addExpenseReturnExpenseId;
+  addExpenseReturnExpenseId = null;
   closeAddExpenseModal();
-  dismissTaskflowOverlayHistory('addExpense');
+  if (wasFromDetail && history.state?.tfTaskflowOverlay === 'addExpense') {
+    history.replaceState({ tfTaskflowOverlay: 'expenseDetail', t: Date.now() }, '');
+  } else {
+    dismissTaskflowOverlayHistory('addExpense');
+  }
   await refreshAll();
   if (reopenId && data.id) {
-    openExpenseDetail(data.id);
+    openExpenseDetail(data.id, { skipHistoryPush: wasFromDetail, fromEditCancel: wasFromDetail });
   }
 }
 
@@ -432,12 +458,14 @@ async function deleteExpenseAttachment(attachmentId) {
   }
 }
 
-function openExpenseDetail(expenseId) {
+function openExpenseDetail(expenseId, { skipHistoryPush = false, fromEditCancel = false } = {}) {
   const expense = expenses.find((e) => e.id === expenseId);
   if (!expense) return;
 
-  closeTaskflowOverlayBeforeOpen('expenseDetail');
-  resetExpenseDetailComments();
+  if (!fromEditCancel) {
+    closeTaskflowOverlayBeforeOpen('expenseDetail');
+    resetExpenseDetailComments();
+  }
   activeExpenseId = expenseId;
   expenseDetailTab = 'details';
   editingExpenseField = null;
@@ -485,7 +513,7 @@ function openExpenseDetail(expenseId) {
 
   document.getElementById('expenseDetailModal').classList.remove('hidden');
   setExpenseDetailTab('details');
-  pushTaskflowOverlay('expenseDetail');
+  if (!skipHistoryPush) pushTaskflowOverlay('expenseDetail');
 }
 
 function renderExpenseTitleArea(expense) {

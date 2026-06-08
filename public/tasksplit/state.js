@@ -61,6 +61,7 @@ let expenseCommentAttachPreviewUrl = null;
 let editingExpenseField = null;
 let expenseEditDraft = '';
 let editingExpenseId = null;
+let addExpenseReturnExpenseId = null;
 let expenseSplitDraft = {};
 let settleTargetUserId = null;
 let settleMaxAmount = 0;
