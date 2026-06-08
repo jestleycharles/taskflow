@@ -20,6 +20,7 @@ const featurePostRoutes = require('./routes/feature-posts');
 const messageAttachmentRoutes = require('./routes/message-attachments');
 const tasksplitRoutes = require('./routes/tasksplit');
 const { ensureFeaturePostSeed } = require('./lib/feature-post-seed');
+const { scheduleGuestTeamCleanup } = require('./lib/guest-team-cleanup');
 const { supabaseAdmin } = require('./lib/supabase');
 const { requireAuth } = require('./middleware/auth');
 
@@ -188,4 +189,7 @@ app.listen(PORT, () => {
   ensureFeaturePostSeed()
     .then(() => log('ensureFeaturePostSeed done (background)'))
     .catch((err) => console.error('[startup] seed error:', err));
+
+  scheduleGuestTeamCleanup();
+  log('guest team cleanup scheduled (hourly)');
 });

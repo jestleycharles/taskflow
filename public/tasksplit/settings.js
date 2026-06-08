@@ -289,6 +289,10 @@ function hideEditTeamError() {
 
 async function openEditTeamModal() {
   if (teamData?.userRole !== 'owner') return;
+  if (isGuest() && typeof isGuestProtectedTeam === 'function' && isGuestProtectedTeam()) {
+    showTeamDeleteLockModal();
+    return;
+  }
   hideEditTeamError();
   document.getElementById('editTeamName').value = teamData.name || '';
   document.getElementById('editTeamDesc').value = teamData.description || '';
@@ -317,6 +321,10 @@ function closeEditTeamModal() {
 
 async function saveEditTeam() {
   if (teamFormSaving || teamData?.userRole !== 'owner') return;
+  if (isGuest() && typeof isGuestProtectedTeam === 'function' && isGuestProtectedTeam()) {
+    showTeamDeleteLockModal();
+    return;
+  }
   const name = document.getElementById('editTeamName').value.trim();
   const description = document.getElementById('editTeamDesc').value.trim();
   if (!name) return showEditTeamError('Team name is required');

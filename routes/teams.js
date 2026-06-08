@@ -20,7 +20,8 @@ const {
   revokeInviteLink,
   buildInviteUrl,
 } = require('../lib/invite-links');
-const { deleteStoredTeamFiles } = require('../lib/storage-cleanup');
+const { deleteStoredTeamAvatars, deleteTeamCompletely } = require('../lib/team-delete');
+const { purgeExpiredGuestTeams } = require('../lib/guest-team-cleanup');
 const { normalizeExpenseMode, assertDuoCapacity } = require('../lib/tasksplit-team');
 const { normalizeCurrencyCode } = require('../lib/currencies');
 const router = express.Router();
@@ -117,12 +118,12 @@ async function assertTeamOwner(teamId, userId) {
   return data?.role === 'owner';
 }
 
-async function deleteStoredTeamAvatars(teamId) {
-  const prefix = `teams/${teamId}`;
-  const { data: files } = await supabaseAdmin.storage.from(AVATAR_BUCKET).list(prefix);
-  if (!files?.length) return;
-  const paths = files.map((f) => `${prefix}/${f.name}`);
-  await supabaseAdmin.storage.from(AVATAR_BUCKET).remove(paths);
+function rejectGuestProtectedTeamEdit(req, res, teamId) {
+  if (isGuestUser(req.session.user) && isGuestProtectedTeamId(teamId)) {
+    res.status(403).json({ error: 'This demo team cannot be modified on guest accounts.' });
+    return true;
+  }
+  return false;
 }
 
 function resolvePresetUrl(avatarUrl) {
@@ -242,6 +243,9 @@ function buildTeamMemberCounts(allMembers) {
 // GET /api/teams - list user's teams
 router.get('/api/teams', requireAuth, async (req, res) => {
   const userId = req.session.user.id;
+  if (isGuestUser(req.session.user)) {
+    await purgeExpiredGuestTeams();
+  }
   const { data, error } = await supabaseAdmin
     .from('team_members')
     .select('role, teams(id, name, description, avatar_color, avatar_url, created_by, created_at, workspace_type, expense_mode)')
@@ -367,6 +371,7 @@ router.patch('/api/teams/:id', requireAuth, async (req, res) => {
   if (!await assertTeamOwner(id, userId)) {
     return res.status(403).json({ error: 'Only the team owner can edit team details' });
   }
+  if (rejectGuestProtectedTeamEdit(req, res, id)) return;
 
   const { data: team, error: fetchErr } = await supabaseAdmin.from('teams').select('*').eq('id', id).single();
   if (fetchErr || !team) return res.status(404).json({ error: 'Team not found' });
@@ -417,6 +422,7 @@ router.put('/api/teams/:id/avatar/preset', requireAuth, async (req, res) => {
   if (!await assertTeamOwner(id, userId)) {
     return res.status(403).json({ error: 'Only the team owner can change the team avatar' });
   }
+  if (rejectGuestProtectedTeamEdit(req, res, id)) return;
 
   const match = AVATAR_PRESETS.find((p) => p.id === preset);
   if (!match) return res.status(400).json({ error: 'Invalid avatar preset' });
@@ -451,6 +457,7 @@ router.post(
     if (!await assertTeamOwner(id, userId)) {
       return res.status(403).json({ error: 'Only the team owner can change the team avatar' });
     }
+    if (rejectGuestProtectedTeamEdit(req, res, id)) return;
     if (isGuestUser(req.session.user)) {
       return res.status(403).json({ error: 'Guest accounts cannot upload team images. Choose a preset or create a registered account.' });
     }
@@ -1263,39 +1270,13 @@ router.delete('/api/teams/:id', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'This demo team cannot be deleted on guest accounts.' });
   }
 
-  const { data: team } = await supabaseAdmin.from('teams').select('name, avatar_url').eq('id', id).single();
-  if (!team) return res.status(404).json({ error: 'Team not found' });
-
-  const { data: teamTasks } = await supabaseAdmin.from('tasks').select('id').eq('team_id', id);
-  const taskIds = (teamTasks || []).map((t) => t.id);
-
-  const { data: chatMessages } = await supabaseAdmin
-    .from('team_chat_messages')
-    .select('id')
-    .eq('team_id', id);
-  const chatMessageIds = (chatMessages || []).map((m) => m.id);
-
-  await deleteStoredTeamFiles(id, taskIds, chatMessageIds);
-
-  if (taskIds.length) {
-    await supabaseAdmin.from('comments').delete().in('task_id', taskIds);
-    await supabaseAdmin.from('tasks').delete().eq('team_id', id);
+  try {
+    const deleted = await deleteTeamCompletely(id);
+    if (!deleted) return res.status(404).json({ error: 'Team not found' });
+    res.json({ success: true });
+  } catch (err) {
+    return sendError(res, 500, err, 'load');
   }
-
-  await supabaseAdmin.from('activity_log').delete().eq('team_id', id);
-  await supabaseAdmin.from('team_chat_messages').delete().eq('team_id', id);
-  await supabaseAdmin.from('team_roles').delete().eq('team_id', id);
-  await supabaseAdmin.from('team_invites').delete().eq('team_id', id);
-  await supabaseAdmin.from('team_members').delete().eq('team_id', id);
-
-  if (isStorageTeamAvatarUrl(team.avatar_url)) {
-    await deleteStoredTeamAvatars(id);
-  }
-
-  const { error } = await supabaseAdmin.from('teams').delete().eq('id', id);
-  if (error) return sendError(res, 500, error, 'load');
-
-  res.json({ success: true });
 });
 
 async function logActivity(teamId, userId, type, description) {

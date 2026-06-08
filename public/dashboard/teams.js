@@ -516,6 +516,26 @@ window.createTeam = async function createTeam() {
     return;
   }
 
+  if (window.currentUser?.is_guest) {
+    showConfirm({
+      title: "Guest teams expire in 1 day",
+      message:
+        "Teams you create as a guest are automatically deleted after 24 hours. The default demo team is kept. Create a free registered account to keep your own teams permanently.",
+      confirmLabel: "Create team anyway",
+      onConfirm: () => executeCreateTeam(),
+    });
+    return;
+  }
+
+  await executeCreateTeam();
+};
+
+async function executeCreateTeam() {
+  if (window.createTeamSaving) return;
+
+  const name = document.getElementById("teamName").value.trim();
+  if (!name) return;
+
   const desc = document.getElementById("teamDesc").value.trim();
   const workspaceType =
     document.getElementById("teamWorkspaceType")?.value || "task";
@@ -587,7 +607,7 @@ window.createTeam = async function createTeam() {
   closeCreateModal();
   setNavigatingAway(true);
   window.location = isExpense ? `/tasksplit/${d.id}` : `/taskflow/${d.id}`;
-};
+}
 
 // ---------------------------------------------------------------------------
 // DOM event wiring for the create-modal inputs
