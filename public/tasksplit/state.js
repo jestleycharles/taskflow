@@ -8,6 +8,7 @@ let workspaceData = null;
 let teamData = null;
 let expenses = [];
 let balances = null;
+let settlements = [];
 let activityLogs = [];
 let pollInterval = null;
 let confirmCallback = null;
@@ -59,6 +60,9 @@ let expenseCommentPendingFile = null;
 let expenseCommentAttachPreviewUrl = null;
 let editingExpenseField = null;
 let expenseEditDraft = '';
+let editingExpenseId = null;
+let settleTargetUserId = null;
+let settleMaxAmount = 0;
 
 function isTaskflowSidepanel(name) {
   return TASKFLOW_SIDEPANELS.has(name);

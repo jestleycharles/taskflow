@@ -108,7 +108,7 @@ async function fetchOnlineMembers() {
     if (typeof updateMemberStatsDisplay === 'function') updateMemberStatsDisplay();
   }
   if (changed && teamData?.members) {
-    renderMemberList();
+    renderMemberList(teamData.members);
     const container = document.getElementById('memberAvatars');
     if (container) {
       container.innerHTML = teamData.members

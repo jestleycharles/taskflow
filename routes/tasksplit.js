@@ -16,6 +16,8 @@ const {
   loadTeamRoles,
   loadTeamPendingInvites,
   logTaskSplitActivity,
+  canModifyExpense,
+  ensurePayerInParticipants,
 } = require('../lib/tasksplit-team');
 const { formatCurrencyAmount } = require('../lib/currencies');
 const { isGuestUser } = require('../lib/user');
@@ -275,8 +277,10 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
       return res.status(400).json({ error: 'At least one participant is required' });
     }
 
-    if (loaded.team.expense_mode === 'solo' && participantIds.length > 1) {
+    if (loaded.team.expense_mode === 'solo') {
       participantIds = [payerId];
+    } else {
+      participantIds = ensurePayerInParticipants(payerId, participantIds);
     }
 
     const shares = equalShares(parsedAmount, participantIds.length);
@@ -335,11 +339,30 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
   }
 });
 
+async function replaceExpenseParticipants(expenseId, participantRows) {
+  const { error: delErr } = await supabaseAdmin
+    .from('expense_participants')
+    .delete()
+    .eq('expense_id', expenseId);
+  if (delErr) throw delErr;
+
+  if (!participantRows.length) return;
+
+  const { error: insErr } = await supabaseAdmin.from('expense_participants').insert(
+    participantRows.map((p) => ({
+      expense_id: expenseId,
+      user_id: p.user_id,
+      share_amount: p.share_amount,
+    })),
+  );
+  if (insErr) throw insErr;
+}
+
 // PATCH /api/teams/:id/tasksplit/expenses/:expenseId
 router.patch('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async (req, res) => {
   const { id, expenseId } = req.params;
   const userId = req.session.user.id;
-  const { title, description } = req.body || {};
+  const { title, description, amount, paid_by, participant_ids, expense_date } = req.body || {};
 
   try {
     const loaded = await loadExpenseTeam(id, userId);
@@ -347,12 +370,19 @@ router.patch('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async 
 
     const { data: existing } = await supabaseAdmin
       .from('expenses')
-      .select('id, title, description, team_id')
+      .select('id, title, description, team_id, amount, paid_by, expense_date, created_by')
       .eq('id', expenseId)
       .eq('team_id', id)
       .single();
 
     if (!existing) return res.status(404).json({ error: 'Expense not found' });
+
+    if (!canModifyExpense(existing, userId, loaded.role)) {
+      return res.status(403).json({ error: 'Only the expense creator or workspace owner can edit this expense' });
+    }
+
+    const members = await loadTeamMembers(id);
+    const memberIdSet = new Set(members.map((m) => m.id));
 
     const updates = {};
     if (title !== undefined) {
@@ -364,28 +394,96 @@ router.patch('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async 
       updates.description = description?.trim() || null;
     }
 
-    if (!Object.keys(updates).length) {
+    let parsedAmount = null;
+    if (amount !== undefined) {
+      parsedAmount = parseAmount(amount);
+      if (!parsedAmount) return res.status(400).json({ error: 'Amount must be a positive number' });
+      updates.amount = parsedAmount;
+    }
+
+    let payerId = existing.paid_by;
+    if (paid_by !== undefined) {
+      payerId = paid_by;
+      if (!memberIdSet.has(payerId)) {
+        return res.status(400).json({ error: 'Payer must be a workspace member' });
+      }
+      updates.paid_by = payerId;
+    }
+
+    if (expense_date !== undefined) {
+      const expenseDate = parseDate(expense_date);
+      if (!expenseDate) return res.status(400).json({ error: 'Invalid date (use YYYY-MM-DD)' });
+      updates.expense_date = expenseDate;
+    }
+
+    const financialFieldsTouched =
+      amount !== undefined || paid_by !== undefined || participant_ids !== undefined;
+    let participantRows = null;
+
+    if (financialFieldsTouched || participant_ids !== undefined) {
+      const effectiveAmount = parsedAmount ?? Number(existing.amount);
+      let participantIds;
+
+      if (participant_ids !== undefined) {
+        if (!Array.isArray(participant_ids)) {
+          return res.status(400).json({ error: 'participant_ids must be an array' });
+        }
+        participantIds = [...new Set(participant_ids.map(String))].filter((pid) => memberIdSet.has(pid));
+      } else {
+        const { data: currentParts } = await supabaseAdmin
+          .from('expense_participants')
+          .select('user_id')
+          .eq('expense_id', expenseId);
+        participantIds = (currentParts || []).map((p) => p.user_id);
+      }
+
+      if (!participantIds.length) {
+        return res.status(400).json({ error: 'At least one participant is required' });
+      }
+
+      if (loaded.team.expense_mode === 'solo') {
+        participantIds = [payerId];
+      } else {
+        participantIds = ensurePayerInParticipants(payerId, participantIds);
+      }
+
+      const shares = equalShares(effectiveAmount, participantIds.length);
+      participantRows = participantIds.map((pid, i) => ({
+        user_id: pid,
+        share_amount: shares[i],
+      }));
+    }
+
+    if (!Object.keys(updates).length && !participantRows) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    const { data: expense, error } = await supabaseAdmin
-      .from('expenses')
-      .update(updates)
-      .eq('id', expenseId)
-      .select()
-      .single();
+    if (Object.keys(updates).length) {
+      const { error } = await supabaseAdmin.from('expenses').update(updates).eq('id', expenseId);
+      if (error) return sendError(res, 400, error, 'save');
+    }
 
-    if (error) return sendError(res, 400, error, 'save');
+    if (participantRows) {
+      await replaceExpenseParticipants(expenseId, participantRows);
+    }
 
-    const members = await loadTeamMembers(id);
     const full = await loadExpensesWithParticipants(id);
     const enriched = full.find((e) => e.id === expenseId);
     if (!enriched) return res.status(404).json({ error: 'Expense not found' });
 
-    if (updates.title && updates.title !== existing.title) {
+    const expenseLabel = updates.title || existing.title;
+    if (financialFieldsTouched) {
+      const amt = parsedAmount ?? Number(existing.amount);
+      await logTaskSplitActivity(
+        id,
+        userId,
+        'expense_updated',
+        `Updated expense "${expenseLabel}" (${formatMoney(amt, loaded.team.currency_code)})`,
+      );
+    } else if (updates.title && updates.title !== existing.title) {
       await logTaskSplitActivity(id, userId, 'expense_updated', `Renamed expense to "${updates.title}"`);
     } else if (description !== undefined) {
-      await logTaskSplitActivity(id, userId, 'expense_updated', `Updated description for "${expense.title}"`);
+      await logTaskSplitActivity(id, userId, 'expense_updated', `Updated description for "${expenseLabel}"`);
     }
 
     res.json(attachUsers([enriched], members)[0]);
@@ -411,6 +509,10 @@ router.delete('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async
       .single();
 
     if (!expense) return res.status(404).json({ error: 'Expense not found' });
+
+    if (!canModifyExpense(expense, userId, loaded.role)) {
+      return res.status(403).json({ error: 'Only the expense creator or workspace owner can delete this expense' });
+    }
 
     const { error } = await supabaseAdmin.from('expenses').delete().eq('id', expenseId);
     if (error) return sendError(res, 400, error, 'save');

@@ -21,7 +21,7 @@ const {
   buildInviteUrl,
 } = require('../lib/invite-links');
 const { deleteStoredTeamFiles } = require('../lib/storage-cleanup');
-const { normalizeExpenseMode } = require('../lib/tasksplit-team');
+const { normalizeExpenseMode, assertDuoCapacity } = require('../lib/tasksplit-team');
 const { normalizeCurrencyCode } = require('../lib/currencies');
 const router = express.Router();
 
@@ -613,6 +613,17 @@ router.post('/api/team-invites/:id/accept', requireAuth, async (req, res) => {
 
   if (fetchErr || !invite) return res.status(404).json({ error: 'Invite not found' });
 
+  const { data: inviteTeam } = await supabaseAdmin
+    .from('teams')
+    .select('workspace_type, expense_mode')
+    .eq('id', invite.team_id)
+    .single();
+
+  if (inviteTeam?.workspace_type === 'expense') {
+    const capErr = await assertDuoCapacity(inviteTeam, invite.team_id, 1);
+    if (capErr) return res.status(400).json({ error: capErr });
+  }
+
   const { error: memberErr } = await supabaseAdmin
     .from('team_members')
     .insert({ team_id: invite.team_id, user_id: userId, role: 'member' });
@@ -703,6 +714,17 @@ router.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
   }
   if (existingInvite) return res.status(400).json({ error: 'Invitation already sent' });
 
+  const { data: inviteTeam } = await supabaseAdmin
+    .from('teams')
+    .select('workspace_type, expense_mode')
+    .eq('id', id)
+    .single();
+
+  if (inviteTeam?.workspace_type === 'expense') {
+    const capErr = await assertDuoCapacity(inviteTeam, id, 1);
+    if (capErr) return res.status(400).json({ error: capErr });
+  }
+
   const { data: invite, error } = await supabaseAdmin
     .from('team_invites')
     .insert({ team_id: id, user_id: invitee.id, invited_by: userId })
@@ -758,6 +780,17 @@ router.post('/api/teams/:id/invite-links', requireAuth, async (req, res) => {
     return res.status(403).json({
       error: 'Teams owned by a guest account cannot create invite links. The owner needs a registered account.',
     });
+  }
+
+  const { data: linkTeam } = await supabaseAdmin
+    .from('teams')
+    .select('workspace_type, expense_mode')
+    .eq('id', id)
+    .single();
+
+  if (linkTeam?.workspace_type === 'expense') {
+    const capErr = await assertDuoCapacity(linkTeam, id, 1);
+    if (capErr) return res.status(400).json({ error: capErr });
   }
 
   const maxUses = req.body?.max_uses != null ? Number(req.body.max_uses) : null;

@@ -36,13 +36,36 @@ function openTeamPanel() {
   pushTaskflowOverlay('team');
 }
 
+function isDuoAtCapacity() {
+  if (workspaceData?.team?.expense_mode !== 'duo') return false;
+  const members = workspaceData?.members?.length || 0;
+  const pending = workspaceData?.pending_invites?.length || 0;
+  return members + pending >= 2;
+}
+
 function applyTasksplitInviteUi() {
   const isOwner = workspaceData?.role === 'owner';
   const guestOwner = !!workspaceData?.owner_is_guest;
+  const duoFull = isDuoAtCapacity();
   const section = document.getElementById('tasksplitInviteSection');
   const guestNote = document.getElementById('tasksplitInviteGuestNote');
+  const duoNote = document.getElementById('tasksplitDuoCapacityNote');
+
   if (section) section.classList.toggle('hidden', !isOwner || guestOwner);
   if (guestNote) guestNote.classList.toggle('hidden', !isOwner || !guestOwner);
+
+  if (duoNote) {
+    duoNote.classList.toggle('hidden', !isOwner || guestOwner || !duoFull);
+    duoNote.textContent =
+      'This duo workspace already has 2 members (or pending invites). Remove someone or cancel an invite to add more.';
+  }
+
+  const emailInput = document.getElementById('tasksplitInviteEmail');
+  const inviteBtn = section?.querySelector('button[onclick="tasksplitInviteMember()"]');
+  const linkBtn = document.getElementById('tasksplitInviteLinkBlock')?.querySelector('button');
+  if (emailInput) emailInput.disabled = duoFull;
+  if (inviteBtn) inviteBtn.disabled = duoFull;
+  if (linkBtn) linkBtn.disabled = duoFull;
 }
 
 async function tasksplitInviteMember() {

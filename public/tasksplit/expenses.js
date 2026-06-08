@@ -62,25 +62,32 @@ function updateSummaryBar() {
   document.getElementById('expenseCount').textContent = `${expenses.length} expense${expenses.length === 1 ? '' : 's'}`;
 }
 
-function openAddExpenseModal() {
-  closeTaskflowOverlayBeforeOpen('addExpense');
-  document.getElementById('addExpenseError').classList.add('hidden');
-  document.getElementById('expenseTitle').value = '';
-  document.getElementById('expenseAmount').value = '';
-  document.getElementById('expenseDescription').value = '';
-  document.getElementById('expenseDate').value = todayLocalDateString();
+function canModifyExpenseUi(expense) {
+  if (!expense || !currentUser) return false;
+  if (workspaceData?.role === 'owner') return true;
+  return String(expense.created_by) === String(currentUser.id);
+}
 
+function populateExpenseForm({ expense = null } = {}) {
   const members = workspaceData?.members || [];
   const isSolo = workspaceData?.team?.expense_mode === 'solo';
+  const isEdit = !!expense;
+
+  document.getElementById('expenseTitle').value = expense?.title || '';
+  document.getElementById('expenseAmount').value = expense ? String(expense.amount) : '';
+  document.getElementById('expenseDescription').value = expense?.description || '';
+  document.getElementById('expenseDate').value = expense?.expense_date || todayLocalDateString();
 
   const paidBySel = document.getElementById('expensePaidBy');
+  const payerId = expense?.paid_by || currentUser?.id;
   paidBySel.innerHTML = members
     .map(
       (m) =>
-        `<option value="${m.id}" ${m.id === currentUser?.id ? 'selected' : ''}>${escHtml(m.username)}</option>`,
+        `<option value="${m.id}" ${String(m.id) === String(payerId) ? 'selected' : ''}>${escHtml(m.username)}</option>`,
     )
     .join('');
 
+  const participantIds = new Set((expense?.participants || members).map((p) => String(p.user_id || p.id)));
   const partWrap = document.getElementById('expenseParticipantsWrap');
   const partList = document.getElementById('expenseParticipantsList');
   if (isSolo) {
@@ -91,7 +98,7 @@ function openAddExpenseModal() {
       .map(
         (m) => `
       <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-        <input type="checkbox" class="expense-participant-cb rounded border-white/20 bg-ink-700 text-brand-500" value="${m.id}" checked />
+        <input type="checkbox" class="expense-participant-cb rounded border-white/20 bg-ink-700 text-brand-500" value="${m.id}" ${participantIds.has(String(m.id)) ? 'checked' : ''} />
         ${userAvatarHtml(m, 'w-6 h-6')}
         <span>${escHtml(m.username)}</span>
       </label>`,
@@ -99,13 +106,39 @@ function openAddExpenseModal() {
       .join('');
   }
 
+  document.getElementById('addExpenseModalTitle').textContent = isEdit ? 'Edit expense' : 'Add expense';
+  document.getElementById('addExpenseModalSubtitle').textContent = isSolo
+    ? 'Update your personal expense record.'
+    : 'Split equally among selected participants.';
+  const btn = document.getElementById('addExpenseBtn');
+  btn.textContent = isEdit ? 'Save changes' : 'Add expense';
+}
+
+function openAddExpenseModal() {
+  closeTaskflowOverlayBeforeOpen('addExpense');
+  editingExpenseId = null;
+  document.getElementById('addExpenseError').classList.add('hidden');
+  populateExpenseForm();
   document.getElementById('addExpenseModal').classList.remove('hidden');
   pushTaskflowOverlay('addExpense');
   setTimeout(() => document.getElementById('expenseTitle').focus(), 50);
 }
 
+function openEditExpenseModal() {
+  const expense = expenses.find((e) => e.id === activeExpenseId);
+  if (!expense || !canModifyExpenseUi(expense)) return;
+  closeTaskflowOverlayBeforeOpen('addExpense');
+  editingExpenseId = expense.id;
+  document.getElementById('addExpenseError').classList.add('hidden');
+  populateExpenseForm({ expense });
+  document.getElementById('addExpenseModal').classList.remove('hidden');
+  pushTaskflowOverlay('addExpense');
+  setTimeout(() => document.getElementById('expenseAmount').focus(), 50);
+}
+
 function closeAddExpenseModal() {
   document.getElementById('addExpenseModal').classList.add('hidden');
+  editingExpenseId = null;
 }
 
 function closeAddExpensePanel() {
@@ -143,31 +176,42 @@ async function submitExpense() {
     }
   }
 
-  setButtonLoading(btn, true, 'Adding…');
-  const r = await apiFetch(`/api/teams/${teamId}/tasksplit/expenses`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      title,
-      amount: Number(amount),
-      description,
-      paid_by: paidBy,
-      participant_ids: participantIds,
-      expense_date: expenseDate,
-    }),
-  });
+  const isEdit = !!editingExpenseId;
+  setButtonLoading(btn, true, isEdit ? 'Saving…' : 'Adding…');
+  const payload = {
+    title,
+    amount: Number(amount),
+    description,
+    paid_by: paidBy,
+    participant_ids: participantIds,
+    expense_date: expenseDate,
+  };
+  const r = await apiFetch(
+    isEdit
+      ? `/api/teams/${teamId}/tasksplit/expenses/${editingExpenseId}`
+      : `/api/teams/${teamId}/tasksplit/expenses`,
+    {
+      method: isEdit ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  );
   const data = await parseJsonResponse(r);
   setButtonLoading(btn, false);
 
   if (!r.ok) {
-    errEl.textContent = data.error || 'Failed to add expense';
+    errEl.textContent = data.error || (isEdit ? 'Failed to save expense' : 'Failed to add expense');
     errEl.classList.remove('hidden');
     return;
   }
 
+  const reopenId = editingExpenseId;
   closeAddExpenseModal();
   dismissTaskflowOverlayHistory('addExpense');
   await refreshAll();
+  if (reopenId && data.id) {
+    openExpenseDetail(data.id);
+  }
 }
 
 function openExpenseDetail(expenseId) {
@@ -207,6 +251,12 @@ function openExpenseDetail(expenseId) {
       )
       .join('');
   }
+
+  const canEdit = canModifyExpenseUi(expense);
+  document.getElementById('expenseEditBtn')?.classList.toggle('hidden', !canEdit);
+  document.getElementById('expenseDeleteBtn')?.classList.toggle('hidden', !canEdit);
+  document.getElementById('expenseEditDescBtn')?.classList.toggle('hidden', !canEdit);
+  document.getElementById('expenseEditDetailsWrap')?.classList.toggle('hidden', !canEdit);
 
   document.getElementById('expenseDetailModal').classList.remove('hidden');
   setExpenseDetailTab('details');
@@ -353,7 +403,6 @@ async function loadExpenses() {
   expenses = data;
   renderExpensesList();
   updateSummaryBar();
-  if (typeof renderBalances === 'function') renderBalances();
   if (typeof scheduleTaskflowZoomRemeasure === 'function') scheduleTaskflowZoomRemeasure();
   return true;
 }

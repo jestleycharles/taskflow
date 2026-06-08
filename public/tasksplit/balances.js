@@ -137,7 +137,7 @@ function renderBalances() {
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <span class="balance-negative font-mono text-sm font-medium">${formatMoney(row.amount)}</span>
-          <button type="button" onclick="settleUp('${row.user_id}', ${row.amount})"
+          <button type="button" onclick="openSettleModal('${row.user_id}', ${row.amount})"
             class="text-xs bg-brand-500/20 hover:bg-brand-500/30 text-brand-500 px-2.5 py-1 rounded-lg transition">
             Settle
           </button>
@@ -176,6 +176,8 @@ function renderBalances() {
     })
     .join('');
 
+  const historyHtml = renderSettlementHistory();
+
   const html = `
     <div class="space-y-5">
       <div>
@@ -190,6 +192,7 @@ function renderBalances() {
         <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">All balances</h4>
         ${netHtml || '<p class="text-gray-600 text-sm">Everyone is settled up</p>'}
       </div>
+      ${historyHtml}
     </div>`;
 
   if (balancePanel) balancePanel.innerHTML = html;
@@ -227,15 +230,81 @@ function closeBalancePanel() {
   requestCloseTaskflowOverlay();
 }
 
-function settleUp(toUserId, amount) {
+function renderSettlementHistory() {
+  if (!settlements?.length) {
+    return `
+      <div class="border-t border-white/10 pt-4">
+        <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Payment history</h4>
+        <p class="text-gray-600 text-sm">No settlements recorded yet</p>
+      </div>`;
+  }
+
+  const rows = settlements
+    .slice(0, 20)
+    .map((s) => {
+      const from = s.from_user_profile?.username || 'Someone';
+      const to = s.to_user_profile?.username || 'Someone';
+      const date = s.paid_at ? new Date(s.paid_at).toLocaleDateString() : '';
+      return `
+      <div class="py-2 border-b border-white/5 last:border-0 text-xs">
+        <p class="text-gray-300">
+          <span class="text-white">${escHtml(from)}</span>
+          paid
+          <span class="text-white">${escHtml(to)}</span>
+          <span class="font-mono text-emerald-400">${formatMoney(s.amount)}</span>
+        </p>
+        <p class="text-gray-600 mt-0.5">${escHtml(date)}${s.note ? ` · ${escHtml(s.note)}` : ''}</p>
+      </div>`;
+    })
+    .join('');
+
+  return `
+    <div class="border-t border-white/10 pt-4">
+      <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Payment history</h4>
+      ${rows}
+    </div>`;
+}
+
+function openSettleModal(toUserId, maxAmount) {
   const member = (workspaceData?.members || []).find((m) => m.id === toUserId);
   const name = member?.username || 'this member';
-  showConfirm({
-    title: 'Settle up',
-    message: `Record a payment of ${formatMoney(amount)} to ${name}? This updates running balances.`,
-    confirmLabel: 'Settle up',
-    onConfirm: () => submitSettlement(toUserId, amount),
-  });
+  settleTargetUserId = toUserId;
+  settleMaxAmount = Number(maxAmount);
+
+  document.getElementById('settleModalSubtitle').textContent =
+    `Record a payment to ${name}. Balances update immediately.`;
+  document.getElementById('settleAmountInput').value = String(settleMaxAmount);
+  document.getElementById('settleMaxHint').textContent = `You owe up to ${formatMoney(settleMaxAmount)}`;
+  document.getElementById('settleModalError')?.classList.add('hidden');
+
+  document.getElementById('settleModal').classList.remove('hidden');
+}
+
+function closeSettleModal() {
+  document.getElementById('settleModal').classList.add('hidden');
+  settleTargetUserId = null;
+  settleMaxAmount = 0;
+}
+
+async function submitSettleModal() {
+  const errEl = document.getElementById('settleModalError');
+  const amount = Number(document.getElementById('settleAmountInput')?.value);
+  if (!settleTargetUserId || !Number.isFinite(amount) || amount <= 0) {
+    errEl.textContent = 'Enter a valid amount';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (amount > settleMaxAmount + 0.001) {
+    errEl.textContent = `Amount cannot exceed ${formatMoney(settleMaxAmount)}`;
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const btn = document.getElementById('settleSubmitBtn');
+  setButtonLoading(btn, true, 'Saving…');
+  const ok = await submitSettlement(settleTargetUserId, amount);
+  setButtonLoading(btn, false);
+  if (ok) closeSettleModal();
 }
 
 async function submitSettlement(toUserId, amount) {
@@ -246,10 +315,29 @@ async function submitSettlement(toUserId, amount) {
   });
   const data = await parseJsonResponse(r);
   if (!r.ok) {
-    showAlert(data.error || 'Settlement failed');
-    return;
+    const errEl = document.getElementById('settleModalError');
+    if (errEl && !document.getElementById('settleModal').classList.contains('hidden')) {
+      errEl.textContent = data.error || 'Settlement failed';
+      errEl.classList.remove('hidden');
+    } else {
+      showAlert(data.error || 'Settlement failed');
+    }
+    return false;
   }
   await refreshAll();
+  return true;
+}
+
+async function loadSettlements() {
+  if (isSoloExpenseTeam()) {
+    settlements = [];
+    return true;
+  }
+  const r = await apiFetch(`/api/teams/${teamId}/tasksplit/settlements`);
+  const data = await parseJsonResponse(r);
+  if (!r.ok) return false;
+  settlements = Array.isArray(data) ? data : [];
+  return true;
 }
 
 async function loadBalances() {
@@ -257,10 +345,15 @@ async function loadBalances() {
     renderBalances();
     return true;
   }
-  const r = await apiFetch(`/api/teams/${teamId}/tasksplit/balances`);
-  const data = await parseJsonResponse(r);
-  if (!r.ok) return false;
-  balances = data;
-  renderBalances();
-  return true;
+  const [balOk, settleOk] = await Promise.all([
+    apiFetch(`/api/teams/${teamId}/tasksplit/balances`).then(async (r) => {
+      const data = await parseJsonResponse(r);
+      if (!r.ok) return false;
+      balances = data;
+      return true;
+    }),
+    loadSettlements(),
+  ]);
+  if (balOk) renderBalances();
+  return balOk && settleOk;
 }

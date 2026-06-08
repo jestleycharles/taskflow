@@ -64,22 +64,22 @@ async function loadWorkspace() {
 
 async function refreshAll() {
   await loadWorkspace();
-  await loadExpenses();
-  await loadBalances();
+  await Promise.all([loadExpenses(), loadBalances()]);
   if (!document.getElementById('activityPanel').classList.contains('hidden')) {
     await loadActivity();
   }
+  pollExpenseCommentsIfOpen();
 }
 
 function startPolling() {
   clearInterval(pollInterval);
   pollInterval = setInterval(async () => {
-    await loadExpenses();
-    await loadBalances();
+    await Promise.all([loadExpenses(), loadBalances()]);
     if (typeof pollTeamRoleStateForTasksplit === 'function') await pollTeamRoleStateForTasksplit();
     if (!document.getElementById('activityPanel').classList.contains('hidden')) {
       await loadActivity();
     }
+    pollExpenseCommentsIfOpen();
   }, POLL_MS);
 }
 
@@ -104,7 +104,7 @@ async function init() {
     const ok = await loadWorkspace();
     if (!ok) return;
 
-    await loadExpenses();
+    await Promise.all([loadExpenses(), loadBalances()]);
     applyChatComposerState();
     if (typeof loadChatReadState === 'function') await loadChatReadState();
     if (typeof loadChat === 'function') await loadChat();
@@ -186,6 +186,13 @@ document.getElementById('expenseCommentAttachInput')?.addEventListener('change',
   if (file) setExpenseCommentPendingFile(file);
 });
 document.getElementById('expenseCommentAttachClearBtn')?.addEventListener('click', clearExpenseCommentPendingFile);
+
+document.getElementById('expensePaidBy')?.addEventListener('change', () => {
+  const payerId = document.getElementById('expensePaidBy')?.value;
+  if (!payerId) return;
+  const cb = document.querySelector(`.expense-participant-cb[value="${CSS.escape(payerId)}"]`);
+  if (cb) cb.checked = true;
+});
 
 document.getElementById('expenseCommentsList')?.addEventListener('click', (e) => {
   const el = e.target.closest('[data-preview-attachment]');

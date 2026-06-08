@@ -163,14 +163,22 @@ function renderExpenseComments(batchScrollHint) {
   }
 }
 
-async function loadExpenseComments(expenseId) {
+async function loadExpenseComments(expenseId, { silent = false } = {}) {
   if (!expenseId) return;
   const r = await apiFetch(`/api/teams/${teamId}/tasksplit/expenses/${expenseId}/comments`);
   const data = await parseJsonResponse(r);
   if (!r.ok) return;
   expenseComments = Array.isArray(data) ? data : [];
   expenseCommentsReady = true;
-  renderExpenseComments('bottom');
+  if (!silent || expenseDetailTab === 'comments') {
+    renderExpenseComments(silent ? undefined : 'bottom');
+  }
+}
+
+function pollExpenseCommentsIfOpen() {
+  if (!activeExpenseId || expenseDetailTab !== 'comments') return;
+  if (editingExpenseCommentId || messageSendInFlight.size) return;
+  loadExpenseComments(activeExpenseId, { silent: true });
 }
 
 function clearExpenseCommentPendingFile() {
