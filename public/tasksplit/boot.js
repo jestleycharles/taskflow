@@ -112,9 +112,12 @@ async function init() {
     startPolling();
     if (typeof startChatPolling === 'function') startChatPolling();
     startPresence();
-    if (typeof initTaskflowZoom === 'function') initTaskflowZoom();
-    if (typeof initTaskflowPan === 'function') initTaskflowPan();
-    if (typeof scheduleTaskflowZoomRemeasure === 'function') scheduleTaskflowZoomRemeasure();
+    // Zoom/pan disabled for now — re-enable when TASKSPLIT_ZOOM_ENABLED is true in zoom.js
+    if (typeof TASKSPLIT_ZOOM_ENABLED !== 'undefined' && TASKSPLIT_ZOOM_ENABLED) {
+      if (typeof initTaskflowZoom === 'function') initTaskflowZoom();
+      if (typeof initTaskflowPan === 'function') initTaskflowPan();
+      if (typeof scheduleTaskflowZoomRemeasure === 'function') scheduleTaskflowZoomRemeasure();
+    }
   } finally {
     hideNavigationLoading();
   }

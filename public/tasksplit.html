@@ -321,8 +321,8 @@
     </button>
   </div>
 
-  <!-- Zoom controls -->
-  <div id="taskflowZoomWrap" class="fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Zoom">
+  <!-- Zoom controls (disabled for now — see TASKSPLIT_ZOOM_ENABLED in zoom.js) -->
+  <div id="taskflowZoomWrap" class="hidden fixed flex flex-col items-stretch shadow-lg shadow-black/30" style="bottom: 1rem; right: 1rem;" role="group" aria-label="Zoom">
     <button type="button" id="taskflowZoomIn" class="taskflow-zoom-btn" aria-label="Zoom in (closer view)">+</button>
     <input type="range" id="taskflowZoomSlider" class="hidden md:block" min="100" max="500" step="10" value="100" orient="vertical" aria-label="Zoom level" />
     <button type="button" id="taskflowZoomPct" class="taskflow-zoom-btn" aria-label="Set zoom level">100%</button>
@@ -357,7 +357,7 @@
               class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm" />
           </div>
         </div>
-        <div>
+        <div id="expensePaidByWrap">
           <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Paid by</label>
           <select id="expensePaidBy" class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm"></select>
         </div>
@@ -421,11 +421,11 @@
       </div>
       <div id="expenseDetailTabDetails" class="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
         <div class="grid grid-cols-2 gap-4 text-sm">
-          <div>
+          <div id="expenseDetailDateWrap">
             <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Date</label>
             <p id="expenseDetailDate" class="text-gray-300"></p>
           </div>
-          <div>
+          <div id="expenseDetailPaidByWrap">
             <label class="block text-gray-500 text-xs mb-1.5 uppercase tracking-wider">Paid by</label>
             <p id="expenseDetailPaidBy" class="text-gray-300"></p>
           </div>

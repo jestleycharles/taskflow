@@ -1,8 +1,8 @@
 /**
- * taskflow/zoom.js
- * Board zoom and pan controls.
- * Depends on: state.js, helpers.js, kanban.js
+ * TaskSplit zoom and pan controls.
  */
+
+const TASKSPLIT_ZOOM_ENABLED = false;
 
 const TASKFLOW_ZOOM_MIN = 100;
 const TASKFLOW_ZOOM_MAX = 500;

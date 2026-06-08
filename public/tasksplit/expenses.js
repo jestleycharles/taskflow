@@ -29,14 +29,16 @@ function splitValueLabel(splitType) {
 }
 
 function renderExpenseSplits(expense) {
-  const payer = expense.paid_by_user?.username || 'Someone';
   const parts = expense.participants || [];
   const isSolo = workspaceData?.team?.expense_mode === 'solo';
 
   if (isSolo) {
-    return `<span class="text-gray-500 text-xs">Paid by ${escHtml(payer)}</span>`;
+    const desc = (expense.description || '').trim();
+    if (!desc) return '';
+    return `<p class="text-gray-500 text-xs truncate">${escHtml(desc)}</p>`;
   }
 
+  const payer = expense.paid_by_user?.username || 'Someone';
   const owedLines = parts
     .filter((p) => p.user_id !== expense.paid_by)
     .map((p) => {
@@ -194,8 +196,10 @@ function populateExpenseForm({ expense = null } = {}) {
   document.getElementById('expenseDescription').value = expense?.description || '';
   document.getElementById('expenseDate').value = expense?.expense_date || todayLocalDateString();
 
+  const paidByWrap = document.getElementById('expensePaidByWrap');
   const paidBySel = document.getElementById('expensePaidBy');
   const payerId = expense?.paid_by || currentUser?.id;
+  paidByWrap?.classList.toggle('hidden', isSolo);
   paidBySel.innerHTML = members
     .map(
       (m) =>
@@ -300,7 +304,8 @@ async function submitExpense() {
   const amount = document.getElementById('expenseAmount').value.trim();
   const description = document.getElementById('expenseDescription').value.trim();
   const expenseDate = document.getElementById('expenseDate').value;
-  const paidBy = document.getElementById('expensePaidBy').value;
+  const isSolo = workspaceData?.team?.expense_mode === 'solo';
+  const paidBy = isSolo ? currentUser?.id : document.getElementById('expensePaidBy').value;
 
   const errEl = document.getElementById('addExpenseError');
   if (!title) {
@@ -314,7 +319,6 @@ async function submitExpense() {
     return;
   }
 
-  const isSolo = workspaceData?.team?.expense_mode === 'solo';
   let participantIds = null;
   let participantSplits = null;
   let splitType = 'equal';
@@ -474,12 +478,16 @@ function openExpenseDetail(expenseId, { skipHistoryPush = false, fromEditCancel 
   renderExpenseTitleArea(expense);
   document.getElementById('expenseDetailAmount').textContent = formatMoney(expense.amount);
   document.getElementById('expenseDetailDate').textContent = formatDate(expense.expense_date);
-  document.getElementById('expenseDetailPaidBy').textContent =
-    expense.paid_by_user?.username || 'Unknown';
+  const isSolo = workspaceData?.team?.expense_mode === 'solo';
+  document.getElementById('expenseDetailDateWrap')?.classList.toggle('col-span-2', isSolo);
+  document.getElementById('expenseDetailPaidByWrap')?.classList.toggle('hidden', isSolo);
+  if (!isSolo) {
+    document.getElementById('expenseDetailPaidBy').textContent =
+      expense.paid_by_user?.username || 'Unknown';
+  }
   renderExpenseDescArea(expense);
 
   const splitsEl = document.getElementById('expenseDetailSplits');
-  const isSolo = workspaceData?.team?.expense_mode === 'solo';
   if (isSolo) {
     splitsEl.classList.add('hidden');
   } else {

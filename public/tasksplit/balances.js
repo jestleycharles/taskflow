@@ -16,7 +16,7 @@ function updateBalanceNavUi() {
   btn?.classList.remove('hidden');
   if (label) label.textContent = solo ? 'Insights' : 'Balances';
   if (title) title.textContent = solo ? 'Spending Insights' : 'Balance Center';
-  if (subtitle) subtitle.textContent = solo ? 'Your spending over time' : 'Simplified debts — who owes whom';
+  if (subtitle) subtitle.textContent = solo ? 'Track spending trends and habits' : 'Simplified debts — who owes whom';
   const icon = document.getElementById('balanceNavBtnIcon');
   if (icon) {
     icon.innerHTML = solo
@@ -67,13 +67,38 @@ function startOfWeekLocalYmd() {
   return todayLocalDateString(d);
 }
 
-function startOfMonthLocalYmd() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+function startOfMonthLocalYmd(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
-function startOfYearLocalYmd() {
-  return `${new Date().getFullYear()}-01-01`;
+function endOfMonthLocalYmd(date = new Date()) {
+  const d = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  return todayLocalDateString(d);
+}
+
+function startOfPrevMonthLocalYmd() {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return startOfMonthLocalYmd(d);
+}
+
+function endOfPrevMonthLocalYmd() {
+  const d = new Date();
+  d.setDate(0);
+  return todayLocalDateString(d);
+}
+
+function expensesBetween(startYmd, endYmd) {
+  return (expenses || []).filter((e) => e.expense_date >= startYmd && e.expense_date <= endYmd);
+}
+
+function spendingStatsFor(list, periodDays) {
+  const total = list.reduce((sum, e) => sum + Number(e.amount), 0);
+  const count = list.length;
+  const average = count ? total / count : 0;
+  const dailyAverage = periodDays ? total / periodDays : 0;
+  return { total, count, average, dailyAverage };
 }
 
 function daysInclusive(startYmd, endYmd) {
@@ -86,12 +111,34 @@ function expensesSince(startYmd) {
   return (expenses || []).filter((e) => e.expense_date >= startYmd);
 }
 
-function spendingStatsFor(list, periodDays) {
-  const total = list.reduce((sum, e) => sum + Number(e.amount), 0);
-  const count = list.length;
-  const average = count ? total / count : 0;
-  const dailyAverage = periodDays ? total / periodDays : 0;
-  return { total, count, average, dailyAverage };
+function monthOverMonthPct(currentTotal, prevTotal) {
+  if (!prevTotal && !currentTotal) return null;
+  if (!prevTotal) return 100;
+  return ((currentTotal - prevTotal) / prevTotal) * 100;
+}
+
+function topTitlesBySpend(list, limit = 3) {
+  const totals = new Map();
+  for (const e of list) {
+    const key = (e.title || 'Untitled').trim();
+    totals.set(key, (totals.get(key) || 0) + Number(e.amount));
+  }
+  return [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
+}
+
+function largestExpense(list) {
+  if (!list.length) return null;
+  return list.reduce((max, e) => (Number(e.amount) > Number(max.amount) ? e : max), list[0]);
+}
+
+function renderSpendingInsightSection(title, bodyHtml) {
+  return `
+    <div class="border-t border-white/10 pt-4">
+      <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">${escHtml(title)}</h4>
+      ${bodyHtml}
+    </div>`;
 }
 
 function renderSpendingStatCard(label, stats, periodDays) {
@@ -114,25 +161,93 @@ function renderSpendingInsights() {
   const today = todayLocalDateString();
   const weekStart = startOfWeekLocalYmd();
   const monthStart = startOfMonthLocalYmd();
-  const yearStart = startOfYearLocalYmd();
+  const monthEnd = endOfMonthLocalYmd();
+  const prevMonthStart = startOfPrevMonthLocalYmd();
+  const prevMonthEnd = endOfPrevMonthLocalYmd();
 
   const todayStats = spendingStatsFor(expensesSince(today), 1);
   const weekStats = spendingStatsFor(expensesSince(weekStart), daysInclusive(weekStart, today));
-  const monthStats = spendingStatsFor(expensesSince(monthStart), daysInclusive(monthStart, today));
-  const yearStats = spendingStatsFor(expensesSince(yearStart), daysInclusive(yearStart, today));
-  const allTimeStats = spendingStatsFor(expenses || [], 0);
+  const monthList = expensesBetween(monthStart, today);
+  const monthStats = spendingStatsFor(monthList, daysInclusive(monthStart, today));
+  const prevMonthList = expensesBetween(prevMonthStart, prevMonthEnd);
+  const prevMonthStats = spendingStatsFor(prevMonthList, daysInclusive(prevMonthStart, prevMonthEnd));
+
+  const momPct = monthOverMonthPct(monthStats.total, prevMonthStats.total);
+  const momHtml = momPct == null
+    ? '<p class="text-xs text-gray-600">No spending data yet</p>'
+    : (() => {
+        const abs = Math.abs(momPct).toFixed(0);
+        if (momPct > 0) {
+          return `<p class="text-sm text-amber-400">↑ ${abs}% vs last month <span class="text-gray-500">(${formatMoney(prevMonthStats.total)})</span></p>`;
+        }
+        if (momPct < 0) {
+          return `<p class="text-sm text-emerald-400">↓ ${abs}% vs last month <span class="text-gray-500">(${formatMoney(prevMonthStats.total)})</span></p>`;
+        }
+        return `<p class="text-sm text-gray-400">Same as last month <span class="text-gray-500">(${formatMoney(prevMonthStats.total)})</span></p>`;
+      })();
+
+  const daysInMonth = daysInclusive(monthStart, monthEnd);
+  const daysElapsed = daysInclusive(monthStart, today);
+  const projectedMonthTotal = daysElapsed ? (monthStats.total / daysElapsed) * daysInMonth : 0;
+
+  const biggest = largestExpense(monthList);
+  const biggestHtml = biggest
+    ? `<div class="flex items-center justify-between gap-2 text-sm">
+        <span class="text-gray-300 truncate">${escHtml(biggest.title)}</span>
+        <span class="font-mono text-white shrink-0">${formatMoney(biggest.amount)}</span>
+      </div>
+      <p class="text-[11px] text-gray-600 mt-0.5">${formatDate(biggest.expense_date)}</p>`
+    : '<p class="text-xs text-gray-600">No expenses this month yet</p>';
+
+  const topTitles = topTitlesBySpend(monthList, 3);
+  const topTitlesHtml = topTitles.length
+    ? topTitles
+        .map(
+          ([title, total]) => `
+      <div class="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-white/5 last:border-0">
+        <span class="text-gray-300 truncate">${escHtml(title)}</span>
+        <span class="font-mono text-gray-400 shrink-0">${formatMoney(total)}</span>
+      </div>`,
+        )
+        .join('')
+    : '<p class="text-xs text-gray-600">Add expenses to see where your money goes</p>';
+
+  const recentList = [...(expenses || [])]
+    .sort((a, b) => {
+      const dateCmp = b.expense_date.localeCompare(a.expense_date);
+      if (dateCmp !== 0) return dateCmp;
+      return (b.created_at || '').localeCompare(a.created_at || '');
+    })
+    .slice(0, 5);
+  const recentHtml = recentList.length
+    ? recentList
+        .map(
+          (e) => `
+      <button type="button" onclick="openExpenseDetail('${e.id}')"
+        class="w-full flex items-center justify-between gap-2 text-sm py-1.5 border-b border-white/5 last:border-0 hover:bg-white/[0.03] rounded-lg px-1 -mx-1 transition text-left">
+        <span class="text-gray-300 truncate">${escHtml(e.title)}</span>
+        <span class="font-mono text-emerald-400 shrink-0">${formatMoney(e.amount)}</span>
+      </button>`,
+        )
+        .join('')
+    : '<p class="text-xs text-gray-600">No recent expenses</p>';
+
+  const paceHtml = monthStats.count
+    ? `<p class="text-sm text-gray-300">${formatMoney(monthStats.dailyAverage)}/day average</p>
+       <p class="text-xs text-gray-500 mt-1">Projected this month: <span class="text-gray-400 font-mono">${formatMoney(projectedMonthTotal)}</span></p>
+       <p class="text-xs text-gray-600 mt-0.5">${monthStats.count} expense${monthStats.count === 1 ? '' : 's'} over ${daysElapsed} day${daysElapsed === 1 ? '' : 's'}</p>`
+    : '<p class="text-xs text-gray-600">No spending recorded this month</p>';
 
   panel.innerHTML = `
     <div class="space-y-3">
       ${renderSpendingStatCard('Today', todayStats, 1)}
       ${renderSpendingStatCard('This week', weekStats, daysInclusive(weekStart, today))}
       ${renderSpendingStatCard('This month', monthStats, daysInclusive(monthStart, today))}
-      ${renderSpendingStatCard('This year', yearStats, daysInclusive(yearStart, today))}
-      <div class="border-t border-white/10 pt-4">
-        <p class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">All time</p>
-        <p class="text-sm text-gray-300">${formatMoney(allTimeStats.total)} across ${allTimeStats.count} expense${allTimeStats.count === 1 ? '' : 's'}</p>
-        ${allTimeStats.count ? `<p class="text-xs text-gray-500 mt-1">${formatMoney(allTimeStats.average)} average per expense</p>` : '<p class="text-xs text-gray-600 mt-1">No expenses recorded yet</p>'}
-      </div>
+      ${renderSpendingInsightSection('Month-over-month', momHtml)}
+      ${renderSpendingInsightSection('Spending pace', paceHtml)}
+      ${renderSpendingInsightSection('Biggest expense this month', biggestHtml)}
+      ${renderSpendingInsightSection('Top categories', topTitlesHtml)}
+      ${renderSpendingInsightSection('Recent expenses', recentHtml)}
     </div>`;
 
   const inline = document.getElementById('balanceInlineSummary');

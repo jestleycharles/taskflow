@@ -133,9 +133,8 @@ function applyTasksplitCurrencyUi() {
 
 function applyTasksplitModeUpgradeUi() {
   const section = document.getElementById('tasksplitModeUpgradeSection');
-  const isOwner = teamData?.userRole === 'owner';
-  const isSolo = workspaceData?.team?.expense_mode === 'solo';
-  section?.classList.toggle('hidden', !isOwner || !isSolo);
+  // Solo → Duo upgrade disabled for now
+  section?.classList.add('hidden');
 }
 
 function showTasksplitModeUpgradeMsg(text, ok) {
