@@ -16,13 +16,46 @@ function updateBalanceNavUi() {
   btn?.classList.remove('hidden');
   if (label) label.textContent = solo ? 'Insights' : 'Balances';
   if (title) title.textContent = solo ? 'Spending Insights' : 'Balance Center';
-  if (subtitle) subtitle.textContent = solo ? 'Your spending over time' : 'Who owes whom';
+  if (subtitle) subtitle.textContent = solo ? 'Your spending over time' : 'Simplified debts — who owes whom';
   const icon = document.getElementById('balanceNavBtnIcon');
   if (icon) {
     icon.innerHTML = solo
       ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />'
       : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
   }
+}
+
+function getMemberSettleOptions(memberId) {
+  if (!balances || !currentUser || isSoloExpenseTeam()) return [];
+  const uid = String(currentUser.id);
+  const mid = String(memberId);
+  const options = [];
+
+  for (const row of balances.you_owe || []) {
+    if (String(row.user_id) === mid) {
+      options.push({
+        key: `pay:${mid}`,
+        direction: 'pay',
+        from_user: uid,
+        to_user: mid,
+        amount: Number(row.amount),
+        label: `You pay ${row.user?.username || 'member'}`,
+      });
+    }
+  }
+  for (const row of balances.you_are_owed || []) {
+    if (String(row.user_id) === mid) {
+      options.push({
+        key: `receive:${mid}`,
+        direction: 'receive',
+        from_user: mid,
+        to_user: uid,
+        amount: Number(row.amount),
+        label: `${row.user?.username || 'Member'} pays you`,
+      });
+    }
+  }
+  return options;
 }
 
 function startOfWeekLocalYmd() {
@@ -112,6 +145,50 @@ function renderSpendingInsights() {
   }
 }
 
+function renderSimplifiedDebtsSection() {
+  const simplified = balances?.simplified_debts || [];
+  if (!simplified.length) {
+    return `
+      <div class="border-t border-white/10 pt-4">
+        <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">Suggested settlements</h4>
+        <p class="text-gray-600 text-sm">Everyone is settled up</p>
+      </div>`;
+  }
+
+  const rows = simplified
+    .map((row) => {
+      const from = row.from_user_profile?.username || 'Someone';
+      const to = row.to_user_profile?.username || 'Someone';
+      const isYouPayer = String(row.from_user) === String(currentUser?.id);
+      const isYouPayee = String(row.to_user) === String(currentUser?.id);
+      const settleBtn =
+        isYouPayer || isYouPayee
+          ? `<button type="button" onclick="openSettleModal('${isYouPayer ? row.to_user : row.from_user}', ${row.amount}, { direction: '${isYouPayer ? 'pay' : 'receive'}' })"
+              class="text-xs bg-brand-500/20 hover:bg-brand-500/30 text-brand-500 px-2.5 py-1 rounded-lg transition">Settle</button>`
+          : '';
+      return `
+      <div class="flex items-center justify-between gap-2 py-2 border-b border-white/5 last:border-0 text-sm">
+        <p class="text-gray-300 min-w-0 truncate">
+          <span class="text-white">${escHtml(from)}</span>
+          <span class="text-gray-500"> owes </span>
+          <span class="text-white">${escHtml(to)}</span>
+        </p>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="font-mono text-emerald-400">${formatMoney(row.amount)}</span>
+          ${settleBtn}
+        </div>
+      </div>`;
+    })
+    .join('');
+
+  return `
+    <div class="border-t border-white/10 pt-4">
+      <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Suggested settlements</h4>
+      <p class="text-[11px] text-gray-600 mb-2 leading-relaxed">Minimum payments needed to settle everyone up.</p>
+      ${rows}
+    </div>`;
+}
+
 function renderBalances() {
   updateBalanceNavUi();
 
@@ -137,7 +214,7 @@ function renderBalances() {
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <span class="balance-negative font-mono text-sm font-medium">${formatMoney(row.amount)}</span>
-          <button type="button" onclick="openSettleModal('${row.user_id}', ${row.amount})"
+          <button type="button" onclick="openSettleModal('${row.user_id}', ${row.amount}, { direction: 'pay' })"
             class="text-xs bg-brand-500/20 hover:bg-brand-500/30 text-brand-500 px-2.5 py-1 rounded-lg transition">
             Settle
           </button>
@@ -156,7 +233,13 @@ function renderBalances() {
           ${userAvatarHtml(row.user || { username: '?' }, 'w-7 h-7')}
           <span class="text-gray-300 text-sm truncate">${escHtml(row.user?.username || 'Member')}</span>
         </div>
-        <span class="balance-positive font-mono text-sm font-medium">+${formatMoney(row.amount)}</span>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="balance-positive font-mono text-sm font-medium">+${formatMoney(row.amount)}</span>
+          <button type="button" onclick="openSettleModal('${row.user_id}', ${row.amount}, { direction: 'receive' })"
+            class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-2.5 py-1 rounded-lg transition">
+            Record
+          </button>
+        </div>
       </div>`,
         )
         .join('')
@@ -177,6 +260,7 @@ function renderBalances() {
     .join('');
 
   const historyHtml = renderSettlementHistory();
+  const simplifiedHtml = renderSimplifiedDebtsSection();
 
   const html = `
     <div class="space-y-5">
@@ -188,6 +272,7 @@ function renderBalances() {
         <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">You are owed</h4>
         ${owedHtml}
       </div>
+      ${simplifiedHtml}
       <div class="border-t border-white/10 pt-4">
         <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">All balances</h4>
         ${netHtml || '<p class="text-gray-600 text-sm">Everyone is settled up</p>'}
@@ -265,18 +350,73 @@ function renderSettlementHistory() {
     </div>`;
 }
 
-function openSettleModal(toUserId, maxAmount) {
-  const member = (workspaceData?.members || []).find((m) => m.id === toUserId);
+function applySettleOption(option) {
+  settleSelectedOption = option;
+  settleMaxAmount = Number(option.amount);
+  document.getElementById('settleAmountInput').value = String(settleMaxAmount);
+  document.getElementById('settleMaxHint').textContent = `Outstanding: ${formatMoney(settleMaxAmount)}`;
+}
+
+function onSettleDirectionChange() {
+  const sel = document.getElementById('settleDirectionSelect');
+  const key = sel?.value;
+  const option = settleOptions.find((o) => o.key === key);
+  if (option) applySettleOption(option);
+}
+
+function openSettleModal(memberUserId, maxAmount, { direction = 'pay', presetOption = null } = {}) {
+  const member = (workspaceData?.members || []).find((m) => String(m.id) === String(memberUserId));
   const name = member?.username || 'this member';
-  settleTargetUserId = toUserId;
-  settleMaxAmount = Number(maxAmount);
+
+  settleOptions = presetOption ? [presetOption] : getMemberSettleOptions(memberUserId);
+  if (!settleOptions.length && direction === 'pay') {
+    settleOptions = [{
+      key: `pay:${memberUserId}`,
+      direction: 'pay',
+      from_user: currentUser.id,
+      to_user: memberUserId,
+      amount: Number(maxAmount),
+      label: `You pay ${name}`,
+    }];
+  } else if (!settleOptions.length && direction === 'receive') {
+    settleOptions = [{
+      key: `receive:${memberUserId}`,
+      direction: 'receive',
+      from_user: memberUserId,
+      to_user: currentUser.id,
+      amount: Number(maxAmount),
+      label: `${name} pays you`,
+    }];
+  }
+
+  if (presetOption) {
+    settleOptions = [presetOption];
+  }
+
+  settleTargetUserId = memberUserId;
+  const directionWrap = document.getElementById('settleDirectionWrap');
+  const directionSel = document.getElementById('settleDirectionSelect');
+
+  if (settleOptions.length > 1) {
+    directionWrap?.classList.remove('hidden');
+    if (directionSel) {
+      directionSel.innerHTML = settleOptions
+        .map((o) => `<option value="${escHtml(o.key)}">${escHtml(o.label)} (${formatMoney(o.amount)})</option>`)
+        .join('');
+    }
+  } else {
+    directionWrap?.classList.add('hidden');
+  }
+
+  const initial = settleOptions[0];
+  if (!initial) return;
+
+  applySettleOption(initial);
 
   document.getElementById('settleModalSubtitle').textContent =
-    `Record a payment to ${name}. Balances update immediately.`;
-  document.getElementById('settleAmountInput').value = String(settleMaxAmount);
-  document.getElementById('settleMaxHint').textContent = `You owe up to ${formatMoney(settleMaxAmount)}`;
+    `Record a payment with ${name}. Balances update immediately.`;
+  document.getElementById('settleNoteInput').value = '';
   document.getElementById('settleModalError')?.classList.add('hidden');
-
   document.getElementById('settleModal').classList.remove('hidden');
 }
 
@@ -284,12 +424,21 @@ function closeSettleModal() {
   document.getElementById('settleModal').classList.add('hidden');
   settleTargetUserId = null;
   settleMaxAmount = 0;
+  settleOptions = [];
+  settleSelectedOption = null;
 }
 
 async function submitSettleModal() {
   const errEl = document.getElementById('settleModalError');
   const amount = Number(document.getElementById('settleAmountInput')?.value);
-  if (!settleTargetUserId || !Number.isFinite(amount) || amount <= 0) {
+  const note = document.getElementById('settleNoteInput')?.value.trim();
+
+  if (settleOptions.length > 1) {
+    const sel = document.getElementById('settleDirectionSelect');
+    settleSelectedOption = settleOptions.find((o) => o.key === sel?.value) || settleSelectedOption;
+  }
+
+  if (!settleSelectedOption || !Number.isFinite(amount) || amount <= 0) {
     errEl.textContent = 'Enter a valid amount';
     errEl.classList.remove('hidden');
     return;
@@ -302,16 +451,21 @@ async function submitSettleModal() {
 
   const btn = document.getElementById('settleSubmitBtn');
   setButtonLoading(btn, true, 'Saving…');
-  const ok = await submitSettlement(settleTargetUserId, amount);
+  const ok = await submitSettlement({
+    from_user: settleSelectedOption.from_user,
+    to_user: settleSelectedOption.to_user,
+    amount,
+    note,
+  });
   setButtonLoading(btn, false);
   if (ok) closeSettleModal();
 }
 
-async function submitSettlement(toUserId, amount) {
+async function submitSettlement({ from_user, to_user, amount, note }) {
   const r = await apiFetch(`/api/teams/${teamId}/tasksplit/settle`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to_user: toUserId, amount }),
+    body: JSON.stringify({ from_user, to_user, amount, note: note || undefined }),
   });
   const data = await parseJsonResponse(r);
   if (!r.ok) {
@@ -354,6 +508,11 @@ async function loadBalances() {
     }),
     loadSettlements(),
   ]);
-  if (balOk) renderBalances();
+  if (balOk) {
+    renderBalances();
+    if (!document.getElementById('teamPanel')?.classList.contains('hidden')) {
+      renderMemberList?.(teamData?.members || workspaceData?.members || []);
+    }
+  }
   return balOk && settleOk;
 }

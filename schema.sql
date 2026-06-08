@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   description TEXT,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
   paid_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
-  split_type TEXT NOT NULL DEFAULT 'equal' CHECK (split_type IN ('equal')),
+  split_type TEXT NOT NULL DEFAULT 'equal' CHECK (split_type IN ('equal', 'percentage', 'custom', 'shares')),
   expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_by UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -214,6 +214,7 @@ CREATE TABLE IF NOT EXISTS expense_participants (
   expense_id UUID NOT NULL REFERENCES expenses (id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   share_amount NUMERIC(12, 2) NOT NULL CHECK (share_amount >= 0),
+  split_value NUMERIC(12, 4),
   PRIMARY KEY (expense_id, user_id)
 );
 
@@ -323,7 +324,7 @@ CREATE INDEX IF NOT EXISTS dm_messages_conversation_created_idx
 
 CREATE TABLE IF NOT EXISTS message_attachments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'dm', 'comment', 'expense_comment')),
+  message_type TEXT NOT NULL CHECK (message_type IN ('chat', 'dm', 'comment', 'expense_comment', 'expense')),
   message_id UUID NOT NULL,
   file_url TEXT NOT NULL,
   file_name TEXT NOT NULL,

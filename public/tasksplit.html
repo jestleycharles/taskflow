@@ -257,6 +257,14 @@
         </button>
       </div>
       <div id="settingsPanelBody" class="flex-1 flex flex-col min-h-0 p-4">
+        <div id="tasksplitModeUpgradeSection" class="hidden shrink-0 space-y-2 mb-4 pb-4 border-b border-white/10">
+          <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider">Workspace mode</label>
+          <p class="text-xs text-gray-500 leading-relaxed">This workspace is in Solo mode. Upgrade to Duo to split expenses with a partner.</p>
+          <button type="button" id="upgradeToDuoBtn" onclick="confirmUpgradeToDuo()" class="w-full bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/30 text-brand-400 text-sm py-2.5 rounded-xl transition font-medium">
+            Upgrade to Duo
+          </button>
+          <p id="tasksplitModeUpgradeMsg" class="text-xs hidden"></p>
+        </div>
         <div id="tasksplitCurrencySection" class="shrink-0 space-y-2 mb-4">
           <label for="tasksplitCurrencySelect" class="block text-gray-400 text-xs font-medium uppercase tracking-wider">Currency</label>
           <p class="text-xs text-gray-500 leading-relaxed">Choose the symbol used for amounts in this workspace.</p>
@@ -357,6 +365,20 @@
           <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">Split between</label>
           <div id="expenseParticipantsList" class="space-y-2 max-h-40 overflow-y-auto"></div>
         </div>
+        <div id="expenseSplitTypeWrap" class="hidden space-y-3">
+          <div>
+            <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Split method</label>
+            <select id="expenseSplitType" onchange="onExpenseSplitTypeChange()"
+              class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm">
+              <option value="equal">Equal</option>
+              <option value="percentage">Percentage</option>
+              <option value="custom">Custom amounts</option>
+              <option value="shares">Shares</option>
+            </select>
+          </div>
+          <div id="expenseSplitValuesWrap" class="hidden space-y-2 max-h-36 overflow-y-auto"></div>
+          <p id="expenseSplitHint" class="text-xs text-gray-500"></p>
+        </div>
         <div>
           <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5">Description <span class="normal-case text-gray-600">(optional)</span></label>
           <input id="expenseDescription" type="text" placeholder="Notes"
@@ -418,6 +440,14 @@
           <div id="expenseDetailDescArea" class="text-gray-400 text-sm leading-relaxed"></div>
         </div>
         <div id="expenseDetailSplits" class="border-t border-white/10 pt-4 space-y-1"></div>
+        <div id="expenseDetailAttachments" class="hidden border-t border-white/10 pt-4 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="block text-gray-500 text-xs uppercase tracking-wider">Receipts</label>
+            <button type="button" id="expenseAttachBtn" onclick="document.getElementById('expenseAttachInput')?.click()" class="text-xs text-brand-500 hover:text-brand-400 font-medium">Add receipt</button>
+            <input type="file" id="expenseAttachInput" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+          </div>
+          <div id="expenseAttachmentsList" class="space-y-2"></div>
+        </div>
         <div id="expenseEditDetailsWrap" class="hidden border-t border-white/10 pt-4">
           <button type="button" id="expenseEditDetailsBtn" onclick="openEditExpenseModal()" class="text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white px-3 py-2 rounded-lg transition font-medium">
             Edit amount, date, payer &amp; split
@@ -650,10 +680,18 @@
       <h2 class="text-base font-semibold text-white mb-1">Settle up</h2>
       <p id="settleModalSubtitle" class="text-sm text-gray-400 leading-relaxed mb-4"></p>
       <div id="settleModalError" class="hidden bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4"></div>
+      <div id="settleDirectionWrap" class="hidden mb-4 space-y-2">
+        <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider">Settlement</label>
+        <select id="settleDirectionSelect" onchange="onSettleDirectionChange()"
+          class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 transition text-sm"></select>
+      </div>
       <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5" for="settleAmountInput">Amount</label>
       <input id="settleAmountInput" type="number" min="0.01" step="0.01"
         class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white font-mono focus:outline-none focus:border-brand-500 transition text-sm mb-2" />
-      <p id="settleMaxHint" class="text-xs text-gray-500 mb-5"></p>
+      <p id="settleMaxHint" class="text-xs text-gray-500 mb-4"></p>
+      <label class="block text-gray-400 text-xs font-medium uppercase tracking-wider mb-1.5" for="settleNoteInput">Note <span class="normal-case text-gray-600">(optional)</span></label>
+      <input id="settleNoteInput" type="text" placeholder="e.g. Venmo, cash"
+        class="w-full bg-ink-700 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition text-sm mb-5" />
       <div class="flex gap-3">
         <button type="button" onclick="closeSettleModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 py-2.5 rounded-xl transition text-sm">Cancel</button>
         <button type="button" id="settleSubmitBtn" onclick="submitSettleModal()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-xl transition text-sm">Record payment</button>

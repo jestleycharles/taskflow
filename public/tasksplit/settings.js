@@ -128,6 +128,72 @@ function applyTasksplitCurrencyUi() {
     select.value = getTeamCurrencyCode();
     select.disabled = !isOwner;
   }
+  applyTasksplitModeUpgradeUi();
+}
+
+function applyTasksplitModeUpgradeUi() {
+  const section = document.getElementById('tasksplitModeUpgradeSection');
+  const isOwner = teamData?.userRole === 'owner';
+  const isSolo = workspaceData?.team?.expense_mode === 'solo';
+  section?.classList.toggle('hidden', !isOwner || !isSolo);
+}
+
+function showTasksplitModeUpgradeMsg(text, ok) {
+  const msg = document.getElementById('tasksplitModeUpgradeMsg');
+  if (!msg) return;
+  if (!text) {
+    msg.classList.add('hidden');
+    return;
+  }
+  msg.textContent = text;
+  msg.className = `text-xs mt-1 ${ok ? 'text-emerald-400' : 'text-red-400'}`;
+  msg.classList.remove('hidden');
+}
+
+function confirmUpgradeToDuo() {
+  showConfirm({
+    title: 'Upgrade to Duo?',
+    message:
+      'Your solo expenses will stay as personal records. You can invite one partner to start splitting new expenses together.',
+    confirmLabel: 'Upgrade to Duo',
+    onConfirm: () => executeUpgradeToDuo(),
+  });
+}
+
+async function executeUpgradeToDuo() {
+  const btn = document.getElementById('upgradeToDuoBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Upgrading…';
+  }
+  showTasksplitModeUpgradeMsg('Upgrading…', true);
+
+  const r = await apiFetch(`/api/teams/${teamId}/tasksplit/mode`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expense_mode: 'duo' }),
+  });
+  const data = await parseJsonResponse(r);
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Upgrade to Duo';
+  }
+
+  if (!r.ok) {
+    showTasksplitModeUpgradeMsg(data.error || 'Upgrade failed', false);
+    return;
+  }
+
+  if (workspaceData?.team) workspaceData.team.expense_mode = 'duo';
+  if (teamData) teamData.expense_mode = 'duo';
+  applyTasksplitModeUpgradeUi();
+  applyTeamHeader?.();
+  updateBalanceNavUi?.();
+  applyTasksplitInviteUi?.();
+  await reloadWorkspace();
+  showTasksplitModeUpgradeMsg('Upgraded to Duo mode', true);
+  setTimeout(() => showTasksplitModeUpgradeMsg('', true), 2500);
 }
 
 function showTasksplitCurrencyMsg(text, ok) {

@@ -59,11 +59,38 @@ function renderMemberList(members) {
   const assignHint = isOwner && typeof canAssignTeamRoles === 'function' && canAssignTeamRoles()
     ? '<p class="text-xs text-gray-500 mb-3 shrink-0">Assign a display role to each member (owner cannot be changed). Pending invites cannot be assigned roles until they accept.</p>'
     : '';
-  list.innerHTML = assignHint + renderMemberSectionsHtml(membersWithPending(members || []), {
+  list.innerHTML = assignHint + renderTasksplitMemberSectionsHtml(membersWithPending(members || []), {
     showAssign: typeof canAssignTeamRoles === 'function' && canAssignTeamRoles(),
     showRemove: isOwner,
     showPermissionRole: !(typeof canAssignTeamRoles === 'function' && canAssignTeamRoles()),
   });
+}
+
+function renderTasksplitMemberSectionsHtml(members, rowOptions) {
+  const sections = buildMemberDisplaySections(members);
+  return sections.map((section, idx) => {
+    const header = section.title
+      ? `<p class="text-xs font-semibold uppercase tracking-wider mb-2 ${idx ? 'mt-4' : ''}" style="color:${escHtml(section.titleColor || '#9ca3af')}">${escHtml(section.title)}</p>`
+      : '';
+    const rows = section.members.map((m) => tasksplitMemberRowHtml(m, rowOptions)).join('');
+    return `${header}${rows}`;
+  }).join('');
+}
+
+function tasksplitMemberRowHtml(m, options = {}) {
+  const html = memberRowHtml(m, options);
+  if (m.pending || (typeof isSoloExpenseTeam === 'function' && isSoloExpenseTeam())) return html;
+  if (String(m.id) === String(currentUser?.id)) return html;
+
+  const settleOptions = typeof getMemberSettleOptions === 'function' ? getMemberSettleOptions(m.id) : [];
+  if (!settleOptions.length) return html;
+
+  const settleBtn = `<button type="button" onclick="openSettleModal('${m.id}', ${settleOptions[0].amount})"
+    class="text-[10px] bg-brand-500/20 hover:bg-brand-500/30 text-brand-500 px-2 py-1 rounded-lg transition shrink-0 font-medium">Settle</button>`;
+
+  const insertIdx = html.lastIndexOf('</div>');
+  if (insertIdx === -1) return html;
+  return html.slice(0, insertIdx) + settleBtn + html.slice(insertIdx);
 }
 
 function closeAllSidePanels() {

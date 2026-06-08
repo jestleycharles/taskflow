@@ -4,11 +4,13 @@ const { sendError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const {
   roundMoney,
-  equalShares,
-  buildPairwiseDebts,
+  computeParticipantShares,
   computeNetBalances,
+  simplifyDebts,
+  simplifiedDebtsToMap,
   balanceCenterForUser,
   pairwiseOwed,
+  SPLIT_TYPES,
 } = require('../lib/tasksplit-balances');
 const {
   loadExpenseTeam,
@@ -38,12 +40,30 @@ const commentFileUpload = multer({
   limits: { fileSize: MSG_ATTACHMENT_MAX },
 });
 
+const expenseFileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MSG_ATTACHMENT_MAX },
+});
+
 const EXPENSE_COMMENT_SELECT =
   'id, expense_id, user_id, content, content_before_edit, edited_at, deleted_at, created_at, user:user_id(id, username, avatar_color, avatar_url)';
 
 function optionalExpenseCommentFileUpload(req, res, next) {
   if (!req.is('multipart/form-data')) return next();
   commentFileUpload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File must be 8 MB or smaller' });
+      }
+      return sendError(res, 400, err, 'save');
+    }
+    next();
+  });
+}
+
+function optionalExpenseAttachmentUpload(req, res, next) {
+  if (!req.is('multipart/form-data')) return next();
+  expenseFileUpload.single('file')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'File must be 8 MB or smaller' });
@@ -111,10 +131,12 @@ async function loadExpensesWithParticipants(teamId) {
   const expenseIds = expenses.map((e) => e.id);
   const { data: participants, error: partErr } = await supabaseAdmin
     .from('expense_participants')
-    .select('expense_id, user_id, share_amount')
+    .select('expense_id, user_id, share_amount, split_value')
     .in('expense_id', expenseIds);
 
   if (partErr) throw partErr;
+
+  const attachmentsMap = await fetchAttachmentsForMessages('expense', expenseIds);
 
   const partsByExpense = new Map();
   for (const p of participants || []) {
@@ -122,6 +144,7 @@ async function loadExpensesWithParticipants(teamId) {
     partsByExpense.get(p.expense_id).push({
       user_id: p.user_id,
       share_amount: Number(p.share_amount),
+      split_value: p.split_value != null ? Number(p.split_value) : null,
     });
   }
 
@@ -129,6 +152,7 @@ async function loadExpensesWithParticipants(teamId) {
     ...e,
     amount: Number(e.amount),
     participants: partsByExpense.get(e.id) || [],
+    attachments: attachmentsMap.get(e.id) || [],
   }));
 }
 
@@ -160,6 +184,49 @@ function formatMoney(amount, currencyCode) {
   return formatCurrencyAmount(amount, currencyCode || 'PHP');
 }
 
+function buildBalancePayload(expenses, settlements, memberIds, currentUserId) {
+  const netBalances = computeNetBalances(expenses, settlements, memberIds);
+  const simplified = simplifyDebts(netBalances, memberIds);
+  const debts = simplifiedDebtsToMap(simplified);
+  const center = balanceCenterForUser(debts, currentUserId, memberIds);
+
+  return {
+    simplified_debts: simplified,
+    you_owe: center.you_owe,
+    you_are_owed: center.you_are_owed,
+    net_balances: memberIds.map((mid) => ({
+      user_id: mid,
+      balance: netBalances.get(mid) || 0,
+    })),
+    debt_map: debts,
+  };
+}
+
+function parseSplitType(value) {
+  const type = String(value || 'equal').trim().toLowerCase();
+  return SPLIT_TYPES.has(type) ? type : 'equal';
+}
+
+function parseParticipantSplits(body, memberIdSet, defaultMemberIds) {
+  const { participant_ids, participant_splits } = body || {};
+
+  if (Array.isArray(participant_splits) && participant_splits.length) {
+    const rows = participant_splits
+      .map((row) => ({
+        user_id: String(row.user_id || ''),
+        split_value: row.split_value != null ? Number(row.split_value) : null,
+      }))
+      .filter((row) => memberIdSet.has(row.user_id));
+    return [...new Map(rows.map((r) => [r.user_id, r])).values()];
+  }
+
+  const ids = Array.isArray(participant_ids) ? participant_ids : defaultMemberIds;
+  return [...new Set(ids.map(String))].filter((pid) => memberIdSet.has(pid)).map((user_id) => ({
+    user_id,
+    split_value: null,
+  }));
+}
+
 // GET /api/teams/:id/tasksplit — workspace summary
 router.get('/api/teams/:id/tasksplit', requireAuth, async (req, res) => {
   const { id } = req.params;
@@ -181,10 +248,7 @@ router.get('/api/teams/:id/tasksplit', requireAuth, async (req, res) => {
     const settlements = await loadSettlements(id);
     const memberIds = members.map((m) => m.id);
 
-    const debts = buildPairwiseDebts(expenses, settlements);
-    const netBalances = computeNetBalances(expenses, settlements, memberIds);
-    const center = balanceCenterForUser(debts, userId, memberIds);
-
+    const balancePayload = buildBalancePayload(expenses, settlements, memberIds, userId);
     const totalSpent = roundMoney(expenses.reduce((sum, e) => sum + Number(e.amount), 0));
 
     const { data: ownerUser } = await supabaseAdmin
@@ -205,18 +269,22 @@ router.get('/api/teams/:id/tasksplit', requireAuth, async (req, res) => {
       expense_count: expenses.length,
       total_spent: totalSpent,
       balances: {
-        you_owe: center.you_owe.map((row) => ({
+        simplified_debts: balancePayload.simplified_debts.map((row) => ({
+          ...row,
+          from_user_profile: members.find((m) => m.id === row.from_user) || null,
+          to_user_profile: members.find((m) => m.id === row.to_user) || null,
+        })),
+        you_owe: balancePayload.you_owe.map((row) => ({
           ...row,
           user: members.find((m) => m.id === row.user_id) || null,
         })),
-        you_are_owed: center.you_are_owed.map((row) => ({
+        you_are_owed: balancePayload.you_are_owed.map((row) => ({
           ...row,
           user: members.find((m) => m.id === row.user_id) || null,
         })),
-        net_balances: memberIds.map((mid) => ({
-          user_id: mid,
-          balance: netBalances.get(mid) || 0,
-          user: members.find((m) => m.id === mid) || null,
+        net_balances: balancePayload.net_balances.map((row) => ({
+          ...row,
+          user: members.find((m) => m.id === row.user_id) || null,
         })),
       },
     });
@@ -246,7 +314,8 @@ router.get('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =>
 router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.session.user.id;
-  const { title, description, amount, paid_by, participant_ids, expense_date } = req.body || {};
+  const { title, description, amount, paid_by, participant_ids, participant_splits, split_type, expense_date } =
+    req.body || {};
 
   const trimmedTitle = String(title || '').trim();
   if (!trimmedTitle) return res.status(400).json({ error: 'Expense title is required' });
@@ -270,24 +339,28 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
     }
 
     const defaultParticipantIds = members.map((m) => m.id);
-    let participantIds = Array.isArray(participant_ids) ? participant_ids : defaultParticipantIds;
-    participantIds = [...new Set(participantIds.map(String))].filter((pid) => memberIdSet.has(pid));
+    let splitEntries = parseParticipantSplits(req.body, memberIdSet, defaultParticipantIds);
 
-    if (!participantIds.length) {
+    if (!splitEntries.length) {
       return res.status(400).json({ error: 'At least one participant is required' });
     }
 
+    const expenseSplitType = loaded.team.expense_mode === 'solo' ? 'equal' : parseSplitType(split_type);
+
     if (loaded.team.expense_mode === 'solo') {
-      participantIds = [payerId];
+      splitEntries = [{ user_id: payerId, split_value: null }];
     } else {
-      participantIds = ensurePayerInParticipants(payerId, participantIds);
+      const participantIds = ensurePayerInParticipants(
+        payerId,
+        splitEntries.map((e) => e.user_id),
+      );
+      const entryById = new Map(splitEntries.map((e) => [e.user_id, e]));
+      splitEntries = participantIds.map((pid) => entryById.get(pid) || { user_id: pid, split_value: null });
     }
 
-    const shares = equalShares(parsedAmount, participantIds.length);
-    const participantRows = participantIds.map((pid, i) => ({
-      user_id: pid,
-      share_amount: shares[i],
-    }));
+    const shareResult = computeParticipantShares(expenseSplitType, parsedAmount, splitEntries);
+    if (!shareResult.ok) return res.status(400).json({ error: shareResult.error });
+    const participantRows = shareResult.rows;
 
     const { data: expense, error } = await supabaseAdmin
       .from('expenses')
@@ -297,7 +370,7 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
         description: description?.trim() || null,
         amount: parsedAmount,
         paid_by: payerId,
-        split_type: 'equal',
+        split_type: expenseSplitType,
         expense_date: expenseDate,
         created_by: userId,
       })
@@ -310,6 +383,7 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
       expense_id: expense.id,
       user_id: p.user_id,
       share_amount: p.share_amount,
+      split_value: p.split_value,
     }));
 
     const { error: partErr } = await supabaseAdmin.from('expense_participants').insert(partRows);
@@ -331,6 +405,7 @@ router.post('/api/teams/:id/tasksplit/expenses', requireAuth, async (req, res) =
       ...expense,
       amount: Number(expense.amount),
       participants: participantRows,
+      attachments: [],
     };
 
     res.json(attachUsers([full], members)[0]);
@@ -353,6 +428,7 @@ async function replaceExpenseParticipants(expenseId, participantRows) {
       expense_id: expenseId,
       user_id: p.user_id,
       share_amount: p.share_amount,
+      split_value: p.split_value ?? null,
     })),
   );
   if (insErr) throw insErr;
@@ -362,7 +438,8 @@ async function replaceExpenseParticipants(expenseId, participantRows) {
 router.patch('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async (req, res) => {
   const { id, expenseId } = req.params;
   const userId = req.session.user.id;
-  const { title, description, amount, paid_by, participant_ids, expense_date } = req.body || {};
+  const { title, description, amount, paid_by, participant_ids, participant_splits, split_type, expense_date } =
+    req.body || {};
 
   try {
     const loaded = await loadExpenseTeam(id, userId);
@@ -370,7 +447,7 @@ router.patch('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async 
 
     const { data: existing } = await supabaseAdmin
       .from('expenses')
-      .select('id, title, description, team_id, amount, paid_by, expense_date, created_by')
+      .select('id, title, description, team_id, amount, paid_by, split_type, expense_date, created_by')
       .eq('id', expenseId)
       .eq('team_id', id)
       .single();
@@ -417,41 +494,67 @@ router.patch('/api/teams/:id/tasksplit/expenses/:expenseId', requireAuth, async 
     }
 
     const financialFieldsTouched =
-      amount !== undefined || paid_by !== undefined || participant_ids !== undefined;
+      amount !== undefined ||
+      paid_by !== undefined ||
+      participant_ids !== undefined ||
+      participant_splits !== undefined ||
+      split_type !== undefined;
     let participantRows = null;
+    let effectiveSplitType = existing.split_type || 'equal';
 
-    if (financialFieldsTouched || participant_ids !== undefined) {
+    if (split_type !== undefined) {
+      effectiveSplitType = loaded.team.expense_mode === 'solo' ? 'equal' : parseSplitType(split_type);
+      updates.split_type = effectiveSplitType;
+    }
+
+    if (financialFieldsTouched || participant_ids !== undefined || participant_splits !== undefined) {
       const effectiveAmount = parsedAmount ?? Number(existing.amount);
-      let participantIds;
 
-      if (participant_ids !== undefined) {
-        if (!Array.isArray(participant_ids)) {
-          return res.status(400).json({ error: 'participant_ids must be an array' });
+      let splitEntries;
+      if (participant_ids !== undefined || participant_splits !== undefined) {
+        const { data: existingParts } = await supabaseAdmin
+          .from('expense_participants')
+          .select('user_id, split_value')
+          .eq('expense_id', expenseId);
+        const defaultIds = (existingParts || []).map((p) => ({
+          user_id: p.user_id,
+          split_value: p.split_value != null ? Number(p.split_value) : null,
+        }));
+        splitEntries = parseParticipantSplits(req.body, memberIdSet, defaultIds.map((p) => p.user_id));
+        if (participant_splits === undefined && participant_ids !== undefined) {
+          splitEntries = splitEntries.map((e) => ({ ...e, split_value: null }));
         }
-        participantIds = [...new Set(participant_ids.map(String))].filter((pid) => memberIdSet.has(pid));
       } else {
         const { data: currentParts } = await supabaseAdmin
           .from('expense_participants')
-          .select('user_id')
+          .select('user_id, split_value')
           .eq('expense_id', expenseId);
-        participantIds = (currentParts || []).map((p) => p.user_id);
+        splitEntries = (currentParts || []).map((p) => ({
+          user_id: p.user_id,
+          split_value: p.split_value != null ? Number(p.split_value) : null,
+        }));
       }
 
-      if (!participantIds.length) {
+      if (!splitEntries.length) {
         return res.status(400).json({ error: 'At least one participant is required' });
       }
 
       if (loaded.team.expense_mode === 'solo') {
-        participantIds = [payerId];
+        splitEntries = [{ user_id: payerId, split_value: null }];
+        effectiveSplitType = 'equal';
+        updates.split_type = 'equal';
       } else {
-        participantIds = ensurePayerInParticipants(payerId, participantIds);
+        const participantIds = ensurePayerInParticipants(
+          payerId,
+          splitEntries.map((e) => e.user_id),
+        );
+        const entryById = new Map(splitEntries.map((e) => [e.user_id, e]));
+        splitEntries = participantIds.map((pid) => entryById.get(pid) || { user_id: pid, split_value: null });
       }
 
-      const shares = equalShares(effectiveAmount, participantIds.length);
-      participantRows = participantIds.map((pid, i) => ({
-        user_id: pid,
-        share_amount: shares[i],
-      }));
+      const shareResult = computeParticipantShares(effectiveSplitType, effectiveAmount, splitEntries);
+      if (!shareResult.ok) return res.status(400).json({ error: shareResult.error });
+      participantRows = shareResult.rows;
     }
 
     if (!Object.keys(updates).length && !participantRows) {
@@ -538,23 +641,25 @@ router.get('/api/teams/:id/tasksplit/balances', requireAuth, async (req, res) =>
     const expenses = await loadExpensesWithParticipants(id);
     const settlements = await loadSettlements(id);
 
-    const debts = buildPairwiseDebts(expenses, settlements);
-    const netBalances = computeNetBalances(expenses, settlements, memberIds);
-    const center = balanceCenterForUser(debts, userId, memberIds);
+    const balancePayload = buildBalancePayload(expenses, settlements, memberIds, userId);
 
     res.json({
-      you_owe: center.you_owe.map((row) => ({
+      simplified_debts: balancePayload.simplified_debts.map((row) => ({
+        ...row,
+        from_user_profile: members.find((m) => m.id === row.from_user) || null,
+        to_user_profile: members.find((m) => m.id === row.to_user) || null,
+      })),
+      you_owe: balancePayload.you_owe.map((row) => ({
         ...row,
         user: members.find((m) => m.id === row.user_id) || null,
       })),
-      you_are_owed: center.you_are_owed.map((row) => ({
+      you_are_owed: balancePayload.you_are_owed.map((row) => ({
         ...row,
         user: members.find((m) => m.id === row.user_id) || null,
       })),
-      net_balances: memberIds.map((mid) => ({
-        user_id: mid,
-        balance: netBalances.get(mid) || 0,
-        user: members.find((m) => m.id === mid) || null,
+      net_balances: balancePayload.net_balances.map((row) => ({
+        ...row,
+        user: members.find((m) => m.id === row.user_id) || null,
       })),
     });
   } catch (err) {
@@ -588,14 +693,13 @@ router.get('/api/teams/:id/tasksplit/settlements', requireAuth, async (req, res)
   }
 });
 
-// POST /api/teams/:id/tasksplit/settle — settle up with another member
+// POST /api/teams/:id/tasksplit/settle — record a payment between members
 router.post('/api/teams/:id/tasksplit/settle', requireAuth, async (req, res) => {
   const { id } = req.params;
   const userId = req.session.user.id;
-  const { to_user, amount, note } = req.body || {};
+  const { to_user, from_user, amount, note } = req.body || {};
 
   if (!to_user) return res.status(400).json({ error: 'to_user is required' });
-  if (to_user === userId) return res.status(400).json({ error: 'Cannot settle with yourself' });
 
   try {
     const loaded = await loadExpenseTeam(id, userId);
@@ -606,32 +710,43 @@ router.post('/api/teams/:id/tasksplit/settle', requireAuth, async (req, res) => 
     }
 
     const members = await loadTeamMembers(id);
-    const memberIds = new Set(members.map((m) => m.id));
-    if (!memberIds.has(to_user)) {
-      return res.status(400).json({ error: 'That user is not a workspace member' });
+    const memberIds = members.map((m) => m.id);
+    const memberIdSet = new Set(memberIds);
+
+    const payerId = from_user || userId;
+    const payeeId = to_user;
+
+    if (!memberIdSet.has(payerId) || !memberIdSet.has(payeeId)) {
+      return res.status(400).json({ error: 'Both users must be workspace members' });
+    }
+    if (payerId === payeeId) {
+      return res.status(400).json({ error: 'Payer and payee must be different people' });
+    }
+    if (payerId !== userId && payeeId !== userId) {
+      return res.status(403).json({ error: 'You must be the payer or payee in this settlement' });
     }
 
     const expenses = await loadExpensesWithParticipants(id);
     const settlements = await loadSettlements(id);
-    const debts = buildPairwiseDebts(expenses, settlements);
+    const balancePayload = buildBalancePayload(expenses, settlements, memberIds, userId);
+    const owedAmount = pairwiseOwed(balancePayload.debt_map, payerId, payeeId);
 
-    const owedAmount = pairwiseOwed(debts, userId, to_user);
     if (owedAmount <= 0) {
-      return res.status(400).json({ error: 'You do not owe this member anything' });
+      return res.status(400).json({ error: 'There is no outstanding debt for this settlement' });
     }
 
     let settleAmount = amount != null ? parseAmount(amount) : owedAmount;
     if (!settleAmount) return res.status(400).json({ error: 'Invalid settlement amount' });
     if (settleAmount > owedAmount) {
-      return res.status(400).json({ error: `You only owe ${formatMoney(owedAmount, loaded.team.currency_code)}` });
+      return res.status(400).json({ error: `Outstanding debt is only ${formatMoney(owedAmount, loaded.team.currency_code)}` });
     }
 
     const { data: settlement, error } = await supabaseAdmin
       .from('expense_settlements')
       .insert({
         team_id: id,
-        from_user: userId,
-        to_user,
+        from_user: payerId,
+        to_user: payeeId,
         amount: settleAmount,
         note: note?.trim() || null,
         created_by: userId,
@@ -641,25 +756,168 @@ router.post('/api/teams/:id/tasksplit/settle', requireAuth, async (req, res) => 
 
     if (error) return sendError(res, 400, error, 'save');
 
-    const toUser = members.find((m) => m.id === to_user);
-    const toName = toUser?.username || 'member';
+    const payer = members.find((m) => m.id === payerId);
+    const payee = members.find((m) => m.id === payeeId);
+    const payerName = payer?.username || 'Someone';
+    const payeeName = payee?.username || 'Someone';
     await logTaskSplitActivity(
       id,
       userId,
       'settlement',
-      `Paid ${toName} ${formatMoney(settleAmount, loaded.team.currency_code)}`,
+      `${payerName} paid ${payeeName} ${formatMoney(settleAmount, loaded.team.currency_code)}`,
     );
 
     res.json({
       ...settlement,
       amount: Number(settlement.amount),
-      from_user_profile: members.find((m) => m.id === userId) || null,
-      to_user_profile: toUser || null,
+      from_user_profile: payer || null,
+      to_user_profile: payee || null,
     });
   } catch (err) {
     return sendError(res, 500, err, 'save');
   }
 });
+
+// PATCH /api/teams/:id/tasksplit/mode — upgrade solo workspace to duo (owner only)
+router.patch('/api/teams/:id/tasksplit/mode', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.user.id;
+  const { expense_mode } = req.body || {};
+
+  try {
+    const loaded = await loadExpenseTeam(id, userId);
+    if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+    if (loaded.role !== 'owner') {
+      return res.status(403).json({ error: 'Only the workspace owner can change the expense mode' });
+    }
+
+    const nextMode = String(expense_mode || '').trim().toLowerCase();
+    const currentMode = loaded.team.expense_mode;
+
+    if (currentMode === 'solo' && nextMode === 'duo') {
+      const { data: updated, error } = await supabaseAdmin
+        .from('teams')
+        .update({ expense_mode: 'duo' })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) return sendError(res, 400, error, 'save');
+
+      await logTaskSplitActivity(
+        id,
+        userId,
+        'workspace_mode_changed',
+        'Upgraded workspace from Solo to Duo — invite a partner to start splitting expenses',
+      );
+
+      return res.json({ team: updated });
+    }
+
+    return res.status(400).json({
+      error: 'Only upgrading from Solo to Duo is supported after creation',
+    });
+  } catch (err) {
+    return sendError(res, 500, err, 'save');
+  }
+});
+
+// POST /api/teams/:id/tasksplit/expenses/:expenseId/attachments
+router.post(
+  '/api/teams/:id/tasksplit/expenses/:expenseId/attachments',
+  requireAuth,
+  optionalExpenseAttachmentUpload,
+  async (req, res) => {
+    const { id, expenseId } = req.params;
+    const userId = req.session.user.id;
+
+    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+
+    try {
+      const loaded = await loadExpenseTeam(id, userId);
+      if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+
+      const { data: expense } = await supabaseAdmin
+        .from('expenses')
+        .select('id, title, created_by')
+        .eq('id', expenseId)
+        .eq('team_id', id)
+        .single();
+
+      if (!expense) return res.status(404).json({ error: 'Expense not found' });
+      if (!canModifyExpense(expense, userId, loaded.role)) {
+        return res.status(403).json({ error: 'Only the expense creator or workspace owner can add attachments' });
+      }
+
+      const uploadGuard = await assertCanUploadFile(supabaseAdmin, userId);
+      if (!uploadGuard.ok) {
+        return res.status(uploadGuard.status).json({
+          error: uploadGuard.error,
+          retry_after_ms: uploadGuard.retry_after_ms,
+        });
+      }
+
+      const uploaded = await uploadMessageAttachment({
+        messageType: 'expense',
+        messageId: expenseId,
+        file: req.file,
+        userId,
+      });
+      if (!uploaded.ok) {
+        return res.status(uploaded.status).json({ error: uploaded.error });
+      }
+
+      await logTaskSplitActivity(id, userId, 'expense_attachment', `Added a receipt to "${expense.title}"`);
+      res.json(uploaded.attachment);
+    } catch (err) {
+      return sendError(res, 500, err, 'save');
+    }
+  },
+);
+
+// DELETE /api/teams/:id/tasksplit/expenses/:expenseId/attachments/:attachmentId
+router.delete(
+  '/api/teams/:id/tasksplit/expenses/:expenseId/attachments/:attachmentId',
+  requireAuth,
+  async (req, res) => {
+    const { id, expenseId, attachmentId } = req.params;
+    const userId = req.session.user.id;
+
+    try {
+      const loaded = await loadExpenseTeam(id, userId);
+      if (loaded.status !== 200) return res.status(loaded.status).json({ error: loaded.error });
+
+      const { data: expense } = await supabaseAdmin
+        .from('expenses')
+        .select('id, title, created_by')
+        .eq('id', expenseId)
+        .eq('team_id', id)
+        .single();
+
+      if (!expense) return res.status(404).json({ error: 'Expense not found' });
+      if (!canModifyExpense(expense, userId, loaded.role)) {
+        return res.status(403).json({ error: 'Only the expense creator or workspace owner can remove attachments' });
+      }
+
+      const { data: att } = await supabaseAdmin
+        .from('message_attachments')
+        .select('id, message_type, message_id')
+        .eq('id', attachmentId)
+        .single();
+
+      if (!att || att.message_type !== 'expense' || att.message_id !== expenseId) {
+        return res.status(404).json({ error: 'Attachment not found' });
+      }
+
+      const { error } = await supabaseAdmin.from('message_attachments').delete().eq('id', attachmentId);
+      if (error) return sendError(res, 400, error, 'save');
+
+      res.json({ success: true });
+    } catch (err) {
+      return sendError(res, 500, err, 'save');
+    }
+  },
+);
 
 // GET /api/teams/:id/tasksplit/expenses/:expenseId/comments
 router.get('/api/teams/:id/tasksplit/expenses/:expenseId/comments', requireAuth, async (req, res) => {

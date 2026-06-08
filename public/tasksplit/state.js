@@ -61,8 +61,11 @@ let expenseCommentAttachPreviewUrl = null;
 let editingExpenseField = null;
 let expenseEditDraft = '';
 let editingExpenseId = null;
+let expenseSplitDraft = {};
 let settleTargetUserId = null;
 let settleMaxAmount = 0;
+let settleOptions = [];
+let settleSelectedOption = null;
 
 function isTaskflowSidepanel(name) {
   return TASKFLOW_SIDEPANELS.has(name);

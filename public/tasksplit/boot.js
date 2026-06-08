@@ -29,6 +29,7 @@ function applyTeamHeader() {
   applySettingsNavUi();
   if (typeof updateBalanceNavUi === 'function') updateBalanceNavUi();
   if (typeof applyTasksplitCurrencyUi === 'function') applyTasksplitCurrencyUi();
+  if (typeof applyTasksplitModeUpgradeUi === 'function') applyTasksplitModeUpgradeUi();
 }
 
 async function loadWorkspace() {
@@ -192,6 +193,24 @@ document.getElementById('expensePaidBy')?.addEventListener('change', () => {
   if (!payerId) return;
   const cb = document.querySelector(`.expense-participant-cb[value="${CSS.escape(payerId)}"]`);
   if (cb) cb.checked = true;
+  onExpenseParticipantsChange?.();
+});
+
+document.getElementById('expenseAmount')?.addEventListener('input', () => {
+  updateExpenseSplitHint?.();
+});
+
+document.getElementById('expenseAttachInput')?.addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (file) uploadExpenseAttachment(file);
+});
+
+document.getElementById('expenseDetailTabDetails')?.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-preview-attachment]');
+  if (!el) return;
+  e.preventDefault();
+  openAttachmentPreview(el.dataset.url, el.dataset.name, el.dataset.mime);
 });
 
 document.getElementById('expenseCommentsList')?.addEventListener('click', (e) => {
